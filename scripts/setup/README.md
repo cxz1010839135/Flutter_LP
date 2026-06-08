@@ -189,17 +189,19 @@ flutter doctor --android-licenses
 
 ## 上传到 GitHub
 
-工程根目录双击 **`绑定并上传GitHub.bat`**，或：
+本工程默认仓库：**https://github.com/cxz1010839135/Flutter_LP**
+
+| 操作 | 入口 |
+|------|------|
+| 首次上传 / 推送 | 双击 **`绑定并上传GitHub.bat`** |
+| **重新绑定**远程并推送 | 双击 **`重新绑定GitHub.bat`** |
 
 ```powershell
-# 自动在 GitHub 新建仓库 LPRobot-Flutter 并推送（需先登录）
+# 默认推送到 Flutter_LP
 .\绑定并上传GitHub.bat
 
-# 推送到已有仓库
-.\绑定并上传GitHub.bat -RepoUrl https://github.com/你的用户名/仓库名.git
-
-# 新建私有仓库
-.\绑定并上传GitHub.bat -RepoName LPRobot-Flutter -Private
+# 强制重新绑定 origin 并推送
+.\重新绑定GitHub.bat
 ```
 
 ### 首次使用：登录 GitHub

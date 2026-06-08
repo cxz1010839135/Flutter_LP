@@ -4,7 +4,10 @@
   初始化 Git 仓库并推送到 GitHub。
 
 .PARAMETER RepoUrl
-  已有仓库地址，如 https://github.com/你的用户名/LPRobot-Flutter.git
+  远程仓库地址，默认 https://github.com/cxz1010839135/Flutter_LP.git
+
+.PARAMETER Rebind
+  强制重新绑定 origin（先删除再添加远程）。
 
 .PARAMETER RepoName
   在 GitHub 上新建仓库的名称（未提供 RepoUrl 时使用），默认 LPRobot-Flutter。
@@ -16,18 +19,20 @@
   跳过 git add / commit（已有提交时使用）。
 
 .EXAMPLE
-  .\scripts\setup\github-push.ps1
-  .\scripts\setup\github-push.ps1 -RepoUrl https://github.com/you/LPRobot-Flutter.git
-  .\scripts\setup\github-push.ps1 -RepoName LPRobot-Flutter -Private
+  .\scripts\setup\github-push.ps1 -Rebind
+  .\scripts\setup\github-push.ps1 -RepoUrl https://github.com/cxz1010839135/Flutter_LP.git -Rebind
 #>
 param(
-    [string]$RepoUrl = '',
+    [string]$RepoUrl = 'https://github.com/cxz1010839135/Flutter_LP.git',
+    [switch]$Rebind,
     [string]$RepoName = 'LPRobot-Flutter',
     [switch]$Private,
     [switch]$SkipCommit
 )
 
 $ErrorActionPreference = 'Stop'
+
+$DefaultRepoUrl = 'https://github.com/cxz1010839135/Flutter_LP.git'
 
 # 刷新 PATH（winget 安装 gh 后当前终端可能尚未生效）
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
@@ -56,14 +61,17 @@ function Test-GhAvailable {
 }
 
 function Invoke-Gh {
-    param([string[]]$GhArgs)
+    param(
+        [string[]]$GhArgs,
+        [switch]$ShowOutput
+    )
     $oldEap = $ErrorActionPreference
     $ErrorActionPreference = 'SilentlyContinue'
     try {
         if (Test-Path $ghExe) {
-            & $ghExe @GhArgs 2>&1 | Out-Null
+            if ($ShowOutput) { & $ghExe @GhArgs } else { & $ghExe @GhArgs 2>&1 | Out-Null }
         } else {
-            & gh @GhArgs 2>&1 | Out-Null
+            if ($ShowOutput) { & gh @GhArgs } else { & gh @GhArgs 2>&1 | Out-Null }
         }
     } finally {
         $ErrorActionPreference = $oldEap
@@ -73,23 +81,25 @@ function Invoke-Gh {
 
 function Ensure-Gh {
     if (-not (Test-GhAvailable)) {
-        if ($RepoUrl) {
-            Write-Host '  [注意] 未安装 gh，将仅用 git 推送到 -RepoUrl' -ForegroundColor Yellow
-            return
-        }
         throw '未找到 gh。请先安装: winget install GitHub.cli'
     }
+
     $authCode = Invoke-Gh @('auth', 'status')
     if ($authCode -ne 0) {
-        if ($RepoUrl) {
-            Write-Host '  [注意] gh 未登录，将使用 git 推送（可能弹出 GitHub 凭据窗口）' -ForegroundColor Yellow
-            return
-        }
-        Write-Host '请先在浏览器完成 GitHub 登录（设备码授权）...' -ForegroundColor Yellow
-        $loginCode = Invoke-Gh @('auth', 'login', '-h', 'github.com', '-p', 'https', '-w')
+        Write-Host ''
+        Write-Host '请完成 GitHub 登录（浏览器设备码授权）...' -ForegroundColor Yellow
+        Write-Host '  1. 终端会显示设备码' -ForegroundColor Yellow
+        Write-Host '  2. 打开 https://github.com/login/device 输入设备码' -ForegroundColor Yellow
+        Write-Host ''
+        $loginCode = Invoke-Gh @('auth', 'login', '-h', 'github.com', '-p', 'https', '-w') -ShowOutput
         if ($loginCode -ne 0) { throw 'GitHub 登录失败或已取消' }
     }
-    & $ghExe auth status 2>&1 | Out-Host
+
+    Invoke-Gh @('auth', 'status') -ShowOutput | Out-Host
+    Write-Host '  配置 git 使用 gh 凭据...'
+    $setupCode = Invoke-Gh @('auth', 'setup-git')
+    if ($setupCode -ne 0) { throw 'gh auth setup-git 失败' }
+    Write-Host '  [OK] Git 凭据已绑定 GitHub' -ForegroundColor Green
 }
 
 function Ensure-GitUser {
@@ -97,13 +107,18 @@ function Ensure-GitUser {
     $email = git config user.email 2>$null
     if ($name -and $email) { return }
 
-    $ghLoggedIn = $false
-    if (Test-GhAvailable) {
-        $ghLoggedIn = ((Invoke-Gh @('auth', 'status')) -eq 0)
-    }
+    $ghLoggedIn = ((Invoke-Gh @('auth', 'status')) -eq 0)
     if ($ghLoggedIn) {
-        $login = Invoke-Gh @('api', 'user', '-q', '.login')
-        $display = Invoke-Gh @('api', 'user', '-q', '.name')
+        $oldEap = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        if (Test-Path $ghExe) {
+            $login = & $ghExe api user -q .login
+            $display = & $ghExe api user -q .name
+        } else {
+            $login = gh api user -q .login
+            $display = gh api user -q .name
+        }
+        $ErrorActionPreference = $oldEap
         if (-not $display) { $display = $login }
         git config user.name $display
         git config user.email "$login@users.noreply.github.com"
@@ -139,7 +154,7 @@ function New-LocalCommit {
     git add -A
     $status = git status --porcelain
     if (-not $status) {
-        $count = (git rev-list --count HEAD 2>$null)
+        $count = git rev-list --count HEAD 2>$null
         if ($count -and [int]$count -gt 0) {
             Write-Host '  [OK] 工作区干净，沿用已有提交'
             return
@@ -147,31 +162,58 @@ function New-LocalCommit {
         throw '没有可提交的文件'
     }
 
-    $msg = @'
+    $isFirst = -not (git rev-parse HEAD 2>$null)
+    if ($isFirst) {
+        $msg = @'
 Initial commit: LPRobot Flutter 上位机
 
 - Blockly 可视化编程预览
 - Windows / Android 打包脚本
 - 开发环境配置脚本
 '@
+    } else {
+        $msg = 'Update: sync local changes'
+    }
     git commit -m $msg
+}
+
+function Get-GitRemoteOrigin {
+    $oldEap = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    $url = git remote get-url origin 2>$null
+    $ErrorActionPreference = $oldEap
+    return $url
 }
 
 function Connect-RemoteAndPush {
     param([string]$Url)
 
     Write-Step "绑定远程: $Url"
-    $existing = git remote get-url origin 2>$null
+
+    if ($Rebind) {
+        $oldEap = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        git remote remove origin 2>$null | Out-Null
+        $ErrorActionPreference = $oldEap
+        Write-Host '  [OK] 已清除旧 origin（-Rebind）'
+    }
+
+    $existing = Get-GitRemoteOrigin
     if ($existing) {
         if ($existing -ne $Url) {
             git remote set-url origin $Url
+            Write-Host "  [OK] 已更新 origin: $Url"
+        } else {
+            Write-Host "  [OK] origin 已指向: $Url"
         }
     } else {
         git remote add origin $Url
+        Write-Host "  [OK] 已添加 origin: $Url"
     }
 
     Write-Step '推送到 GitHub (main)'
     git push -u origin main
+    if ($LASTEXITCODE -ne 0) { throw 'git push 失败，请确认已登录 GitHub 且仓库可写' }
 }
 
 function New-GithubRepoAndPush {
@@ -186,19 +228,19 @@ function New-GithubRepoAndPush {
 # -- 主流程 --
 Write-Host 'LPRobot Flutter -> GitHub' -ForegroundColor White
 Write-Host "工程: $ProjectRoot"
+if (-not $RepoUrl) { $RepoUrl = $DefaultRepoUrl }
+Write-Host "目标仓库: $RepoUrl"
 
 Ensure-Gh
 Initialize-Repo
 Ensure-GitUser
 New-LocalCommit
 
-if ($RepoUrl) {
-    $url = $RepoUrl.TrimEnd('/')
-    if ($url -notmatch '\.git$') { $url += '.git' }
+$url = $RepoUrl.TrimEnd('/')
+if ($url -notmatch '\.git$') { $url += '.git' }
+
+if ($Rebind -or $RepoUrl -or (Get-GitRemoteOrigin)) {
     Connect-RemoteAndPush -Url $url
-} elseif (git remote get-url origin 2>$null) {
-    Write-Step '使用已有 origin 远程'
-    git push -u origin main
 } else {
     New-GithubRepoAndPush
 }
@@ -207,7 +249,4 @@ Write-Host ''
 Write-Host '========================================================' -ForegroundColor Green
 Write-Host ' 已推送到 GitHub' -ForegroundColor Green
 Write-Host '========================================================' -ForegroundColor Green
-$viewUrl = Invoke-Gh @('repo', 'view', '--json', 'url', '-q', '.url') 2>$null
-if ($viewUrl) {
-    Write-Host "  $viewUrl"
-}
+Write-Host "  https://github.com/cxz1010839135/Flutter_LP"
