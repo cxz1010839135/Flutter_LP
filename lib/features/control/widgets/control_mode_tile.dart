@@ -1,0 +1,205 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../app/lp_robot_colors.dart';
+
+/// 模式选择格：Flutter 自绘，对齐 Android 截图（不用 PNG，避免拉伸/叠层）。
+class ControlModeTile extends StatelessWidget {
+  const ControlModeTile({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.distanceController,
+    this.bracketScale = 1.0,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final TextEditingController? distanceController;
+  final double bracketScale;
+
+  bool get _isDistance => distanceController != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxHeight < constraints.maxWidth
+            ? constraints.maxHeight
+            : constraints.maxWidth;
+
+        return Center(
+          child: SizedBox(
+            width: side,
+            height: side,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: onTap,
+                child: Ink(
+                  decoration: _decoration(),
+                  child: _isDistance ? _distanceBody() : _continuousBody(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  BoxDecoration _decoration() {
+    if (_isDistance) {
+      return BoxDecoration(
+        color: selected
+            ? LpRobotColors.primary.withValues(alpha: 0.12)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: LpRobotColors.primary.withValues(alpha: selected ? 1 : 0.8),
+          width: selected ? 2 : 1.2,
+        ),
+        boxShadow: _glow(selected ? 0.28 : 0.2),
+      );
+    }
+
+    if (selected) {
+      return BoxDecoration(
+        color: LpRobotColors.primary,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: _glow(0.32),
+      );
+    }
+
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: LpRobotColors.primary.withValues(alpha: 0.75),
+        width: 1.2,
+      ),
+      boxShadow: _glow(0.2),
+    );
+  }
+
+  List<BoxShadow> _glow(double alpha) => [
+        BoxShadow(
+          color: LpRobotColors.primary.withValues(alpha: alpha),
+          blurRadius: 8,
+          spreadRadius: 0,
+          offset: const Offset(0, 1),
+        ),
+      ];
+
+  Widget _continuousBody() {
+    return Center(
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: selected ? Colors.white : LpRobotColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _distanceBody() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: LpRobotColors.primary,
+              height: 1.1,
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: TextField(
+                controller: distanceController,
+                textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'^-?\d*\.?\d*'),
+                  ),
+                ],
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: LpRobotColors.textDark,
+                  height: 1.1,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                ),
+                onTap: onTap,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 14,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: _ModeBracketPainter(
+                scale: bracketScale,
+                color: LpRobotColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeBracketPainter extends CustomPainter {
+  _ModeBracketPainter({required this.scale, required this.color});
+
+  final double scale;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final y = size.height * 0.45;
+    final halfW = (size.width * 0.38 * scale).clamp(10.0, size.width * 0.42);
+    final cx = size.width / 2;
+    const horn = 5.0;
+
+    final left = Offset(cx - halfW, y);
+    final right = Offset(cx + halfW, y);
+
+    final path = Path()
+      ..moveTo(left.dx, left.dy - horn)
+      ..lineTo(left.dx, left.dy + horn)
+      ..moveTo(left.dx, left.dy)
+      ..lineTo(right.dx, right.dy)
+      ..moveTo(right.dx, right.dy - horn)
+      ..lineTo(right.dx, right.dy + horn);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ModeBracketPainter old) =>
+      old.scale != scale || old.color != color;
+}

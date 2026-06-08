@@ -1,0 +1,100 @@
+<xml xmlns="http://www.w3.org/1999/xhtml">
+  <variables></variables>
+  <block type="controls_if" id="17/%|ay7uzLkd6ypn7#;" x="0" y="0">
+    <value name="IF0">
+      <block type="thread_get_bitX" id="k%hl,[tXT-ILDNo+27DD" x="85" y="0">
+        <field name="ACTIVE_Data">X</field>
+        <value name="Idx">
+          <shadow type="math_number" id="Qn7M,Knv]n)25IPRRM.F">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+    </value>
+  </block>
+  <block type="controls_if" id="Tfb2G];PA(?TQqh9K3b#" x="0" y="100">
+    <value name="IF0">
+      <block type="thread_get_bitX" id="erGpxo;5J!`HHZxC2=-h" x="85" y="100">
+        <field name="ACTIVE_Data">X</field>
+        <value name="Idx">
+          <shadow type="math_number" id="u+6t6dO19qp0Ri|%qIT9">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+    </value>
+    <statement name="DO0">
+      <block type="math_variable" id="On+!DL-GX|,FP1`@Chw$" x="50" y="137">
+        <field name="Variable_Name">D</field>
+        <value name="Variable_Idx">
+          <shadow type="math_number" id="u+1~WpOvFpIZFfuzBG9N">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+        <value name="Variable_Value">
+          <shadow type="math_number" id="DHYMAl6?5ogOEo~B-dX4">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <next>
+          <block type="controls_if" id="_Mm;2CsV/l]1V7KubgD4" x="50" y="174">
+            <value name="IF0">
+              <block type="thread_get_bitX" id="-p4!C_h_=o[[WQ@G/rnE" x="136" y="174">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number" id="D_Z@LjplzPt%Uw7@ZmJi">
+                    <field name="NUM">0</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="T,fN~L$jP]|kPq*Flmkm" x="0" y="298" collapsed="true">
+    <field name="NAME">函数块</field>
+  </block>
+  <block type="controls_if" id="Iqj1d.agR_lSIB;Y!m[U" x="0" y="385">
+    <value name="IF0">
+      <block type="thread_get_bitX" id="/H/m9S3v%w[z./=]9%jD" x="85" y="385">
+        <field name="ACTIVE_Data">X</field>
+        <value name="Idx">
+          <shadow type="math_number" id="FkoX}yJ%,75T_Z)$/H-S">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+    </value>
+    <statement name="DO0">
+      <block type="math_variable" id="wk8l^]D4=8zYR}z(QWlz" x="50" y="422">
+        <field name="Variable_Name">D</field>
+        <value name="Variable_Idx">
+          <shadow type="math_number" id="_i?]*k=`vBbg*Czt5JDi">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+        <value name="Variable_Value">
+          <shadow type="math_number" id="hc^oe.$7FjHMtg3RC]2.">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <next>
+          <block type="controls_if" id="iI59Zt;qS`UYhXWo[tib" x="50" y="459">
+            <value name="IF0">
+              <block type="thread_get_bitX" id="c#%KO)HnJjHL7n^ss!z*" x="136" y="459">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number" id="Gs-)y+ztjwbsHJp|?k[F">
+                    <field name="NUM">0</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+</xml>

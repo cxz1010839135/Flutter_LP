@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "kind": "D",
+      "address": 0
+    },
+    {
+      "kind": "D",
+      "address": 100
+    }
+  ],
+  "autoRefresh": true,
+  "intervalMs": 400
+}

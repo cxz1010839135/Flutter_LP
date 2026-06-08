@@ -1,0 +1,3 @@
+enable,PLC_Xinjie,/dev/ttyUL2,115200,e,8,1
+enable,Serial_Minas,/dev/ttyPS1,19200,n,8,1
+enable,Serial_Gaochuang,/dev/ttyUL1,115200,n,8,1

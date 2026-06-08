@@ -1,0 +1,15 @@
+<xml xmlns="http://www.w3.org/1999/xhtml">
+  <variables></variables>
+  <block type="controls_if" id="Tfb2G];PA(?TQqh9K3b#" x="319" y="132">
+    <value name="IF0">
+      <block type="thread_get_bitX" id="erGpxo;5J!`HHZxC2=-h" x="404" y="132">
+        <field name="ACTIVE_Data">X</field>
+        <value name="Idx">
+          <shadow type="math_number" id="u+6t6dO19qp0Ri|%qIT9">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+    </value>
+  </block>
+</xml>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- WiX：简体中文 UI（Cultures=zh-CN）、可选安装目录。构建见 scripts/package/windows.ps1 -->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <?define ProductName = "领鹏智能" ?>
+
+  <?define Manufacturer = "领鹏智能" ?>
+
+  <?define ExeName = "领鹏智能.exe" ?>
+
+  <?define DefaultInstallFolder = "领鹏智能" ?>
+
+
+
+  <Package
+
+    Name="$(var.ProductName)"
+
+    Manufacturer="$(var.Manufacturer)"
+
+    Version="$(var.ProductVersion)"
+
+    UpgradeCode="8F2E9C1A-4B5D-4E6F-9A0B-1C2D3E4F5A6B"
+
+    Scope="perMachine"
+
+    Codepage="936">
+
+    <SummaryInformation
+
+      Description="$(var.ProductName) 安装程序"
+
+      Keywords="领鹏,机器人,Blockly" />
+
+
+
+    <MajorUpgrade
+
+      Schedule="afterInstallInitialize"
+
+      AllowSameVersionUpgrades="yes"
+
+      DowngradeErrorMessage="已安装更高版本，请先卸载后再安装。" />
+
+
+
+    <MediaTemplate CompressionLevel="high" EmbedCab="yes" />
+
+
+
+    <Icon Id="AppIcon" SourceFile="$(var.RepoRoot)windows\runner\resources\app_icon.ico" />
+
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+
+
+    <Feature Id="MainFeature" Title="$(var.ProductName)">
+
+      <ComponentGroupRef Id="AppPayload" />
+
+      <ComponentRef Id="ApplicationShortcuts" />
+
+    </Feature>
+
+
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+
+      <Directory Id="ManufacturerFolder" Name="Lingpeng">
+
+        <Directory Id="INSTALLFOLDER" Name="$(var.DefaultInstallFolder)" />
+
+      </Directory>
+
+    </StandardDirectory>
+
+
+
+    <StandardDirectory Id="ProgramMenuFolder">
+
+      <Directory Id="ApplicationProgramsFolder" Name="$(var.ProductName)" />
+
+    </StandardDirectory>
+
+
+
+    <StandardDirectory Id="DesktopFolder" />
+
+
+
+    <DirectoryRef Id="INSTALLFOLDER">
+
+      <Component Id="ApplicationShortcuts" Guid="C3D4E5F6-A7B8-4901-CDEF-123456789ABC">
+
+        <Shortcut
+
+          Id="StartMenuShortcut"
+
+          Name="$(var.ProductName)"
+
+          Description="$(var.ProductName) 机器人上位机"
+
+          Directory="ApplicationProgramsFolder"
+
+          Target="[INSTALLFOLDER]$(var.ExeName)"
+
+          WorkingDirectory="INSTALLFOLDER" />
+
+        <Shortcut
+
+          Id="DesktopShortcut"
+
+          Name="$(var.ProductName)"
+
+          Description="$(var.ProductName) 机器人上位机"
+
+          Directory="DesktopFolder"
+
+          Target="[INSTALLFOLDER]$(var.ExeName)"
+
+          WorkingDirectory="INSTALLFOLDER" />
+
+        <RemoveFolder Directory="ApplicationProgramsFolder" On="uninstall" />
+
+        <RegistryValue
+
+          Root="HKCU"
+
+          Key="Software\Lingpeng\LPRobot"
+
+          Name="installed"
+
+          Type="integer"
+
+          Value="1"
+
+          KeyPath="yes" />
+
+      </Component>
+
+    </DirectoryRef>
+
+
+
+    <ui:WixUI
+
+      Id="WixUI_InstallDir"
+
+      InstallDirectory="INSTALLFOLDER" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.RepoRoot)installer\wix\License.rtf" />
+
+  </Package>
+
+</Wix>
+
+

@@ -1,0 +1,38 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <Platform>x64</Platform>
+    <OutputType>Package</OutputType>
+    <OutputName>LPRobot</OutputName>
+    <EmbedCab>true</EmbedCab>
+    <Cultures>zh-CN</Cultures>
+    <ReleaseDir Condition="'$(ReleaseDir)' == ''">$(MSBuildThisFileDirectory)..\build\windows\x64\runner\Release</ReleaseDir>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.4.7.0</ProductVersion>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
+    <DefineConstants>ProductVersion=$(ProductVersion);RepoRoot=$(RepoRoot)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Heat" Version="6.0.2" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="$(ReleaseDir)">
+      <ComponentGroupName>AppPayload</ComponentGroupName>
+      <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
+      <Platform>x64</Platform>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressCom>true</SuppressCom>
+      <SuppressRegistry>true</SuppressRegistry>
+    </HarvestDirectory>
+    <BindPath Include="$(ReleaseDir)" />
+    <BindPath Include="$(RepoRoot)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="wix\Package.wxs" />
+  </ItemGroup>
+
+</Project>

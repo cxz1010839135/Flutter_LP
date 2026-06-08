@@ -1,0 +1,545 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:webview_flutter/webview_flutter.dart';
+
+import 'lp_blockly_bridge.dart';
+import 'lp_blockly_config.dart';
+import 'lp_blockly_load_tracker.dart';
+import 'lp_blockly_progress_overlay.dart';
+import 'lp_blockly_webview_visibility.dart';
+import '../app/lp_robot_colors.dart';
+import '../core/robot_path_layout.dart';
+import '../core/robot_paths.dart';
+import '../core/robot_state.dart';
+import '../network/http_manager.dart';
+import '../features/connect/connect_page.dart';
+import '../features/control/project_catalog.dart';
+import 'lp_blockly_server.dart';
+
+/// 加载 dll 目录下领鹏 Blockly 可视化编程页面
+class BlocklyDemoPage extends StatefulWidget {
+  const BlocklyDemoPage({super.key, this.userProjectName});
+
+  /// 从控制页打开时，加载 `files/projects/{name}/{name}.xml`。
+  final String? userProjectName;
+
+  @override
+  State<BlocklyDemoPage> createState() => _BlocklyDemoPageState();
+}
+
+class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
+  LpBlocklyServer? _server;
+  WebViewController? _controller;
+  LpBlocklyLoadTracker? _loadTracker;
+  String? _error;
+
+  /// 页面/WebView 加载中
+  bool _loading = true;
+
+  /// 保存 / 退出上传等任务进行中
+  bool _taskActive = false;
+
+  int _progressPercent = 0;
+  String _progressMessage = '正在加载…';
+  String? _pathHint;
+  bool _userProjectInjected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBlockly();
+  }
+
+  void _setProgress(int percent, String message, {bool? taskActive}) {
+    if (!mounted) return;
+    setState(() {
+      _progressPercent = percent.clamp(0, 100);
+      _progressMessage = message;
+      if (taskActive != null) {
+        _taskActive = taskActive;
+      }
+    });
+    _scheduleWebViewVisibilitySync();
+  }
+
+  void _scheduleWebViewVisibilitySync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncWebViewVisibility();
+    });
+  }
+
+  /// Windows 原生 WebView 浮在 Flutter 上层，进度遮罩期间必须 hide。
+  Future<void> _syncWebViewVisibility() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await setBlocklyWebViewVisible(controller, !_showProgressOverlay);
+  }
+
+  void _onLoadRequestProgress(int percent, String message) {
+    if (!_loading) return;
+    _setProgress(percent, message);
+    if (percent >= 100) {
+      Future.delayed(const Duration(milliseconds: 400), () async {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        _scheduleWebViewVisibilitySync();
+        await _injectUserProjectIfNeeded();
+      });
+    }
+  }
+
+  Future<void> _injectUserProjectIfNeeded() async {
+    if (_userProjectInjected) return;
+    final name = widget.userProjectName?.trim();
+    if (name == null || name.isEmpty) return;
+
+    final controller = _controller;
+    if (controller == null) return;
+
+    try {
+      final xml = await ProjectCatalog.readProjectXml(name);
+      if (xml == null || xml.isEmpty) {
+        _showMessage('未找到工程 $name 的 XML', isError: true);
+        return;
+      }
+      final payload = jsonEncode(xml);
+      await controller.runJavaScript('''
+(function() {
+  try {
+    if (window.Code && typeof Code.replaceBlocksfromXml === 'function') {
+      Code.replaceBlocksfromXml($payload);
+    }
+  } catch (e) {
+    console.error('load user project failed', e);
+  }
+})();
+''');
+      _userProjectInjected = true;
+      _showMessage('已加载工程 $name');
+    } catch (e) {
+      _showMessage('加载工程失败：$e', isError: true);
+    }
+  }
+
+  void _onTaskProgress(int percent, String message) {
+    if (_loading) return;
+
+    _setProgress(percent, message, taskActive: percent < 100);
+
+    if (percent >= 100) {
+      Future.delayed(const Duration(milliseconds: 450), () {
+        if (!mounted || _loading) return;
+        setState(() => _taskActive = false);
+        _scheduleWebViewVisibilitySync();
+      });
+    }
+  }
+
+  Future<void> _initBlockly() async {
+    setState(() {
+      _loading = true;
+      _taskActive = false;
+      _progressPercent = 0;
+      _progressMessage = '正在启动本地服务…';
+    });
+
+    try {
+      if (RobotState.instance.isConnected) {
+        _setProgress(5, '正在从控制器读取程序…');
+        await HttpManager.instance.syncServerProgramFromRobot();
+        _setProgress(12, '控制器程序已同步');
+      }
+
+      _setProgress(15, '正在启动本地服务…');
+      final serverDir = await RobotPaths.serverDir();
+      final xmlDir = await RobotPaths.xmlLibraryDir();
+      final dllRoot = await resolveDllRoot();
+      _loadTracker = LpBlocklyLoadTracker(onProgress: _onLoadRequestProgress);
+      _loadTracker!.reset();
+      final server = LpBlocklyServer(
+        serveRoot: dllRoot,
+        onRequestCompleted: _loadTracker!.handleRequest,
+      );
+      await server.start();
+
+      final entryUrl = server.entryUrl;
+      if (entryUrl == null) {
+        throw StateError('Blockly 本地服务启动失败');
+      }
+
+      _setProgress(18, '正在初始化 WebView…');
+      final controller = WebViewController();
+      final bridge = LpBlocklyBridge(
+        controller: controller,
+        showMessage: _showMessage,
+        pickXmlFromList: _pickXmlFromLibraryDir,
+        onTaskProgress: _onTaskProgress,
+        onTaskStarted: _onTaskStarted,
+        onJsLoadComplete: () => _loadTracker?.markJsLoadComplete(),
+        onExitStarted: _onExitStarted,
+        onExit: _onBlocklyExit,
+      );
+
+      await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await controller.setBackgroundColor(const Color(0xFFF5F5F5));
+      await controller.addJavaScriptChannel(
+        'FlutterBlockly',
+        onMessageReceived: (message) {
+          bridge.handleMessage(message.message);
+        },
+      );
+      await controller.setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (error) {
+            debugPrint('Blockly WebView error: ${error.description}');
+          },
+        ),
+      );
+
+      _setProgress(5, '正在打开 Blockly 页面…');
+      await setBlocklyWebViewVisible(controller, false);
+      await controller.loadRequest(Uri.parse(entryUrl));
+      _scheduleWebViewVisibilitySync();
+
+      if (!mounted) return;
+      setState(() {
+        _pathHint = _buildPathHint();
+        debugPrint('Blockly server=$serverDir xml=$xmlDir');
+        _server = server;
+        _controller = controller;
+      });
+      _scheduleWebViewVisibilitySync();
+    } catch (e, st) {
+      debugPrint('Blockly init failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+        _taskActive = false;
+      });
+    }
+  }
+
+  String _buildPathHint() {
+    if (RobotState.instance.isConnected) {
+      return '在线 | 控制器 → ${RobotPathLayout.serverDir}';
+    }
+    return '离线 | ${RobotPathLayout.serverDir}';
+  }
+
+  void _onExitStarted() {
+    _onTaskStarted();
+  }
+
+  void _onTaskStarted() {
+    final msg =
+        RobotState.instance.isConnected ? '正在上传程序…' : '正在保存…';
+    _setProgress(0, msg, taskActive: true);
+  }
+
+  Future<void> _onBlocklyExit(BlocklyExitResult result) async {
+    if (!mounted) return;
+
+    if (result.shouldPop) {
+      await _returnToHome(result.message);
+      return;
+    }
+    setState(() => _taskActive = false);
+    _scheduleWebViewVisibilitySync();
+    if (result.message != null) {
+      _showMessage(result.message!, isError: true);
+    }
+  }
+
+  /// 在线回到主页；离线回到连接页（跳过连接时主页不在栈内，需 pushAndRemoveUntil）。
+  Future<void> _returnToHome(String? message) async {
+    final controller = _controller;
+    if (controller != null) {
+      await setBlocklyWebViewVisible(controller, false);
+    }
+    _server?.stop();
+
+    if (!mounted) return;
+    setState(() {
+      _taskActive = false;
+      _loading = false;
+    });
+
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+
+    if (RobotState.instance.isConnected) {
+      debugPrint('Blockly: pop to MainHomePage');
+      Navigator.of(context).pop(message);
+      return;
+    }
+
+    debugPrint('Blockly: return to ConnectPage (offline)');
+    if (message != null && message.isNotEmpty) {
+      RobotState.instance.setPendingUiMessage(message);
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const ConnectPage()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _triggerBlocklyReturn() async {
+    if (_controller == null || _showProgressOverlay) return;
+    await _controller!.runJavaScript(
+      "if(window.Code&&typeof Code.NewDoc==='function'){Code.NewDoc();}",
+    );
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
+      ),
+    );
+  }
+
+  /// 原生对话框不可用时，从 files/xml 列表中选择
+  Future<String?> _pickXmlFromLibraryDir(String browseDir) async {
+    if (!mounted) return null;
+
+    final dir = Directory(browseDir);
+    if (!await dir.exists()) return null;
+
+    final files = <File>[];
+    await for (final entity in dir.list()) {
+      if (entity is File && p.extension(entity.path).toLowerCase() == '.xml') {
+        files.add(entity);
+      }
+    }
+    files.sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+
+    if (files.isEmpty) {
+      if (mounted) {
+        _showMessage(
+          '${RobotPathLayout.serverDir} 下还没有 xml 文件',
+          isError: true,
+        );
+      }
+      return null;
+    }
+
+    if (!mounted) return null;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('从 ${RobotPathLayout.serverDir} 加载'),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                browseDir,
+                style: Theme.of(ctx).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: files.length,
+                  itemBuilder: (_, index) {
+                    final file = files[index];
+                    return ListTile(
+                      title: Text(p.basename(file.path)),
+                      onTap: () => Navigator.pop(ctx, file.path),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _loadTracker?.dispose();
+    _server?.stop();
+    super.dispose();
+  }
+
+  bool get _showProgressOverlay => _loading || _taskActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: RobotState.instance,
+      builder: (context, _) {
+        return PopScope(
+          canPop: !_showProgressOverlay,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _triggerBlocklyReturn();
+          },
+          child: Scaffold(
+          backgroundColor: LpRobotColors.background,
+          appBar: AppBar(
+            title: const Text('领鹏智能编程'),
+            backgroundColor: LpRobotColors.primary,
+            foregroundColor: Colors.white,
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: const BackButtonIcon(),
+              tooltip: '返回',
+              onPressed: _showProgressOverlay ? null : _triggerBlocklyReturn,
+            ),
+            actions: [
+              if (_controller != null)
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: '刷新',
+                  onPressed: _showProgressOverlay
+                      ? null
+                      : () async {
+                          final url = _server?.entryUrl;
+                          if (url == null || _controller == null) return;
+                          setState(() {
+                            _loading = true;
+                            _progressPercent = 5;
+                            _progressMessage = '正在刷新…';
+                          });
+                          _loadTracker?.reset();
+                          await setBlocklyWebViewVisible(_controller!, false);
+                          await _controller!.loadRequest(Uri.parse(url));
+                          _scheduleWebViewVisibilitySync();
+                        },
+                ),
+            ],
+          ),
+          body: _buildBody(),
+        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody() {
+    if (_error != null) {
+      return _ErrorPanel(
+        message: _error!,
+        onRetry: () {
+          setState(() {
+            _error = null;
+            _controller = null;
+          });
+          _server?.stop();
+          _server = null;
+          _initBlockly();
+        },
+      );
+    }
+
+    if (_controller == null) {
+      return LpBlocklyProgressOverlay(
+        progress: _progressPercent,
+        message: _progressMessage,
+        dimmed: false,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        LpBlocklyWebViewHost(
+          controller: _controller!,
+          visible: !_showProgressOverlay,
+        ),
+        if (_showProgressOverlay)
+          Positioned.fill(
+            child: LpBlocklyProgressOverlay(
+              progress: _progressPercent,
+              message: _progressMessage,
+              dimmed: _taskActive,
+            ),
+          ),
+        if (_pathHint != null && !_showProgressOverlay)
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  _pathHint!,
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ErrorPanel extends StatelessWidget {
+  const _ErrorPanel({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 48,
+            color: LpRobotColors.alarm,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Blockly 加载失败',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '请确认 dll 目录位于工程根目录：\n'
+            '${LpBlocklyConfig.dllRelativePath}/\n'
+            '配置：${RobotPathLayout.serverDir}/\n'
+            '文件：${RobotPathLayout.xmlLibraryDir}/',
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+}

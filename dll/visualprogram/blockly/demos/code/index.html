@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="LLRobot" value="notranslate">
+    <title>LLMachine</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="../../appengine/storage.js"></script>
+    <!-- WebView2 不支持 document.write，需手动加载 Closure 并启动 Blockly -->
+    <script>var goog = undefined;</script>
+    <script src="../../../closure-library/closure/goog/base.js"></script>
+    <!--<script src="../../blockly_compressed.js"></script>-->
+    <script src="../../blockly_uncompressed.js"></script>
+    <script>
+      if (typeof window.BLOCKLY_BOOT === 'function') {
+        window.BLOCKLY_BOOT();
+      }
+    </script>
+    <!--<script src="../../blocks_compressed.js"></script>
+    <script src="../../javascript_compressed.js"></script>
+    <script src="../../python_compressed.js"></script>
+    <script src="../../php_compressed.js"></script>
+    <script src="../../lua_compressed.js"></script>
+    <script src="../../dart_compressed.js"></script>-->
+    <script src="../../blocks/customconfig.js"></script>
+    <script src="../../blocks/colour.js"></script>
+    <script src="../../blocks/lists.js"></script>
+    <script src="../../blocks/logic.js"></script>
+    <script src="../../blocks/loops.js"></script>
+    <script src="../../blocks/math.js"></script>
+    <script src="../../blocks/motion.js"></script>
+    <script src="../../blocks/procedures.js"></script>
+    <script src="../../blocks/text.js"></script>
+    <script src="../../blocks/variables.js"></script>
+    <script src="../../blocks/camera.js"></script>
+    <script src="../../generators/javascript.js"></script>
+    <script src="../../generators/javascript/colour.js"></script>
+    <script src="../../generators/javascript/event.js"></script>
+    <script src="../../generators/javascript/lists.js"></script>
+    <script src="../../generators/javascript/logic.js"></script>
+    <script src="../../generators/javascript/loops.js"></script>
+    <script src="../../generators/javascript/math.js"></script>
+    <script src="../../generators/javascript/procedures.js"></script>
+    <script src="../../generators/javascript/text.js"></script>
+    <script src="../../generators/javascript/variables.js"></script>
+    <script src="../../generators/python.js"></script>
+    <script src="../../generators/python/logic.js"></script>
+    <script src="../../generators/python/loops.js"></script>
+    <script src="../../generators/python/math.js"></script>
+    <script src="../../generators/python/text.js"></script>
+    <script src="../../generators/python/lists.js"></script>
+    <script src="../../generators/python/colour.js"></script>
+    <script src="../../generators/python/variables.js"></script>
+    <script src="../../generators/python/procedures.js"></script>
+    <script src="../../generators/php.js"></script>
+    <script src="../../generators/php/logic.js"></script>
+    <script src="../../generators/php/loops.js"></script>
+    <script src="../../generators/php/math.js"></script>
+    <script src="../../generators/php/text.js"></script>
+    <script src="../../generators/php/lists.js"></script>
+    <script src="../../generators/php/colour.js"></script>
+    <script src="../../generators/php/variables.js"></script>
+    <script src="../../generators/php/procedures.js"></script>
+    <script src="../../generators/lua.js"></script>
+    <script src="../../generators/lua/logic.js"></script>
+    <script src="../../generators/lua/loops.js"></script>
+    <script src="../../generators/lua/math.js"></script>
+    <script src="../../generators/lua/text.js"></script>
+    <script src="../../generators/lua/lists.js"></script>
+    <script src="../../generators/lua/colour.js"></script>
+    <script src="../../generators/lua/variables.js"></script>
+    <script src="../../generators/lua/procedures.js"></script>
+    <script src="../../generators/dart.js"></script>
+    <script src="../../generators/dart/logic.js"></script>
+    <script src="../../generators/dart/loops.js"></script>
+    <script src="../../generators/dart/math.js"></script>
+    <script src="../../generators/dart/text.js"></script>
+    <script src="../../generators/dart/lists.js"></script>
+    <script src="../../generators/dart/colour.js"></script>
+    <script src="../../generators/dart/variables.js"></script>
+    <script src="../../generators/dart/procedures.js"></script>
+    <script src="../../generators/csharp.js"></script>
+    <script src="../../generators/csharp/camera.js"></script>
+    <script src="../../generators/csharp/colour.js"></script>
+    <script src="../../generators/csharp/control.js"></script>
+    <script src="../../generators/csharp/event.js"></script>
+    <script src="../../generators/csharp/lists.js"></script>
+    <script src="../../generators/csharp/logic.js"></script>
+    <script src="../../generators/csharp/loops.js"></script>
+    <script src="../../generators/csharp/math.js"></script>
+    <script src="../../generators/csharp/motion.js"></script>
+    <script src="../../generators/csharp/procedures.js"></script>
+    <script src="../../generators/csharp/text.js"></script>
+    <script src="../../generators/csharp/variables.js"></script>
+    <script src="../../generators/gcode.js"></script>
+    <script src="../../generators/gcode/camera.js"></script>
+    <script src="../../generators/gcode/colour.js"></script>
+    <script src="../../generators/gcode/control.js"></script>
+    <script src="../../generators/gcode/event.js"></script>
+    <script src="../../generators/gcode/lists.js"></script>
+    <script src="../../generators/gcode/logic.js"></script>
+    <script src="../../generators/gcode/loops.js"></script>
+    <script src="../../generators/gcode/math.js"></script>
+    <script src="../../generators/gcode/motion.js"></script>
+    <script src="../../generators/gcode/procedures.js"></script>
+    <script src="../../generators/gcode/text.js"></script>
+    <script src="../../generators/gcode/variables.js"></script>
+    <script src="../../generators/llrobot.js"></script>
+    <script src="../../generators/llrobot/camera.js"></script>
+    <script src="../../generators/llrobot/colour.js"></script>
+    <script src="../../generators/llrobot/control.js"></script>
+    <script src="../../generators/llrobot/event.js"></script>
+    <script src="../../generators/llrobot/lists.js"></script>
+    <script src="../../generators/llrobot/logic.js"></script>
+    <script src="../../generators/llrobot/loops.js"></script>
+    <script src="../../generators/llrobot/math.js"></script>
+    <script src="../../generators/llrobot/motion.js"></script>
+    <script src="../../generators/llrobot/procedures.js"></script>
+    <script src="../../generators/llrobot/text.js"></script>
+    <script src="../../generators/llrobot/variables.js"></script>
+    <script src="code.js"></script>
+    <script src="FileSaver.js"></script>
+    <script src="jquery-1.7.1.min.js"></script>
+    <script src="ui.js"></script>
+    <script src="flutter_bound.js"></script>
+</head>
+<body>
+<table width="100%" height="100%">
+    <tr style="display: none">
+        <td>
+            <h1><a href="https://developers.google.com/blockly/">Blockly</a>&rlm; &gt;
+                <a href="../index.html">Demos</a>&rlm; &gt;
+                <span id="title">...</span>
+            </h1>
+        </td>
+    </tr>
+      <tr hidden="True">
+<!--   <tr >-->
+        <td colspan=2>
+            <table width="100%">
+                <tr height="1em">
+                    <td id="tab_blocks" class="tabon " width="50px">...</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_xml" class="taboff " width="50px">XML</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_lua" class="taboff "  width="50px">GCode</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_csharp" class="taboff " width="50px">CSharp</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_llrobot" class="taboff " width="50px">LLRobot</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_javascript" class="taboff " hidden="True">JavaScript</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_python" class="taboff " hidden="True">Python</td>
+                    <td class="tabmin">&nbsp;</td>
+                    <td id="tab_php" class="taboff " hidden="True">PHP</td>
+                    <td class="tabmin">&nbsp;</td>
+
+                    <td id="tab_dart" class="taboff " hidden="True">Dart</td>
+                    <td class="tabmin">&nbsp;</td>
+
+                    <td class="farSide">
+                        <select id="languageMenu"></select>
+                    </td>
+                    <td class="tabmin">&nbsp;</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td height="99%"  colspan=2 id="content_area">
+        </td>
+    </tr>
+</table>
+<div id="content_blocks" class="content"></div>
+<pre id="content_csharp" class="content"></pre>
+<pre id="content_llrobot" class="content"></pre>
+<pre id="content_javascript" class="content"></pre>
+<pre id="content_python" class="content"></pre>
+<pre id="content_php" class="content"></pre>
+<pre id="content_lua" class="content"></pre>
+<pre id="content_dart" class="content"></pre>
+<textarea id="content_xml" class="content" wrap="off"></textarea>
+
+<xml id="toolbox" style="display: none">
+    <category name="%{BKY_CATCONTROL}" colour="%{BKY_FOCUS_CONTROL_RGB}">
+        <block type="controls_if"></block>
+        <block type="logic_operation_m_vertical"></block>
+        <block type="logic_operation_m"></block>
+        <block type="logic_compare"></block>
+    </category>
+    <category name="%{BKY_CATMATH}" colour="%{BKY_FOCUS_MATH_RGB}">
+        <block type="math_variable">
+            <value name="Variable_Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+            <value name="Variable_Value">
+                <shadow type="math_number">
+                    <field name="NUM">1</field>
+                </shadow>
+            </value>
+        </block>
+
+        <block type="math_arithmetic">
+            <value name="A">
+                <shadow type="math_number">
+                    <field name="NUM">1</field>
+                </shadow>
+            </value>
+            <value name="B">
+                <shadow type="math_number">
+                    <field name="NUM">1</field>
+                </shadow>
+            </value>
+        </block>
+
+        <block type="thread_get_bitX">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_bitY">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_bitM">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_bitS">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_bitT">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_bitC">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+        <block type="thread_get_data">
+            <value name="Idx">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+<!--        <block type="motion_point_join"></block>-->
+<!--        <block type="motion_point_idx">-->
+<!--            <value name="Index">-->
+<!--                <shadow type="math_number_uint">-->
+<!--                    <field name="NUM">0</field>-->
+<!--                </shadow>-->
+<!--            </value>-->
+<!--        </block>-->
+
+        <block type="math_number"></block>
+        <block type="math_constant"></block>
+
+        <block type="math_variableNotes">
+        </block>
+
+    </category>
+    <category name="%{BKY_CATMOTION}" colour="%{BKY_FOCUS_MOTION_RGB}">
+        <block type="motion_moveptp_point">
+            <value name="MotionMode">
+            </value>
+        </block>
+
+<!--        <block type="motion_move_arc_go">-->
+<!--            <value name="MotionMode">-->
+<!--            </value>-->
+<!--            <value name="startIndex">-->
+<!--                <shadow type="math_number_uint">-->
+<!--                    <field name="NUM">0</field>-->
+<!--                </shadow>-->
+<!--            </value>-->
+<!--            <value name="endIndex">-->
+<!--                <shadow type="math_number_uint">-->
+<!--                    <field name="NUM">0</field>-->
+<!--                </shadow>-->
+<!--            </value>-->
+<!--        </block>-->
+
+        <block type="motion_move_go">
+        </block>
+
+        <block type="motion_ele_mode">
+            <value name="idxSelect">
+                <shadow type="math_number_uint">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+            <value name="idxFollow">
+                <shadow type="math_number_uint">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+            <value name="molecule">
+                <shadow type="math_number">
+                    <field name="NUM">1</field>
+                </shadow>
+            </value>
+            <value name="denominator">
+                <shadow type="math_number">
+                    <field name="NUM">1</field>
+                </shadow>
+            </value>
+
+        </block>
+
+        <block type="batch">
+            <value name="batch_index">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+            <value name="batch_num">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+            <value name="batch_value">
+                <shadow type="math_number">
+                    <field name="NUM">0</field>
+                </shadow>
+            </value>
+        </block>
+    </category>
+    <category name="%{BKY_CATFUNCTIONS}" colour="%{BKY_FOCUS_PROCEDURES_RGB}" custom="PROCEDURE"></category>
+</xml>
+</body>
+
+
+</html>

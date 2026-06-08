@@ -1,0 +1,209 @@
+Slave0,start,MBDLN25BE
+Slave0,slave_info,alias=0,position=0,index=0,vid=1647,pid=1614282758,type=1
+Slave0,slave_sync0,index=0,n_pdos=0,dir=1
+Slave0,slave_sync1,index=1,n_pdos=0,dir=2
+Slave0,slave_sync2,index=2,n_pdos=1,dir=1
+Slave0,slave_sync3,index=3,n_pdos=1,dir=2
+Slave0,sync2_pdo0,active=1
+Slave0,sync2_pdo0,Sm =0
+Slave0,sync2_pdo0,index=5632
+Slave0,sync2_pdo0,Name=Receive PDO mapping 1
+Slave0,sync2_pdo0,n_entries=4
+Slave0,sync2_pdo0,Entry=0,active=1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo0,Entry=1,active=1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo0,Entry=2,active=1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo0,Entry=3,active=1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo1,active=-1
+Slave0,sync2_pdo1,Sm =0
+Slave0,sync2_pdo1,index=5633
+Slave0,sync2_pdo1,Name=Receive PDO mapping 2
+Slave0,sync2_pdo1,n_entries=7
+Slave0,sync2_pdo1,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo1,Entry=2,active=-1,Name=Target torque,index=24689,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=3,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo1,Entry=4,active=-1,Name=Max motor speed,index=24704,subindex=0,bit_length=32
+Slave0,sync2_pdo1,Entry=5,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=6,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync2_pdo2,active=-1
+Slave0,sync2_pdo2,Sm =0
+Slave0,sync2_pdo2,index=5634
+Slave0,sync2_pdo2,Name=Receive PDO mapping 3
+Slave0,sync2_pdo2,n_entries=6
+Slave0,sync2_pdo2,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo2,Entry=2,active=-1,Name=Max torque,index=24690,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=3,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo2,Entry=4,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=5,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync2_pdo3,active=-1
+Slave0,sync2_pdo3,Sm =0
+Slave0,sync2_pdo3,index=5635
+Slave0,sync2_pdo3,Name=Receive PDO mapping 4
+Slave0,sync2_pdo3,n_entries=8
+Slave0,sync2_pdo3,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo3,Entry=2,active=-1,Name=Target torque,index=24689,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=3,active=-1,Name=Max torque,index=24690,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=4,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo3,Entry=5,active=-1,Name=Max motor speed,index=24704,subindex=0,bit_length=32
+Slave0,sync2_pdo3,Entry=6,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=7,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync3_pdo0,active=1
+Slave0,sync3_pdo0,Sm=0
+Slave0,sync3_pdo0,index=6656
+Slave0,sync3_pdo0,Name=Transmit PDO mapping 1
+Slave0,sync3_pdo0,n_entries=8
+Slave0,sync3_pdo0,Entry=0,active=1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=1,active=1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=2,active=1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo0,Entry=3,active=1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=4,active=1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=5,active=1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=6,active=1,Name=Following error actual value,index=24820,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=7,active=1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo1,active=-1
+Slave0,sync3_pdo1,Sm=0
+Slave0,sync3_pdo1,index=6657
+Slave0,sync3_pdo1,Name=Transmit PDO mapping 2
+Slave0,sync3_pdo1,n_entries=9
+Slave0,sync3_pdo1,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo1,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo2,active=-1
+Slave0,sync3_pdo2,Sm=0
+Slave0,sync3_pdo2,index=6658
+Slave0,sync3_pdo2,Name=Transmit PDO mapping 3
+Slave0,sync3_pdo2,n_entries=9
+Slave0,sync3_pdo2,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo2,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo3,active=-1
+Slave0,sync3_pdo3,Sm=0
+Slave0,sync3_pdo3,index=6659
+Slave0,sync3_pdo3,Name=Transmit PDO mapping 4
+Slave0,sync3_pdo3,n_entries=9
+Slave0,sync3_pdo3,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo3,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,end
+Slave1,start,EtherCat-SMART-IO (Digital 16-Input/16-Output)
+Slave1,slave_info,alias=0,position=1,index=0,vid=37,pid=4661,type=2
+Slave1,slave_sync0,index=0,n_pdos=0,dir=1
+Slave1,slave_sync1,index=1,n_pdos=0,dir=1
+Slave1,slave_sync2,index=2,n_pdos=2,dir=2
+Slave1,slave_sync3,index=255,n_pdos=2,dir=0
+Slave1,sync2_pdo0,active=1
+Slave1,sync2_pdo0,Sm =0
+Slave1,sync2_pdo0,index=5632
+Slave1,sync2_pdo0,Name=Dout(0-7)
+Slave1,sync2_pdo0,n_entries=1
+Slave1,sync2_pdo0,Entry=0,active=1,Name=Output[0],index=28673,subindex=1,bit_length=8
+Slave1,sync2_pdo1,active=1
+Slave1,sync2_pdo1,Sm =1
+Slave1,sync2_pdo1,index=5633
+Slave1,sync2_pdo1,Name=Dout(8-15)
+Slave1,sync2_pdo1,n_entries=1
+Slave1,sync2_pdo1,Entry=0,active=1,Name=Output[1],index=28673,subindex=2,bit_length=8
+Slave1,sync2_pdo2,active=-1
+Slave1,sync2_pdo2,Sm =0
+Slave1,sync2_pdo2,index=0
+Slave1,sync2_pdo2,Name=
+Slave1,sync2_pdo2,n_entries=0
+Slave1,sync2_pdo3,active=-1
+Slave1,sync2_pdo3,Sm =0
+Slave1,sync2_pdo3,index=0
+Slave1,sync2_pdo3,Name=
+Slave1,sync2_pdo3,n_entries=0
+Slave1,sync3_pdo0,active=1
+Slave1,sync3_pdo0,Sm=0
+Slave1,sync3_pdo0,index=6656
+Slave1,sync3_pdo0,Name=Din (0-7)
+Slave1,sync3_pdo0,n_entries=1
+Slave1,sync3_pdo0,Entry=0,active=1,Name=Input[0],index=24577,subindex=1,bit_length=8
+Slave1,sync3_pdo1,active=1
+Slave1,sync3_pdo1,Sm=0
+Slave1,sync3_pdo1,index=6657
+Slave1,sync3_pdo1,Name=Din (8-15)
+Slave1,sync3_pdo1,n_entries=1
+Slave1,sync3_pdo1,Entry=0,active=1,Name=Input[1],index=24577,subindex=2,bit_length=8
+Slave1,sync3_pdo2,active=-1
+Slave1,sync3_pdo2,Sm=0
+Slave1,sync3_pdo2,index=0
+Slave1,sync3_pdo2,Name=
+Slave1,sync3_pdo2,n_entries=0
+Slave1,sync3_pdo3,active=-1
+Slave1,sync3_pdo3,Sm=0
+Slave1,sync3_pdo3,index=0
+Slave1,sync3_pdo3,Name=
+Slave1,sync3_pdo3,n_entries=0
+Slave1,end
+Slave2,start,EtherCat-SMART-IO (Digital 16-Input/16-Output)
+Slave2,slave_info,alias=0,position=2,index=1,vid=37,pid=4661,type=2
+Slave2,slave_sync0,index=0,n_pdos=0,dir=1
+Slave2,slave_sync1,index=1,n_pdos=0,dir=1
+Slave2,slave_sync2,index=2,n_pdos=2,dir=2
+Slave2,slave_sync3,index=255,n_pdos=2,dir=0
+Slave2,sync2_pdo0,active=1
+Slave2,sync2_pdo0,Sm =0
+Slave2,sync2_pdo0,index=5632
+Slave2,sync2_pdo0,Name=Dout(0-7)
+Slave2,sync2_pdo0,n_entries=1
+Slave2,sync2_pdo0,Entry=0,active=1,Name=Output[0],index=28673,subindex=1,bit_length=8
+Slave2,sync2_pdo1,active=1
+Slave2,sync2_pdo1,Sm =1
+Slave2,sync2_pdo1,index=5633
+Slave2,sync2_pdo1,Name=Dout(8-15)
+Slave2,sync2_pdo1,n_entries=1
+Slave2,sync2_pdo1,Entry=0,active=1,Name=Output[1],index=28673,subindex=2,bit_length=8
+Slave2,sync2_pdo2,active=-1
+Slave2,sync2_pdo2,Sm =0
+Slave2,sync2_pdo2,index=0
+Slave2,sync2_pdo2,Name=
+Slave2,sync2_pdo2,n_entries=0
+Slave2,sync2_pdo3,active=-1
+Slave2,sync2_pdo3,Sm =0
+Slave2,sync2_pdo3,index=0
+Slave2,sync2_pdo3,Name=
+Slave2,sync2_pdo3,n_entries=0
+Slave2,sync3_pdo0,active=1
+Slave2,sync3_pdo0,Sm=0
+Slave2,sync3_pdo0,index=6656
+Slave2,sync3_pdo0,Name=Din (0-7)
+Slave2,sync3_pdo0,n_entries=1
+Slave2,sync3_pdo0,Entry=0,active=1,Name=Input[0],index=24577,subindex=1,bit_length=8
+Slave2,sync3_pdo1,active=1
+Slave2,sync3_pdo1,Sm=0
+Slave2,sync3_pdo1,index=6657
+Slave2,sync3_pdo1,Name=Din (8-15)
+Slave2,sync3_pdo1,n_entries=1
+Slave2,sync3_pdo1,Entry=0,active=1,Name=Input[1],index=24577,subindex=2,bit_length=8
+Slave2,sync3_pdo2,active=-1
+Slave2,sync3_pdo2,Sm=0
+Slave2,sync3_pdo2,index=0
+Slave2,sync3_pdo2,Name=
+Slave2,sync3_pdo2,n_entries=0
+Slave2,sync3_pdo3,active=-1
+Slave2,sync3_pdo3,Sm=0
+Slave2,sync3_pdo3,index=0
+Slave2,sync3_pdo3,Name=
+Slave2,sync3_pdo3,n_entries=0
+Slave2,end

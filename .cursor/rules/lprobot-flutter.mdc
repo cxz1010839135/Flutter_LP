@@ -1,0 +1,19 @@
+---
+description: LPRobot Flutter 项目约定（路径、打包、Windows 发布）
+globs:
+  - "**/*.dart"
+  - "**/windows/**"
+  - "**/installer/**"
+  - "**/scripts/**"
+  - "LPROBOT_DEV_RULES.md"
+  - "pubspec.yaml"
+---
+
+# LPRobot Flutter
+
+完整约定以 `LPROBOT_DEV_RULES.md` 为准。修改相关代码时遵守：
+
+- 路径仅通过 `RobotPaths` / `RobotPathLayout`；Windows 发布 exe 为 **领鹏智能.exe**
+- 安装到 Program Files 等只读目录时，用户数据在 `%LOCALAPPDATA%\Lingpeng\LPRobot\`，禁止要求管理员运行
+- Windows MSI：`scripts/package/windows.ps1`；安装 UI 中文 + `WixUI_InstallDir`；勿改回 `WixUI_Minimal` 除非有理由
+- 多平台打包脚本放在 `scripts/package/`；新平台增加同名脚本并更新 dev rules §8.1

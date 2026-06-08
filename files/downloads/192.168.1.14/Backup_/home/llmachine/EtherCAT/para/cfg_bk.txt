@@ -1,0 +1,712 @@
+Slave0,start,MBDLN25BE
+Slave0,slave_info,alias=0,position=0,index=0,vid=1647,pid=1614282758,type=0
+Slave0,slave_sync0,index=0,n_pdos=0,dir=1
+Slave0,slave_sync1,index=1,n_pdos=0,dir=2
+Slave0,slave_sync2,index=2,n_pdos=1,dir=1
+Slave0,slave_sync3,index=3,n_pdos=1,dir=2
+Slave0,sync2_pdo0,active=1
+Slave0,sync2_pdo0,Sm =0
+Slave0,sync2_pdo0,index=5632
+Slave0,sync2_pdo0,Name=Receive PDO mapping 1
+Slave0,sync2_pdo0,n_entries=4
+Slave0,sync2_pdo0,Entry=0,active=1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo0,Entry=1,active=1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo0,Entry=2,active=1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo0,Entry=3,active=1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo1,active=-1
+Slave0,sync2_pdo1,Sm =0
+Slave0,sync2_pdo1,index=5633
+Slave0,sync2_pdo1,Name=Receive PDO mapping 2
+Slave0,sync2_pdo1,n_entries=7
+Slave0,sync2_pdo1,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo1,Entry=2,active=-1,Name=Target torque,index=24689,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=3,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo1,Entry=4,active=-1,Name=Max motor speed,index=24704,subindex=0,bit_length=32
+Slave0,sync2_pdo1,Entry=5,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo1,Entry=6,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync2_pdo2,active=-1
+Slave0,sync2_pdo2,Sm =0
+Slave0,sync2_pdo2,index=5634
+Slave0,sync2_pdo2,Name=Receive PDO mapping 3
+Slave0,sync2_pdo2,n_entries=6
+Slave0,sync2_pdo2,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo2,Entry=2,active=-1,Name=Max torque,index=24690,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=3,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo2,Entry=4,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo2,Entry=5,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync2_pdo3,active=-1
+Slave0,sync2_pdo3,Sm =0
+Slave0,sync2_pdo3,index=5635
+Slave0,sync2_pdo3,Name=Receive PDO mapping 4
+Slave0,sync2_pdo3,n_entries=8
+Slave0,sync2_pdo3,Entry=0,active=-1,Name=Controlword,index=24640,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=1,active=-1,Name=Modes of operation,index=24672,subindex=0,bit_length=8
+Slave0,sync2_pdo3,Entry=2,active=-1,Name=Target torque,index=24689,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=3,active=-1,Name=Max torque,index=24690,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=4,active=-1,Name=Target position,index=24698,subindex=0,bit_length=32
+Slave0,sync2_pdo3,Entry=5,active=-1,Name=Max motor speed,index=24704,subindex=0,bit_length=32
+Slave0,sync2_pdo3,Entry=6,active=-1,Name=Touch probe function,index=24760,subindex=0,bit_length=16
+Slave0,sync2_pdo3,Entry=7,active=-1,Name=Target velocity,index=24831,subindex=0,bit_length=32
+Slave0,sync3_pdo0,active=1
+Slave0,sync3_pdo0,Sm=0
+Slave0,sync3_pdo0,index=6656
+Slave0,sync3_pdo0,Name=Transmit PDO mapping 1
+Slave0,sync3_pdo0,n_entries=8
+Slave0,sync3_pdo0,Entry=0,active=1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=1,active=1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=2,active=1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo0,Entry=3,active=1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=4,active=1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo0,Entry=5,active=1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=6,active=1,Name=Following error actual value,index=24820,subindex=0,bit_length=32
+Slave0,sync3_pdo0,Entry=7,active=1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo1,active=-1
+Slave0,sync3_pdo1,Sm=0
+Slave0,sync3_pdo1,index=6657
+Slave0,sync3_pdo1,Name=Transmit PDO mapping 2
+Slave0,sync3_pdo1,n_entries=9
+Slave0,sync3_pdo1,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo1,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo1,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo1,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo2,active=-1
+Slave0,sync3_pdo2,Sm=0
+Slave0,sync3_pdo2,index=6658
+Slave0,sync3_pdo2,Name=Transmit PDO mapping 3
+Slave0,sync3_pdo2,n_entries=9
+Slave0,sync3_pdo2,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo2,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo2,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo2,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,sync3_pdo3,active=-1
+Slave0,sync3_pdo3,Sm=0
+Slave0,sync3_pdo3,index=6659
+Slave0,sync3_pdo3,Name=Transmit PDO mapping 4
+Slave0,sync3_pdo3,n_entries=9
+Slave0,sync3_pdo3,Entry=0,active=-1,Name=Error code,index=24639,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=1,active=-1,Name=Statusword,index=24641,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=2,active=-1,Name=Modes of operation display,index=24673,subindex=0,bit_length=8
+Slave0,sync3_pdo3,Entry=3,active=-1,Name=Position actual value,index=24676,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=4,active=-1,Name=Velocity actual value,index=24684,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=5,active=-1,Name=Torque actual value,index=24695,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=6,active=-1,Name=Touch probe status,index=24761,subindex=0,bit_length=16
+Slave0,sync3_pdo3,Entry=7,active=-1,Name=Touch probe pos1 pos value,index=24762,subindex=0,bit_length=32
+Slave0,sync3_pdo3,Entry=8,active=-1,Name=Digital inputs,index=24829,subindex=0,bit_length=32
+Slave0,end
+Slave1,start,AX58100-EVB-PB
+Slave1,slave_info,alias=0,position=1,index=1,vid=9,pid=547,type=0
+Slave1,slave_sync0,index=0,n_pdos=0,dir=1
+Slave1,slave_sync1,index=1,n_pdos=0,dir=2
+Slave1,slave_sync2,index=2,n_pdos=1,dir=1
+Slave1,slave_sync3,index=3,n_pdos=1,dir=2
+Slave1,sync2_pdo0,active=1
+Slave1,sync2_pdo0,Sm =0
+Slave1,sync2_pdo0,index=5632
+Slave1,sync2_pdo0,Name=Receive PDO 1
+Slave1,sync2_pdo0,n_entries=3
+Slave1,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave1,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave1,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave1,sync2_pdo1,active=-1
+Slave1,sync2_pdo1,Sm =0
+Slave1,sync2_pdo1,index=5633
+Slave1,sync2_pdo1,Name=Receive PDO 2
+Slave1,sync2_pdo1,n_entries=0
+Slave1,sync2_pdo2,active=-1
+Slave1,sync2_pdo2,Sm =0
+Slave1,sync2_pdo2,index=5634
+Slave1,sync2_pdo2,Name=Receive PDO 3
+Slave1,sync2_pdo2,n_entries=0
+Slave1,sync2_pdo3,active=-1
+Slave1,sync2_pdo3,Sm =0
+Slave1,sync2_pdo3,index=46847
+Slave1,sync2_pdo3,Name=
+Slave1,sync2_pdo3,n_entries=0
+Slave1,sync3_pdo0,active=1
+Slave1,sync3_pdo0,Sm=0
+Slave1,sync3_pdo0,index=6656
+Slave1,sync3_pdo0,Name=Transmit PDO 1
+Slave1,sync3_pdo0,n_entries=5
+Slave1,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave1,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave1,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave1,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave1,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave1,sync3_pdo1,active=-1
+Slave1,sync3_pdo1,Sm=0
+Slave1,sync3_pdo1,index=6657
+Slave1,sync3_pdo1,Name=Transmit PDO 2
+Slave1,sync3_pdo1,n_entries=0
+Slave1,sync3_pdo2,active=-1
+Slave1,sync3_pdo2,Sm=0
+Slave1,sync3_pdo2,index=6658
+Slave1,sync3_pdo2,Name=Transmit PDO 3
+Slave1,sync3_pdo2,n_entries=0
+Slave1,sync3_pdo3,active=-1
+Slave1,sync3_pdo3,Sm=0
+Slave1,sync3_pdo3,index=65398
+Slave1,sync3_pdo3,Name=
+Slave1,sync3_pdo3,n_entries=0
+Slave1,end
+Slave2,start,AX58100-EVB-PB
+Slave2,slave_info,alias=0,position=2,index=2,vid=9,pid=547,type=0
+Slave2,slave_sync0,index=0,n_pdos=0,dir=1
+Slave2,slave_sync1,index=1,n_pdos=0,dir=2
+Slave2,slave_sync2,index=2,n_pdos=1,dir=1
+Slave2,slave_sync3,index=3,n_pdos=1,dir=2
+Slave2,sync2_pdo0,active=1
+Slave2,sync2_pdo0,Sm =0
+Slave2,sync2_pdo0,index=5632
+Slave2,sync2_pdo0,Name=Receive PDO 1
+Slave2,sync2_pdo0,n_entries=3
+Slave2,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave2,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave2,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave2,sync2_pdo1,active=-1
+Slave2,sync2_pdo1,Sm =0
+Slave2,sync2_pdo1,index=5633
+Slave2,sync2_pdo1,Name=Receive PDO 2
+Slave2,sync2_pdo1,n_entries=0
+Slave2,sync2_pdo2,active=-1
+Slave2,sync2_pdo2,Sm =0
+Slave2,sync2_pdo2,index=5634
+Slave2,sync2_pdo2,Name=Receive PDO 3
+Slave2,sync2_pdo2,n_entries=0
+Slave2,sync2_pdo3,active=-1
+Slave2,sync2_pdo3,Sm =0
+Slave2,sync2_pdo3,index=5635
+Slave2,sync2_pdo3,Name=
+Slave2,sync2_pdo3,n_entries=0
+Slave2,sync3_pdo0,active=1
+Slave2,sync3_pdo0,Sm=0
+Slave2,sync3_pdo0,index=6656
+Slave2,sync3_pdo0,Name=Transmit PDO 1
+Slave2,sync3_pdo0,n_entries=5
+Slave2,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave2,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave2,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave2,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave2,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave2,sync3_pdo1,active=-1
+Slave2,sync3_pdo1,Sm=0
+Slave2,sync3_pdo1,index=6657
+Slave2,sync3_pdo1,Name=Transmit PDO 2
+Slave2,sync3_pdo1,n_entries=0
+Slave2,sync3_pdo2,active=-1
+Slave2,sync3_pdo2,Sm=0
+Slave2,sync3_pdo2,index=6658
+Slave2,sync3_pdo2,Name=Transmit PDO 3
+Slave2,sync3_pdo2,n_entries=0
+Slave2,sync3_pdo3,active=-1
+Slave2,sync3_pdo3,Sm=0
+Slave2,sync3_pdo3,index=6659
+Slave2,sync3_pdo3,Name=
+Slave2,sync3_pdo3,n_entries=0
+Slave2,end
+Slave3,start,AX58100-EVB-PB
+Slave3,slave_info,alias=0,position=3,index=3,vid=9,pid=547,type=0
+Slave3,slave_sync0,index=0,n_pdos=0,dir=1
+Slave3,slave_sync1,index=1,n_pdos=0,dir=2
+Slave3,slave_sync2,index=2,n_pdos=1,dir=1
+Slave3,slave_sync3,index=3,n_pdos=1,dir=2
+Slave3,sync2_pdo0,active=1
+Slave3,sync2_pdo0,Sm =0
+Slave3,sync2_pdo0,index=5632
+Slave3,sync2_pdo0,Name=Receive PDO 1
+Slave3,sync2_pdo0,n_entries=3
+Slave3,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave3,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave3,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave3,sync2_pdo1,active=-1
+Slave3,sync2_pdo1,Sm =0
+Slave3,sync2_pdo1,index=5633
+Slave3,sync2_pdo1,Name=Receive PDO 2
+Slave3,sync2_pdo1,n_entries=0
+Slave3,sync2_pdo2,active=-1
+Slave3,sync2_pdo2,Sm =0
+Slave3,sync2_pdo2,index=5634
+Slave3,sync2_pdo2,Name=Receive PDO 3
+Slave3,sync2_pdo2,n_entries=0
+Slave3,sync2_pdo3,active=-1
+Slave3,sync2_pdo3,Sm =0
+Slave3,sync2_pdo3,index=46847
+Slave3,sync2_pdo3,Name=
+Slave3,sync2_pdo3,n_entries=0
+Slave3,sync3_pdo0,active=1
+Slave3,sync3_pdo0,Sm=0
+Slave3,sync3_pdo0,index=6656
+Slave3,sync3_pdo0,Name=Transmit PDO 1
+Slave3,sync3_pdo0,n_entries=5
+Slave3,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave3,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave3,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave3,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave3,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave3,sync3_pdo1,active=-1
+Slave3,sync3_pdo1,Sm=0
+Slave3,sync3_pdo1,index=6657
+Slave3,sync3_pdo1,Name=Transmit PDO 2
+Slave3,sync3_pdo1,n_entries=0
+Slave3,sync3_pdo2,active=-1
+Slave3,sync3_pdo2,Sm=0
+Slave3,sync3_pdo2,index=6658
+Slave3,sync3_pdo2,Name=Transmit PDO 3
+Slave3,sync3_pdo2,n_entries=0
+Slave3,sync3_pdo3,active=-1
+Slave3,sync3_pdo3,Sm=0
+Slave3,sync3_pdo3,index=65398
+Slave3,sync3_pdo3,Name=
+Slave3,sync3_pdo3,n_entries=0
+Slave3,end
+Slave4,start,AX58100-EVB-PB
+Slave4,slave_info,alias=0,position=4,index=4,vid=9,pid=547,type=0
+Slave4,slave_sync0,index=0,n_pdos=0,dir=1
+Slave4,slave_sync1,index=1,n_pdos=0,dir=2
+Slave4,slave_sync2,index=2,n_pdos=1,dir=1
+Slave4,slave_sync3,index=3,n_pdos=1,dir=2
+Slave4,sync2_pdo0,active=1
+Slave4,sync2_pdo0,Sm =0
+Slave4,sync2_pdo0,index=5632
+Slave4,sync2_pdo0,Name=Receive PDO 1
+Slave4,sync2_pdo0,n_entries=3
+Slave4,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave4,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave4,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave4,sync2_pdo1,active=-1
+Slave4,sync2_pdo1,Sm =0
+Slave4,sync2_pdo1,index=5633
+Slave4,sync2_pdo1,Name=Receive PDO 2
+Slave4,sync2_pdo1,n_entries=0
+Slave4,sync2_pdo2,active=-1
+Slave4,sync2_pdo2,Sm =0
+Slave4,sync2_pdo2,index=5634
+Slave4,sync2_pdo2,Name=Receive PDO 3
+Slave4,sync2_pdo2,n_entries=0
+Slave4,sync2_pdo3,active=-1
+Slave4,sync2_pdo3,Sm =0
+Slave4,sync2_pdo3,index=255
+Slave4,sync2_pdo3,Name=
+Slave4,sync2_pdo3,n_entries=0
+Slave4,sync3_pdo0,active=1
+Slave4,sync3_pdo0,Sm=0
+Slave4,sync3_pdo0,index=6656
+Slave4,sync3_pdo0,Name=Transmit PDO 1
+Slave4,sync3_pdo0,n_entries=5
+Slave4,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave4,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave4,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave4,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave4,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave4,sync3_pdo1,active=-1
+Slave4,sync3_pdo1,Sm=0
+Slave4,sync3_pdo1,index=6657
+Slave4,sync3_pdo1,Name=Transmit PDO 2
+Slave4,sync3_pdo1,n_entries=0
+Slave4,sync3_pdo2,active=-1
+Slave4,sync3_pdo2,Sm=0
+Slave4,sync3_pdo2,index=6658
+Slave4,sync3_pdo2,Name=Transmit PDO 3
+Slave4,sync3_pdo2,n_entries=0
+Slave4,sync3_pdo3,active=-1
+Slave4,sync3_pdo3,Sm=0
+Slave4,sync3_pdo3,index=65398
+Slave4,sync3_pdo3,Name=
+Slave4,sync3_pdo3,n_entries=0
+Slave4,end
+Slave5,start,AX58100-EVB-PB
+Slave5,slave_info,alias=0,position=5,index=5,vid=9,pid=547,type=0
+Slave5,slave_sync0,index=0,n_pdos=0,dir=1
+Slave5,slave_sync1,index=1,n_pdos=0,dir=2
+Slave5,slave_sync2,index=2,n_pdos=1,dir=1
+Slave5,slave_sync3,index=3,n_pdos=1,dir=2
+Slave5,sync2_pdo0,active=1
+Slave5,sync2_pdo0,Sm =0
+Slave5,sync2_pdo0,index=5632
+Slave5,sync2_pdo0,Name=Receive PDO 1
+Slave5,sync2_pdo0,n_entries=3
+Slave5,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave5,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave5,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave5,sync2_pdo1,active=-1
+Slave5,sync2_pdo1,Sm =0
+Slave5,sync2_pdo1,index=5633
+Slave5,sync2_pdo1,Name=Receive PDO 2
+Slave5,sync2_pdo1,n_entries=0
+Slave5,sync2_pdo2,active=-1
+Slave5,sync2_pdo2,Sm =0
+Slave5,sync2_pdo2,index=5634
+Slave5,sync2_pdo2,Name=Receive PDO 3
+Slave5,sync2_pdo2,n_entries=0
+Slave5,sync2_pdo3,active=-1
+Slave5,sync2_pdo3,Sm =0
+Slave5,sync2_pdo3,index=255
+Slave5,sync2_pdo3,Name=
+Slave5,sync2_pdo3,n_entries=0
+Slave5,sync3_pdo0,active=1
+Slave5,sync3_pdo0,Sm=0
+Slave5,sync3_pdo0,index=6656
+Slave5,sync3_pdo0,Name=Transmit PDO 1
+Slave5,sync3_pdo0,n_entries=5
+Slave5,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave5,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave5,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave5,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave5,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave5,sync3_pdo1,active=-1
+Slave5,sync3_pdo1,Sm=0
+Slave5,sync3_pdo1,index=6657
+Slave5,sync3_pdo1,Name=Transmit PDO 2
+Slave5,sync3_pdo1,n_entries=0
+Slave5,sync3_pdo2,active=-1
+Slave5,sync3_pdo2,Sm=0
+Slave5,sync3_pdo2,index=6658
+Slave5,sync3_pdo2,Name=Transmit PDO 3
+Slave5,sync3_pdo2,n_entries=0
+Slave5,sync3_pdo3,active=-1
+Slave5,sync3_pdo3,Sm=0
+Slave5,sync3_pdo3,index=65398
+Slave5,sync3_pdo3,Name=
+Slave5,sync3_pdo3,n_entries=0
+Slave5,end
+Slave6,start,AX58100-EVB-PB
+Slave6,slave_info,alias=0,position=6,index=6,vid=9,pid=547,type=0
+Slave6,slave_sync0,index=0,n_pdos=0,dir=1
+Slave6,slave_sync1,index=1,n_pdos=0,dir=2
+Slave6,slave_sync2,index=2,n_pdos=1,dir=1
+Slave6,slave_sync3,index=3,n_pdos=1,dir=2
+Slave6,sync2_pdo0,active=1
+Slave6,sync2_pdo0,Sm =0
+Slave6,sync2_pdo0,index=5632
+Slave6,sync2_pdo0,Name=Receive PDO 1
+Slave6,sync2_pdo0,n_entries=3
+Slave6,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave6,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave6,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave6,sync2_pdo1,active=-1
+Slave6,sync2_pdo1,Sm =0
+Slave6,sync2_pdo1,index=5633
+Slave6,sync2_pdo1,Name=Receive PDO 2
+Slave6,sync2_pdo1,n_entries=0
+Slave6,sync2_pdo2,active=-1
+Slave6,sync2_pdo2,Sm =0
+Slave6,sync2_pdo2,index=5634
+Slave6,sync2_pdo2,Name=Receive PDO 3
+Slave6,sync2_pdo2,n_entries=0
+Slave6,sync2_pdo3,active=-1
+Slave6,sync2_pdo3,Sm =0
+Slave6,sync2_pdo3,index=255
+Slave6,sync2_pdo3,Name=
+Slave6,sync2_pdo3,n_entries=0
+Slave6,sync3_pdo0,active=1
+Slave6,sync3_pdo0,Sm=0
+Slave6,sync3_pdo0,index=6656
+Slave6,sync3_pdo0,Name=Transmit PDO 1
+Slave6,sync3_pdo0,n_entries=5
+Slave6,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave6,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave6,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave6,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave6,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave6,sync3_pdo1,active=-1
+Slave6,sync3_pdo1,Sm=0
+Slave6,sync3_pdo1,index=6657
+Slave6,sync3_pdo1,Name=Transmit PDO 2
+Slave6,sync3_pdo1,n_entries=0
+Slave6,sync3_pdo2,active=-1
+Slave6,sync3_pdo2,Sm=0
+Slave6,sync3_pdo2,index=6658
+Slave6,sync3_pdo2,Name=Transmit PDO 3
+Slave6,sync3_pdo2,n_entries=0
+Slave6,sync3_pdo3,active=-1
+Slave6,sync3_pdo3,Sm=0
+Slave6,sync3_pdo3,index=65398
+Slave6,sync3_pdo3,Name=
+Slave6,sync3_pdo3,n_entries=0
+Slave6,end
+Slave7,start,AX58100-EVB-PB
+Slave7,slave_info,alias=0,position=7,index=7,vid=9,pid=547,type=0
+Slave7,slave_sync0,index=0,n_pdos=0,dir=1
+Slave7,slave_sync1,index=1,n_pdos=0,dir=2
+Slave7,slave_sync2,index=2,n_pdos=1,dir=1
+Slave7,slave_sync3,index=3,n_pdos=1,dir=2
+Slave7,sync2_pdo0,active=1
+Slave7,sync2_pdo0,Sm =0
+Slave7,sync2_pdo0,index=5632
+Slave7,sync2_pdo0,Name=Receive PDO 1
+Slave7,sync2_pdo0,n_entries=3
+Slave7,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave7,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave7,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave7,sync2_pdo1,active=-1
+Slave7,sync2_pdo1,Sm =0
+Slave7,sync2_pdo1,index=5633
+Slave7,sync2_pdo1,Name=Receive PDO 2
+Slave7,sync2_pdo1,n_entries=0
+Slave7,sync2_pdo2,active=-1
+Slave7,sync2_pdo2,Sm =0
+Slave7,sync2_pdo2,index=5634
+Slave7,sync2_pdo2,Name=Receive PDO 3
+Slave7,sync2_pdo2,n_entries=0
+Slave7,sync2_pdo3,active=-1
+Slave7,sync2_pdo3,Sm =0
+Slave7,sync2_pdo3,index=255
+Slave7,sync2_pdo3,Name=
+Slave7,sync2_pdo3,n_entries=0
+Slave7,sync3_pdo0,active=1
+Slave7,sync3_pdo0,Sm=0
+Slave7,sync3_pdo0,index=6656
+Slave7,sync3_pdo0,Name=Transmit PDO 1
+Slave7,sync3_pdo0,n_entries=5
+Slave7,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave7,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave7,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave7,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave7,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave7,sync3_pdo1,active=-1
+Slave7,sync3_pdo1,Sm=0
+Slave7,sync3_pdo1,index=6657
+Slave7,sync3_pdo1,Name=Transmit PDO 2
+Slave7,sync3_pdo1,n_entries=0
+Slave7,sync3_pdo2,active=-1
+Slave7,sync3_pdo2,Sm=0
+Slave7,sync3_pdo2,index=6658
+Slave7,sync3_pdo2,Name=Transmit PDO 3
+Slave7,sync3_pdo2,n_entries=0
+Slave7,sync3_pdo3,active=-1
+Slave7,sync3_pdo3,Sm=0
+Slave7,sync3_pdo3,index=65398
+Slave7,sync3_pdo3,Name=
+Slave7,sync3_pdo3,n_entries=0
+Slave7,end
+Slave8,start,AX58100-EVB-PB
+Slave8,slave_info,alias=0,position=8,index=8,vid=9,pid=547,type=0
+Slave8,slave_sync0,index=0,n_pdos=0,dir=1
+Slave8,slave_sync1,index=1,n_pdos=0,dir=2
+Slave8,slave_sync2,index=2,n_pdos=1,dir=1
+Slave8,slave_sync3,index=3,n_pdos=1,dir=2
+Slave8,sync2_pdo0,active=1
+Slave8,sync2_pdo0,Sm =0
+Slave8,sync2_pdo0,index=5632
+Slave8,sync2_pdo0,Name=Receive PDO 1
+Slave8,sync2_pdo0,n_entries=3
+Slave8,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave8,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave8,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave8,sync2_pdo1,active=-1
+Slave8,sync2_pdo1,Sm =0
+Slave8,sync2_pdo1,index=5633
+Slave8,sync2_pdo1,Name=Receive PDO 2
+Slave8,sync2_pdo1,n_entries=0
+Slave8,sync2_pdo2,active=-1
+Slave8,sync2_pdo2,Sm =0
+Slave8,sync2_pdo2,index=5634
+Slave8,sync2_pdo2,Name=Receive PDO 3
+Slave8,sync2_pdo2,n_entries=0
+Slave8,sync2_pdo3,active=-1
+Slave8,sync2_pdo3,Sm =0
+Slave8,sync2_pdo3,index=65519
+Slave8,sync2_pdo3,Name=
+Slave8,sync2_pdo3,n_entries=0
+Slave8,sync3_pdo0,active=1
+Slave8,sync3_pdo0,Sm=0
+Slave8,sync3_pdo0,index=6656
+Slave8,sync3_pdo0,Name=Transmit PDO 1
+Slave8,sync3_pdo0,n_entries=5
+Slave8,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave8,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave8,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave8,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave8,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave8,sync3_pdo1,active=-1
+Slave8,sync3_pdo1,Sm=0
+Slave8,sync3_pdo1,index=6657
+Slave8,sync3_pdo1,Name=Transmit PDO 2
+Slave8,sync3_pdo1,n_entries=0
+Slave8,sync3_pdo2,active=-1
+Slave8,sync3_pdo2,Sm=0
+Slave8,sync3_pdo2,index=6658
+Slave8,sync3_pdo2,Name=Transmit PDO 3
+Slave8,sync3_pdo2,n_entries=0
+Slave8,sync3_pdo3,active=-1
+Slave8,sync3_pdo3,Sm=0
+Slave8,sync3_pdo3,index=65398
+Slave8,sync3_pdo3,Name=
+Slave8,sync3_pdo3,n_entries=0
+Slave8,end
+Slave9,start,AX58100-EVB-PB
+Slave9,slave_info,alias=0,position=9,index=9,vid=9,pid=547,type=0
+Slave9,slave_sync0,index=0,n_pdos=0,dir=1
+Slave9,slave_sync1,index=1,n_pdos=0,dir=2
+Slave9,slave_sync2,index=2,n_pdos=1,dir=1
+Slave9,slave_sync3,index=3,n_pdos=1,dir=2
+Slave9,sync2_pdo0,active=1
+Slave9,sync2_pdo0,Sm =0
+Slave9,sync2_pdo0,index=5632
+Slave9,sync2_pdo0,Name=Receive PDO 1
+Slave9,sync2_pdo0,n_entries=3
+Slave9,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave9,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave9,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave9,sync2_pdo1,active=-1
+Slave9,sync2_pdo1,Sm =0
+Slave9,sync2_pdo1,index=5633
+Slave9,sync2_pdo1,Name=Receive PDO 2
+Slave9,sync2_pdo1,n_entries=0
+Slave9,sync2_pdo2,active=-1
+Slave9,sync2_pdo2,Sm =0
+Slave9,sync2_pdo2,index=5634
+Slave9,sync2_pdo2,Name=Receive PDO 3
+Slave9,sync2_pdo2,n_entries=0
+Slave9,sync2_pdo3,active=-1
+Slave9,sync2_pdo3,Sm =0
+Slave9,sync2_pdo3,index=65519
+Slave9,sync2_pdo3,Name=
+Slave9,sync2_pdo3,n_entries=0
+Slave9,sync3_pdo0,active=1
+Slave9,sync3_pdo0,Sm=0
+Slave9,sync3_pdo0,index=6656
+Slave9,sync3_pdo0,Name=Transmit PDO 1
+Slave9,sync3_pdo0,n_entries=5
+Slave9,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave9,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave9,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave9,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave9,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave9,sync3_pdo1,active=-1
+Slave9,sync3_pdo1,Sm=0
+Slave9,sync3_pdo1,index=6657
+Slave9,sync3_pdo1,Name=Transmit PDO 2
+Slave9,sync3_pdo1,n_entries=0
+Slave9,sync3_pdo2,active=-1
+Slave9,sync3_pdo2,Sm=0
+Slave9,sync3_pdo2,index=6658
+Slave9,sync3_pdo2,Name=Transmit PDO 3
+Slave9,sync3_pdo2,n_entries=0
+Slave9,sync3_pdo3,active=-1
+Slave9,sync3_pdo3,Sm=0
+Slave9,sync3_pdo3,index=65398
+Slave9,sync3_pdo3,Name=
+Slave9,sync3_pdo3,n_entries=0
+Slave9,end
+Slave10,start,AX58100-EVB-PB
+Slave10,slave_info,alias=0,position=10,index=10,vid=9,pid=547,type=0
+Slave10,slave_sync0,index=0,n_pdos=0,dir=1
+Slave10,slave_sync1,index=1,n_pdos=0,dir=2
+Slave10,slave_sync2,index=2,n_pdos=1,dir=1
+Slave10,slave_sync3,index=3,n_pdos=1,dir=2
+Slave10,sync2_pdo0,active=1
+Slave10,sync2_pdo0,Sm =0
+Slave10,sync2_pdo0,index=5632
+Slave10,sync2_pdo0,Name=Receive PDO 1
+Slave10,sync2_pdo0,n_entries=3
+Slave10,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave10,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave10,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave10,sync2_pdo1,active=-1
+Slave10,sync2_pdo1,Sm =0
+Slave10,sync2_pdo1,index=5633
+Slave10,sync2_pdo1,Name=Receive PDO 2
+Slave10,sync2_pdo1,n_entries=0
+Slave10,sync2_pdo2,active=-1
+Slave10,sync2_pdo2,Sm =0
+Slave10,sync2_pdo2,index=5634
+Slave10,sync2_pdo2,Name=Receive PDO 3
+Slave10,sync2_pdo2,n_entries=0
+Slave10,sync2_pdo3,active=-1
+Slave10,sync2_pdo3,Sm =0
+Slave10,sync2_pdo3,index=65519
+Slave10,sync2_pdo3,Name=
+Slave10,sync2_pdo3,n_entries=0
+Slave10,sync3_pdo0,active=1
+Slave10,sync3_pdo0,Sm=0
+Slave10,sync3_pdo0,index=6656
+Slave10,sync3_pdo0,Name=Transmit PDO 1
+Slave10,sync3_pdo0,n_entries=5
+Slave10,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave10,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave10,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave10,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave10,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave10,sync3_pdo1,active=-1
+Slave10,sync3_pdo1,Sm=0
+Slave10,sync3_pdo1,index=6657
+Slave10,sync3_pdo1,Name=Transmit PDO 2
+Slave10,sync3_pdo1,n_entries=0
+Slave10,sync3_pdo2,active=-1
+Slave10,sync3_pdo2,Sm=0
+Slave10,sync3_pdo2,index=6658
+Slave10,sync3_pdo2,Name=Transmit PDO 3
+Slave10,sync3_pdo2,n_entries=0
+Slave10,sync3_pdo3,active=-1
+Slave10,sync3_pdo3,Sm=0
+Slave10,sync3_pdo3,index=65398
+Slave10,sync3_pdo3,Name=
+Slave10,sync3_pdo3,n_entries=0
+Slave10,end
+Slave11,start,AX58100-EVB-PB
+Slave11,slave_info,alias=0,position=11,index=11,vid=9,pid=547,type=0
+Slave11,slave_sync0,index=0,n_pdos=0,dir=1
+Slave11,slave_sync1,index=1,n_pdos=0,dir=2
+Slave11,slave_sync2,index=2,n_pdos=1,dir=1
+Slave11,slave_sync3,index=3,n_pdos=1,dir=2
+Slave11,sync2_pdo0,active=1
+Slave11,sync2_pdo0,Sm =0
+Slave11,sync2_pdo0,index=5632
+Slave11,sync2_pdo0,Name=Receive PDO 1
+Slave11,sync2_pdo0,n_entries=3
+Slave11,sync2_pdo0,Entry=0,active=1,Name=Control Word,index=24640,subindex=0,bit_length=16
+Slave11,sync2_pdo0,Entry=1,active=1,Name=Profile Target Position,index=24698,subindex=0,bit_length=32
+Slave11,sync2_pdo0,Entry=2,active=1,Name=Mode Of Operation,index=24672,subindex=0,bit_length=8
+Slave11,sync2_pdo1,active=-1
+Slave11,sync2_pdo1,Sm =0
+Slave11,sync2_pdo1,index=5633
+Slave11,sync2_pdo1,Name=Receive PDO 2
+Slave11,sync2_pdo1,n_entries=0
+Slave11,sync2_pdo2,active=-1
+Slave11,sync2_pdo2,Sm =0
+Slave11,sync2_pdo2,index=5634
+Slave11,sync2_pdo2,Name=Receive PDO 3
+Slave11,sync2_pdo2,n_entries=0
+Slave11,sync2_pdo3,active=-1
+Slave11,sync2_pdo3,Sm =0
+Slave11,sync2_pdo3,index=65519
+Slave11,sync2_pdo3,Name=
+Slave11,sync2_pdo3,n_entries=0
+Slave11,sync3_pdo0,active=1
+Slave11,sync3_pdo0,Sm=0
+Slave11,sync3_pdo0,index=6656
+Slave11,sync3_pdo0,Name=Transmit PDO 1
+Slave11,sync3_pdo0,n_entries=5
+Slave11,sync3_pdo0,Entry=0,active=1,Name=Status Word,index=24641,subindex=0,bit_length=16
+Slave11,sync3_pdo0,Entry=1,active=1,Name=Last Error Code,index=24639,subindex=0,bit_length=16
+Slave11,sync3_pdo0,Entry=2,active=1,Name=Position Actual Value,index=24676,subindex=0,bit_length=32
+Slave11,sync3_pdo0,Entry=3,active=1,Name=Mode Of Operation Display,index=24673,subindex=0,bit_length=8
+Slave11,sync3_pdo0,Entry=4,active=1,Name=Digital Inputs,index=24829,subindex=0,bit_length=32
+Slave11,sync3_pdo1,active=-1
+Slave11,sync3_pdo1,Sm=0
+Slave11,sync3_pdo1,index=6657
+Slave11,sync3_pdo1,Name=Transmit PDO 2
+Slave11,sync3_pdo1,n_entries=0
+Slave11,sync3_pdo2,active=-1
+Slave11,sync3_pdo2,Sm=0
+Slave11,sync3_pdo2,index=6658
+Slave11,sync3_pdo2,Name=Transmit PDO 3
+Slave11,sync3_pdo2,n_entries=0
+Slave11,sync3_pdo3,active=-1
+Slave11,sync3_pdo3,Sm=0
+Slave11,sync3_pdo3,index=65398
+Slave11,sync3_pdo3,Name=
+Slave11,sync3_pdo3,n_entries=0
+Slave11,end

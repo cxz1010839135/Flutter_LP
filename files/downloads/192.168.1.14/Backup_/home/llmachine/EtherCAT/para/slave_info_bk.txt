@@ -1,0 +1,3 @@
+MBDLN25BE,/home/llmachine/EtherCAT/para/Panasonic_MINAS-A6BE_V1_4_1_0_106_0.xml
+CDHD EtherCAT Drive (CoE),/home/llmachine/EtherCAT/para/Servotronix_CDHD_PC0_RV0_1.41.14.xml
+AX58100-EVB-PB,/home/llmachine/EtherCAT/para/AX58100-EVB-EMIFXML.xml

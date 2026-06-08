@@ -1,0 +1,12 @@
+{
+  "entries": [
+    {
+      "address": 0
+    },
+    {
+      "address": 100
+    }
+  ],
+  "autoRefresh": true,
+  "intervalMs": 300
+}
