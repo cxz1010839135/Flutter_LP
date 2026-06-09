@@ -23,9 +23,11 @@ class Rp4ProgramLoader {
   }) async {
     if (preferRobotWhenOnline && RobotState.instance.isConnected) {
       try {
-        await HttpManager.instance.syncServerProgramFromRobot();
+        await HttpManager.instance.syncServerProgramFromRobot(
+          allowEmptyControllerResponse: true,
+        );
       } catch (_) {
-        // 同步失败则读本地缓存
+        // 网络或格式异常时读本地缓存
       }
     }
 

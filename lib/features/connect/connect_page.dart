@@ -94,10 +94,13 @@ class _ConnectPageState extends State<ConnectPage> {
       RobotStatePoller.instance.start();
 
       final sync = HttpManager.instance.lastProgramSync;
+      final syncMessage = sync == null
+          ? '已连接 $baseUrl'
+          : sync.isFullySyncedFromRobot
+              ? '已连接 $baseUrl，已同步 main.xml / main.rp4'
+              : '已连接 $baseUrl（控制器程序为空，使用本地缓存）';
       LpStatusLog.instance.log(
-        sync == null
-            ? '已连接 $baseUrl'
-            : '已连接 $baseUrl，已同步 main.xml / main.rp4',
+        syncMessage,
         level: LpLogLevel.success,
         tab: LpStatusPanelTab.connection,
         openPanel: false,

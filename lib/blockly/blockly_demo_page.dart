@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -149,8 +150,14 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     try {
       if (RobotState.instance.isConnected) {
         _setProgress(5, '正在从控制器读取程序…');
-        await HttpManager.instance.syncServerProgramFromRobot();
-        _setProgress(12, '控制器程序已同步');
+        final sync = await HttpManager.instance.syncServerProgramFromRobot(
+          allowEmptyControllerResponse: true,
+        );
+        if (sync.isFullySyncedFromRobot) {
+          _setProgress(12, '控制器程序已同步');
+        } else {
+          _setProgress(12, '控制器程序为空，使用本地缓存');
+        }
       }
 
       _setProgress(15, '正在启动本地服务…');
@@ -183,27 +190,8 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         onExit: _onBlocklyExit,
       );
 
-      await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-      await controller.setBackgroundColor(const Color(0xFFF5F5F5));
-      await controller.addJavaScriptChannel(
-        'FlutterBlockly',
-        onMessageReceived: (message) {
-          bridge.handleMessage(message.message);
-        },
-      );
-      await controller.setNavigationDelegate(
-        NavigationDelegate(
-          onWebResourceError: (error) {
-            debugPrint('Blockly WebView error: ${error.description}');
-          },
-        ),
-      );
-
-      _setProgress(5, '正在打开 Blockly 页面…');
-      await setBlocklyWebViewVisible(controller, false);
-      await controller.loadRequest(Uri.parse(entryUrl));
-      _scheduleWebViewVisibilitySync();
-
+      // Windows/Linux：必须先挂载 WebViewWidget，再调用 controller API，
+      // 否则部分机器会在 setJavaScriptMode 等处永久挂起（卡在 18%）。
       if (!mounted) return;
       setState(() {
         _pathHint = _buildPathHint();
@@ -211,6 +199,14 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _server = server;
         _controller = controller;
       });
+      _scheduleWebViewVisibilitySync();
+      await _awaitWebViewPlatformReady();
+
+      await _configureAndLoadWebView(
+        controller: controller,
+        bridge: bridge,
+        entryUrl: entryUrl,
+      );
       _scheduleWebViewVisibilitySync();
     } catch (e, st) {
       debugPrint('Blockly init failed: $e\n$st');
@@ -228,6 +224,70 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       return '在线 | 控制器 → ${RobotPathLayout.serverDir}';
     }
     return '离线 | ${RobotPathLayout.serverDir}';
+  }
+
+  /// 等待 [WebViewWidget] 完成首帧挂载（桌面端 WebView2 依赖此步骤）。
+  Future<void> _awaitWebViewPlatformReady() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!Platform.isWindows && !Platform.isLinux) return;
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  Future<void> _configureAndLoadWebView({
+    required WebViewController controller,
+    required LpBlocklyBridge bridge,
+    required String entryUrl,
+  }) async {
+    const stepTimeout = Duration(seconds: 45);
+
+    Future<void> guard(Future<void> future, String step) {
+      return future.timeout(
+        stepTimeout,
+        onTimeout: () {
+          throw TimeoutException(
+            '$step 超时。请确认本机已安装 Microsoft WebView2 运行时，'
+            '或稍后点击重试。',
+          );
+        },
+      );
+    }
+
+    await guard(
+      controller.setJavaScriptMode(JavaScriptMode.unrestricted),
+      'WebView 配置',
+    );
+    await guard(
+      controller.setBackgroundColor(const Color(0xFFF5F5F5)),
+      'WebView 配置',
+    );
+    await guard(
+      controller.addJavaScriptChannel(
+        'FlutterBlockly',
+        onMessageReceived: (message) {
+          bridge.handleMessage(message.message);
+        },
+      ),
+      'WebView 桥接',
+    );
+    await guard(
+      controller.setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (error) {
+            debugPrint('Blockly WebView error: ${error.description}');
+          },
+          onPageFinished: (_) => _loadTracker?.markJsLoadComplete(),
+        ),
+      ),
+      'WebView 导航',
+    );
+
+    _setProgress(5, '正在打开 Blockly 页面…');
+    await guard(setBlocklyWebViewVisible(controller, false), 'WebView 显示');
+    await guard(
+      controller.loadRequest(Uri.parse(entryUrl)),
+      '加载 Blockly 页面',
+    );
   }
 
   void _onExitStarted() {
@@ -501,6 +561,21 @@ class _ErrorPanel extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
+  String get _troubleshootingHint {
+    final lower = message.toLowerCase();
+    if (message.contains('WebView') ||
+        message.contains('超时') ||
+        lower.contains('timeout')) {
+      return 'Windows 请安装 Microsoft WebView2 运行时（Evergreen）：\n'
+          'https://developer.microsoft.com/microsoft-edge/webview2/\n\n'
+          '安装后重启应用再试。';
+    }
+    return '请确认 dll 目录位于工程根目录：\n'
+        '${LpBlocklyConfig.dllRelativePath}/\n'
+        '配置：${RobotPathLayout.serverDir}/\n'
+        '文件：${RobotPathLayout.xmlLibraryDir}/';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -525,10 +600,7 @@ class _ErrorPanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '请确认 dll 目录位于工程根目录：\n'
-            '${LpBlocklyConfig.dllRelativePath}/\n'
-            '配置：${RobotPathLayout.serverDir}/\n'
-            '文件：${RobotPathLayout.xmlLibraryDir}/',
+            _troubleshootingHint,
             style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),

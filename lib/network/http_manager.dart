@@ -151,7 +151,9 @@ class HttpManager
     final data = await connectAndApply(clientTag: clientTag);
     if (syncProgram) {
       try {
-        lastProgramSync = await syncServerProgramFromRobot();
+        lastProgramSync = await syncServerProgramFromRobot(
+          allowEmptyControllerResponse: true,
+        );
       } catch (e) {
         lastProgramSyncError = e;
       }

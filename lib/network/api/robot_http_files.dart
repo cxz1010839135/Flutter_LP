@@ -14,12 +14,22 @@ class ServerProgramSyncResult {
     required this.rp4Path,
     required this.xmlBytes,
     required this.rp4Bytes,
+    this.robotXmlSynced = true,
+    this.robotRp4Synced = true,
   });
 
   final String xmlPath;
   final String rp4Path;
   final int xmlBytes;
   final int rp4Bytes;
+
+  /// 本次是否从控制器写入了 XML（`false` 表示控制器为空，保留本地缓存）。
+  final bool robotXmlSynced;
+
+  /// 本次是否从控制器写入了 RP4（`false` 表示控制器为空，保留本地缓存）。
+  final bool robotRp4Synced;
+
+  bool get isFullySyncedFromRobot => robotXmlSynced && robotRp4Synced;
 }
 
 /// 程序文件 / 控制器文件系统（ConnectActivity、ProgramActivity、FilesActivity）。
@@ -172,8 +182,12 @@ mixin RobotHttpFilesMixin on RobotHttpApiMixin {
   /// 从控制器拉取 main 程序并写入 `config/server/{name}.xml`、`.rp4`。
   ///
   /// 对齐 Android ConnectActivity：连接成功后并行下载 Blockly XML 与 RP4。
+  ///
+  /// [allowEmptyControllerResponse] 为 `true` 时，控制器返回空内容不会抛错，
+  /// 并保留本地已有 `config/server/main.*`（便于空程序时仍可进入 Blockly）。
   Future<ServerProgramSyncResult> syncServerProgramFromRobot({
     String name = RobotPathLayout.defaultProjectName,
+    bool allowEmptyControllerResponse = false,
   }) async {
     await RobotPaths.ensureLayout();
 
@@ -181,32 +195,57 @@ mixin RobotHttpFilesMixin on RobotHttpApiMixin {
       robotGetXmlFile(),
       robotGetGCodeFile(),
     ]);
-    final xml = _normalizeProgramPayload(results[0], 'main.xml');
-    final gcode = _normalizeProgramPayload(results[1], 'main.rp4');
+    final xml = _tryNormalizeProgramPayload(results[0], 'main.xml');
+    final gcode = _tryNormalizeProgramPayload(results[1], 'main.rp4');
+
+    if (!allowEmptyControllerResponse) {
+      if (xml == null) {
+        throw Exception('下载 main.xml 失败：控制器返回空内容');
+      }
+      if (gcode == null) {
+        throw Exception('下载 main.rp4 失败：控制器返回空内容');
+      }
+    }
 
     final xmlFile = await RobotPaths.serverXmlFile(name);
     final rp4File = await RobotPaths.serverRp4File(name);
     await xmlFile.parent.create(recursive: true);
-    await xmlFile.writeAsString(xml);
-    await rp4File.writeAsString(gcode);
+
+    var xmlBytes = 0;
+    var rp4Bytes = 0;
+    if (xml != null) {
+      await xmlFile.writeAsString(xml);
+      xmlBytes = xml.length;
+    } else if (await xmlFile.exists()) {
+      xmlBytes = (await xmlFile.readAsString()).length;
+    }
+
+    if (gcode != null) {
+      await rp4File.writeAsString(gcode);
+      rp4Bytes = gcode.length;
+    } else if (await rp4File.exists()) {
+      rp4Bytes = (await rp4File.readAsString()).length;
+    }
 
     return ServerProgramSyncResult(
       xmlPath: xmlFile.path,
       rp4Path: rp4File.path,
-      xmlBytes: xml.length,
-      rp4Bytes: gcode.length,
+      xmlBytes: xmlBytes,
+      rp4Bytes: rp4Bytes,
+      robotXmlSynced: xml != null,
+      robotRp4Synced: gcode != null,
     );
   }
 
-  /// 剔除 BOM、校验非空且非控制器 `error` 占位响应。
-  String _normalizeProgramPayload(String raw, String label) {
+  /// 解析控制器程序响应；空内容或 `error` 时返回 `null`。
+  String? _tryNormalizeProgramPayload(String raw, String label) {
     var text = raw;
     if (text.startsWith('\uFEFF')) {
       text = text.substring(1);
     }
     final trimmed = text.trim();
     if (trimmed.isEmpty || trimmed == 'error') {
-      throw Exception('下载 $label 失败：控制器返回空内容');
+      return null;
     }
 
     final json = RobotApiResponse.tryParse(trimmed);

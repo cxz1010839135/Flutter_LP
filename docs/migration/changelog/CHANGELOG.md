@@ -7,6 +7,45 @@
 
 ---
 
+## [1.5.4] - 2026-06-09
+
+**类型**：Blockly 在线同步容错 + Windows WebView 初始化修复
+
+### 修复
+
+- **Blockly 空程序**：控制器 `main.xml` / `main.rp4` 返回空或 `error` 时不再阻断进入编程页；保留本地 `config/server/main.*` 缓存
+- **连接同步**：`syncServerProgramFromRobot(allowEmptyControllerResponse: true)`；连接成功但控制器无程序时提示「使用本地缓存」，不再误报同步失败
+- **WebView 卡 18%**：Windows/Linux 先挂载 `WebViewWidget` 再调用 `setJavaScriptMode` 等 API，避免部分机器永久挂起
+- **WebView 超时**：单步 45s 超时并提示安装 Microsoft WebView2；`onPageFinished` 兜底推进加载进度
+
+### 优化
+
+- `ServerProgramSyncResult` 增加 `robotXmlSynced` / `robotRp4Synced`，区分「已从控制器写入」与「沿用本地」
+- Blockly 错误页按失败类型区分提示（WebView2 / dll 目录）
+
+---
+
+## [1.5.3] - 2026-06-08
+
+**类型**：开发环境一键配置 + GitHub 仓库绑定
+
+### 新增
+
+- **新电脑配置**：`配置开发环境.bat` → `scripts/setup/setup-dev-env.ps1`；自动安装 Git / Flutter 3.44.1 / .NET SDK / VS 2022（可选 Android）；`flutter pub get` + WiX NuGet 还原
+- **默认非 C 盘**：开发根目录优先 `D:\dev`（Flutter、Git、Android SDK 等）；可用 `-DevRoot`、`-UseChinaMirror`、`-WithAndroid` 定制
+- **GitHub**：`绑定并上传GitHub.bat`、`重新绑定GitHub.bat` → `scripts/setup/github-push.ps1`；默认远程 [Flutter_LP](https://github.com/cxz1010839135/Flutter_LP)
+
+### 文档
+
+- `scripts/setup/README.md`：环境配置、GitHub 上传与重新绑定说明
+- `README.md`：补充新电脑配置与 GitHub 入口
+
+### 其它
+
+- `.gitignore`：排除 `.env`、`*.keystore`、`key.properties` 等密钥文件
+
+---
+
 ## [1.5.1] - 2026-06-05
 
 **类型**：监控页寄存器监视 + 版本号单源同步
