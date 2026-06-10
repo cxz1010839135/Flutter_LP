@@ -23,14 +23,18 @@ class ServerProgramSyncResult {
   final int xmlBytes;
   final int rp4Bytes;
 
-  /// 本次是否从控制器写入了 XML（`false` 表示控制器为空，保留本地缓存）。
+  /// 本次是否从控制器写入了 XML（`false` 表示控制器无程序，已落盘空白工程）。
   final bool robotXmlSynced;
 
-  /// 本次是否从控制器写入了 RP4（`false` 表示控制器为空，保留本地缓存）。
+  /// 本次是否从控制器写入了 RP4（`false` 表示控制器无程序，已落盘空白工程）。
   final bool robotRp4Synced;
 
   bool get isFullySyncedFromRobot => robotXmlSynced && robotRp4Synced;
 }
+
+/// 控制器无程序时写入的空白 Blockly 工程（在线编辑从空画布开始）。
+const String kEmptyBlocklyServerXml =
+    '<xml xmlns="http://www.w3.org/1999/xhtml"></xml>';
 
 /// 程序文件 / 控制器文件系统（ConnectActivity、ProgramActivity、FilesActivity）。
 mixin RobotHttpFilesMixin on RobotHttpApiMixin {
@@ -184,57 +188,84 @@ mixin RobotHttpFilesMixin on RobotHttpApiMixin {
   /// 对齐 Android ConnectActivity：连接成功后并行下载 Blockly XML 与 RP4。
   ///
   /// [allowEmptyControllerResponse] 为 `true` 时，控制器返回空内容不会抛错，
-  /// 并保留本地已有 `config/server/main.*`（便于空程序时仍可进入 Blockly）。
+  /// 并将 `config/server/main.*` 覆写为空白工程（在线以控制器为准，不用本地缓存）。
+  ///
+  /// [fallbackToEmptyOnFailure] 为 `true` 时，拉取失败（如无效 HTTP 响应）同样
+  /// 覆写空白工程并返回，不阻断 Blockly 进入。
   Future<ServerProgramSyncResult> syncServerProgramFromRobot({
     String name = RobotPathLayout.defaultProjectName,
     bool allowEmptyControllerResponse = false,
+    bool fallbackToEmptyOnFailure = false,
   }) async {
     await RobotPaths.ensureLayout();
+    final xmlFile = await RobotPaths.serverXmlFile(name);
+    final rp4File = await RobotPaths.serverRp4File(name);
 
-    final results = await Future.wait([
-      robotGetXmlFile(),
-      robotGetGCodeFile(),
-    ]);
-    final xml = _tryNormalizeProgramPayload(results[0], 'main.xml');
-    final gcode = _tryNormalizeProgramPayload(results[1], 'main.rp4');
+    try {
+      final results = await Future.wait([
+        robotGetXmlFile(),
+        robotGetGCodeFile(),
+      ]);
+      final xml = _tryNormalizeProgramPayload(results[0], 'main.xml');
+      final gcode = _tryNormalizeProgramPayload(results[1], 'main.rp4');
 
-    if (!allowEmptyControllerResponse) {
-      if (xml == null) {
-        throw Exception('下载 main.xml 失败：控制器返回空内容');
+      if (!allowEmptyControllerResponse) {
+        if (xml == null) {
+          throw Exception('下载 main.xml 失败：控制器返回空内容');
+        }
+        if (gcode == null) {
+          throw Exception('下载 main.rp4 失败：控制器返回空内容');
+        }
       }
-      if (gcode == null) {
-        throw Exception('下载 main.rp4 失败：控制器返回空内容');
+
+      await xmlFile.parent.create(recursive: true);
+
+      var xmlBytes = 0;
+      var rp4Bytes = 0;
+      if (xml != null) {
+        await xmlFile.writeAsString(xml);
+        xmlBytes = xml.length;
+      } else if (allowEmptyControllerResponse) {
+        await _writeEmptyServerProgramFiles(name);
+        xmlBytes = kEmptyBlocklyServerXml.length;
+        rp4Bytes = 0;
       }
+
+      if (gcode != null) {
+        await rp4File.writeAsString(gcode);
+        rp4Bytes = gcode.length;
+      } else if (allowEmptyControllerResponse && xml != null) {
+        await rp4File.writeAsString('');
+      }
+
+      return ServerProgramSyncResult(
+        xmlPath: xmlFile.path,
+        rp4Path: rp4File.path,
+        xmlBytes: xmlBytes,
+        rp4Bytes: rp4Bytes,
+        robotXmlSynced: xml != null,
+        robotRp4Synced: gcode != null,
+      );
+    } catch (e) {
+      if (!fallbackToEmptyOnFailure) rethrow;
+      await _writeEmptyServerProgramFiles(name);
+      return ServerProgramSyncResult(
+        xmlPath: xmlFile.path,
+        rp4Path: rp4File.path,
+        xmlBytes: kEmptyBlocklyServerXml.length,
+        rp4Bytes: 0,
+        robotXmlSynced: false,
+        robotRp4Synced: false,
+      );
     }
+  }
 
+  Future<void> _writeEmptyServerProgramFiles(String name) async {
     final xmlFile = await RobotPaths.serverXmlFile(name);
     final rp4File = await RobotPaths.serverRp4File(name);
     await xmlFile.parent.create(recursive: true);
-
-    var xmlBytes = 0;
-    var rp4Bytes = 0;
-    if (xml != null) {
-      await xmlFile.writeAsString(xml);
-      xmlBytes = xml.length;
-    } else if (await xmlFile.exists()) {
-      xmlBytes = (await xmlFile.readAsString()).length;
-    }
-
-    if (gcode != null) {
-      await rp4File.writeAsString(gcode);
-      rp4Bytes = gcode.length;
-    } else if (await rp4File.exists()) {
-      rp4Bytes = (await rp4File.readAsString()).length;
-    }
-
-    return ServerProgramSyncResult(
-      xmlPath: xmlFile.path,
-      rp4Path: rp4File.path,
-      xmlBytes: xmlBytes,
-      rp4Bytes: rp4Bytes,
-      robotXmlSynced: xml != null,
-      robotRp4Synced: gcode != null,
-    );
+    await xmlFile.writeAsString(kEmptyBlocklyServerXml);
+    await rp4File.writeAsString('');
   }
 
   /// 解析控制器程序响应；空内容或 `error` 时返回 `null`。

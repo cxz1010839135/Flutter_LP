@@ -152,11 +152,12 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _setProgress(5, '正在从控制器读取程序…');
         final sync = await HttpManager.instance.syncServerProgramFromRobot(
           allowEmptyControllerResponse: true,
+          fallbackToEmptyOnFailure: true,
         );
         if (sync.isFullySyncedFromRobot) {
           _setProgress(12, '控制器程序已同步');
         } else {
-          _setProgress(12, '控制器程序为空，使用本地缓存');
+          _setProgress(12, '控制器无程序，打开空白工程');
         }
       }
 

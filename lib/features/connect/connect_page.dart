@@ -98,7 +98,7 @@ class _ConnectPageState extends State<ConnectPage> {
           ? '已连接 $baseUrl'
           : sync.isFullySyncedFromRobot
               ? '已连接 $baseUrl，已同步 main.xml / main.rp4'
-              : '已连接 $baseUrl（控制器程序为空，使用本地缓存）';
+              : '已连接 $baseUrl（控制器程序为空）';
       LpStatusLog.instance.log(
         syncMessage,
         level: LpLogLevel.success,

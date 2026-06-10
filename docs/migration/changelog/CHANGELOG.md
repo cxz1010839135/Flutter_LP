@@ -13,8 +13,8 @@
 
 ### 修复
 
-- **Blockly 空程序**：控制器 `main.xml` / `main.rp4` 返回空或 `error` 时不再阻断进入编程页；保留本地 `config/server/main.*` 缓存
-- **连接同步**：`syncServerProgramFromRobot(allowEmptyControllerResponse: true)`；连接成功但控制器无程序时提示「使用本地缓存」，不再误报同步失败
+- **Blockly 空程序**：控制器 `main.xml` / `main.rp4` 返回空或 `error`、或拉取失败（无效 HTTP 响应）时不再阻断进入编程页；在线将 `config/server/main.*` 覆写为空白工程（不以本地缓存顶替控制器）
+- **连接同步**：`syncServerProgramFromRobot(allowEmptyControllerResponse: true)`；连接成功但控制器无程序时提示「控制器程序为空」，离线仍读本地 `config/server/`
 - **WebView 卡 18%**：Windows/Linux 先挂载 `WebViewWidget` 再调用 `setJavaScriptMode` 等 API，避免部分机器永久挂起
 - **WebView 超时**：单步 45s 超时并提示安装 Microsoft WebView2；`onPageFinished` 兜底推进加载进度
 
