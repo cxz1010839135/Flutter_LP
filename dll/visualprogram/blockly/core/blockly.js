@@ -88,6 +88,14 @@ Blockly.IS_APP = false;
 Blockly.draggingConnections_ = [];
 
 /**
+ * UID map of connections on blocks currently being dragged.
+ * Used for O(1) lookup instead of indexOf during large-stack drags.
+ * @type {?Object.<boolean>}
+ * @private
+ */
+Blockly.draggingConnectionSet_ = null;
+
+/**
  * Contents of the local clipboard.
  * @type {Element}
  * @private

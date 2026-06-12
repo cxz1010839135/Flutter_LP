@@ -58,7 +58,333 @@ Blockly.Xml.workspaceToDom = function (workspace, opt_noId) {
  * @param {string} key_word .�����ؼ���
  * @return {!Element} Tree of XML elements.
  */
-Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
+Blockly.Xml.normalizeSearchToken_ = function (raw) {
+  var key = String(raw == null ? '' : raw);
+  key = key.replace('ADD', '');
+  key = key.replace('MINUS', '');
+  key = key.replace('MULTIPLY', '');
+  key = key.replace('DIVIDE', '');
+  key = key.replace('MODULO', '');
+  key = key.replace('BITAND', '');
+  key = key.replace('BITOR', '');
+  key = key.replace('BITXOR', '');
+  key = key.replace('LeftShift', '');
+  key = key.replace('RightShift', '');
+  key = key.replace('LOOP', '');
+  key = key.replace('=', '');
+  key = key.replace('UP', '');
+  key = key.replace('OFF', '');
+  key = key.replace('DN', '');
+  key = key.replace('AND', '');
+  key = key.replace('OR', '');
+  key = key.replace('NEQ', '');
+  key = key.replace('GTE', '');
+  key = key.replace('LTE', '');
+  key = key.replace('EQ', '');
+  key = key.replace('LT', '');
+  key = key.replace('GT', '');
+  key = key.replace('DD', 'D');
+  key = key.replace('DS', 'S');
+  key = key.replace('SD', 'D');
+  key = key.replace('SS', 'S');
+  key = key.replace(/[\u4e00-\u9fff]/g, '');
+  key = key.replace('MD', 'D');
+  key = key.replace('VD', 'D');
+  key = key.replace('TD', 'D');
+  key = key.replace('XD', 'D');
+  key = key.replace('YD', 'D');
+  key = key.replace('ID', 'D');
+  key = key.replace('JD', 'D');
+  key = key.replace('KD', 'D');
+  key = key.replace('WD', 'D');
+  key = key.replace('CD', 'D');
+  key = key.replace('MS', 'S');
+  key = key.replace('VS', 'S');
+  key = key.replace('TS', 'S');
+  key = key.replace('XS', 'S');
+  key = key.replace('YS', 'S');
+  key = key.replace('IS', 'S');
+  key = key.replace('JS', 'S');
+  key = key.replace('KS', 'S');
+  key = key.replace('WS', 'S');
+  key = key.replace('CS', 'S');
+  return key.toUpperCase();
+};
+
+/** @const {!Array.<string>} 寄存器前缀（长前缀在前）。 */
+Blockly.Xml.REGISTER_PREFIXES_ = [
+  'PX', 'PY', 'PZ', 'PW', 'U1', 'U2', 'U3', 'U4',
+  'D', 'V', 'I', 'J', 'K', 'W', 'X', 'Y', 'M', 'S', 'T', 'C'
+];
+
+/** @const {!RegExp} 从文本中提取寄存器 token。 */
+Blockly.Xml.REGISTER_TOKEN_RE_ =
+    /(PX|PY|PZ|PW|U[1-4]|D|V|I|J|K|W|X|Y|M|S|T|C)(\d+)/g;
+
+/** @const {!RegExp} 判断关键字是否为寄存器精确搜索（如 D40、D400）。 */
+Blockly.Xml.REGISTER_KEYWORD_RE_ =
+    /^(PX|PY|PZ|PW|U[1-4]|D|V|I|J|K|W|X|Y|M|S|T|C)(\d+)$/;
+
+/**
+ * 解析寄存器搜索关键字；非寄存器格式返回 null。
+ * @param {string} key_word
+ * @return {?string} 规范化后的寄存器 token，如 D400
+ */
+Blockly.Xml.parseRegisterSearchKeyword_ = function (key_word) {
+  var compact = String(key_word == null ? '' : key_word).replace(/\s+/g, '');
+  if (!compact) {
+    return null;
+  }
+  var normalized = Blockly.Xml.normalizeSearchToken_(compact);
+  if (Blockly.Xml.REGISTER_KEYWORD_RE_.test(normalized)) {
+    return normalized;
+  }
+  return null;
+};
+
+/**
+ * 从块文本中提取全部寄存器 token。
+ * @param {string} text
+ * @return {!Array.<string>}
+ */
+Blockly.Xml.extractRegisterTokensFromText_ = function (text) {
+  var compact = Blockly.Xml.normalizeSearchToken_(
+      String(text == null ? '' : text).replace(/\s+/g, ''));
+  var tokens = [];
+  var re = new RegExp(Blockly.Xml.REGISTER_TOKEN_RE_.source, 'g');
+  var match;
+  while ((match = re.exec(compact)) !== null) {
+    tokens.push(match[1] + match[2]);
+  }
+  return tokens;
+};
+
+/**
+ * 文本中是否包含与关键字完全一致的寄存器 token。
+ * @param {string} text
+ * @param {string} registerKeyword 已规范化的寄存器关键字
+ * @return {boolean}
+ */
+Blockly.Xml.textHasExactRegister_ = function (text, registerKeyword) {
+  var found = Blockly.Xml.extractRegisterTokensFromText_(text);
+  for (var i = 0; i < found.length; i++) {
+    if (found[i] === registerKeyword) {
+      return true;
+    }
+  }
+  return false;
+};
+
+Blockly.Xml.fieldSearchText_ = function (field) {
+  try {
+    if (field.getValue !== undefined && field.getValue !== null &&
+        String(field.getValue()) !== '') {
+      return String(field.getValue());
+    }
+    if (field.getText) {
+      return String(field.getText());
+    }
+  } catch (e) {}
+  return '';
+};
+
+/**
+ * Value 输入槽内连接块的可搜索字段（含 shadow），不遍历 statement 链。
+ * @param {!Blockly.Block} block
+ * @return {!Array.<string>}
+ * @private
+ */
+Blockly.Xml.getValueInputSearchTokens_ = function (block) {
+  var tokens = [];
+  for (var i = 0, input; input = block.inputList[i]; i++) {
+    for (var j = 0, field; field = input.fieldRow[j]; j++) {
+      var part = Blockly.Xml.fieldSearchText_(field);
+      if (part) {
+        tokens.push(part);
+      }
+    }
+    if (input.type === Blockly.INPUT_VALUE && input.connection) {
+      var child = input.connection.targetBlock();
+      if (child) {
+        tokens = tokens.concat(Blockly.Xml.getValueInputSearchTokens_(child));
+      }
+    }
+  }
+  return tokens;
+};
+
+/**
+ * 单块按显示顺序的可搜索 token（含 value 输入子块，如 D + 0 => D0）。
+ * 折叠块仅用折叠摘要行，避免与隐藏输入重复。
+ * @param {!Blockly.Block} block
+ * @return {!Array.<string>}
+ * @private
+ */
+Blockly.Xml.getBlockSearchTokens_ = function (block) {
+  var tokens = [];
+  if (!block) {
+    return tokens;
+  }
+  if (block.isCollapsed()) {
+    var collapsedInput = block.getInput('_TEMP_COLLAPSED_INPUT');
+    if (collapsedInput) {
+      for (var c = 0, cField; cField = collapsedInput.fieldRow[c]; c++) {
+        var collapsedPart = Blockly.Xml.fieldSearchText_(cField);
+        if (collapsedPart) {
+          tokens.push(collapsedPart);
+        }
+      }
+    }
+    if (tokens.length) {
+      return tokens;
+    }
+  }
+  for (var i = 0, input; input = block.inputList[i]; i++) {
+    if (input.name === '_TEMP_COLLAPSED_INPUT') {
+      continue;
+    }
+    for (var j = 0, field; field = input.fieldRow[j]; j++) {
+      var ownPart = Blockly.Xml.fieldSearchText_(field);
+      if (ownPart) {
+        tokens.push(ownPart);
+      }
+    }
+    if (input.type === Blockly.INPUT_VALUE && input.connection) {
+      var connected = input.connection.targetBlock();
+      if (connected) {
+        tokens = tokens.concat(
+            Blockly.Xml.getValueInputSearchTokens_(connected));
+      }
+    }
+  }
+  return tokens;
+};
+
+Blockly.Xml.search_MD_XY_pushMatch_ = function (block) {
+  var tem_data = [block.workspace.temp_xy[0], block.workspace.temp_xy[1]];
+  block.workspace.search_.push(tem_data);
+  block.workspace.search_head_index.push(block.workspace.search_head_index_num);
+  if (block.workspace.search_blocks_) {
+    block.workspace.search_blocks_.push(block);
+  }
+};
+
+/**
+ * block 是否为 ancestor 的 value 输入子块或语句槽内嵌套块。
+ * 不含 next/previous 语句栈上的前后相邻块（避免误删独立语句）。
+ * @param {!Blockly.Block} ancestor
+ * @param {!Blockly.Block} block
+ * @return {boolean}
+ * @private
+ */
+Blockly.Xml.isSearchBlockAncestor_ = function (ancestor, block) {
+  if (!ancestor || !block || ancestor === block) {
+    return false;
+  }
+  var surround = block.getSurroundParent();
+  while (surround) {
+    if (surround === ancestor) {
+      return true;
+    }
+    surround = surround.getSurroundParent();
+  }
+  var cur = block;
+  var parent = cur.getParent();
+  while (parent) {
+    if (parent.getInputWithBlock(cur)) {
+      if (parent === ancestor) {
+        return true;
+      }
+      cur = parent;
+      parent = cur.getParent();
+    } else {
+      break;
+    }
+  }
+  return false;
+};
+
+/**
+ * 合并嵌套重复：同一 value/语句嵌套链上父子均命中时，保留最内层块。
+ * @param {!Blockly.Workspace} workspace
+ */
+Blockly.Xml.deduplicateSearchMatches_ = function (workspace) {
+  var blocks = workspace.search_blocks_;
+  if (!blocks || blocks.length < 2) {
+    return;
+  }
+  var removeSet = {};
+  for (var i = 0; i < blocks.length; i++) {
+    for (var j = 0; j < blocks.length; j++) {
+      if (i !== j &&
+          Blockly.Xml.isSearchBlockAncestor_(blocks[i], blocks[j])) {
+        removeSet[blocks[i].id] = true;
+        break;
+      }
+    }
+  }
+  for (var k = blocks.length - 1; k >= 0; k--) {
+    if (removeSet[blocks[k].id]) {
+      blocks.splice(k, 1);
+      workspace.search_.splice(k, 1);
+      workspace.search_head_index.splice(k, 1);
+    }
+  }
+};
+
+/**
+ * 块是否匹配关键字（含 D400 等变量 token 与中文块名）。
+ * @param {!Blockly.Block} block
+ * @param {string} key_word
+ * @return {boolean}
+ * @private
+ */
+Blockly.Xml.blockMatchesKeyword_ = function (block, key_word) {
+  if (!key_word || block.isShadow()) {
+    return false;
+  }
+  var registerKeyword = Blockly.Xml.parseRegisterSearchKeyword_(key_word);
+  if (registerKeyword) {
+    var tokenText = Blockly.Xml.getBlockSearchTokens_(block).join(' ');
+    if (Blockly.Xml.textHasExactRegister_(tokenText, registerKeyword)) {
+      return true;
+    }
+    if (block.toString &&
+        Blockly.Xml.textHasExactRegister_(block.toString(80), registerKeyword)) {
+      return true;
+    }
+    return false;
+  }
+
+  var compactKeyword = key_word.replace(/\s+/g, '');
+  var tokens = Blockly.Xml.getBlockSearchTokens_(block);
+  var blockOwnText = tokens.join(' ');
+  var compactOwnText = blockOwnText.replace(/\s+/g, '');
+  if (blockOwnText.indexOf(key_word) !== -1 ||
+      (compactKeyword && compactOwnText.indexOf(compactKeyword) !== -1)) {
+    return true;
+  }
+
+  if (block.toString) {
+    var fullText = block.toString(80);
+    var compactFull = fullText.replace(/\s+/g, '');
+    if (fullText.indexOf(key_word) !== -1 ||
+        (compactKeyword && compactFull.indexOf(compactKeyword) !== -1)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+Blockly.Xml.search_MD_XY_matchBlock_ = function (block, opt_noId, key_word) {
+  var matched = false;
+  var pushMatch = function () {
+    if (matched) {
+      return;
+    }
+    matched = true;
+    Blockly.Xml.search_MD_XY_pushMatch_(block);
+  };
   //�����block��ͷ��  �Һ��涼Ҫ��������
   var x = 0, y = 0;
   var key_word_first = '';
@@ -88,25 +414,9 @@ Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
   }
   //alert("x:"+x+" ;y:"+y);
 
-  // 支持按块名称（红框内的显示文本）搜索，如：独立定位、机器人、电子齿轮。只取本块自身字段文本，不含子块，避免函数块因内部匹配而多出一个结果
-  if (typeof key_word === 'string' && key_word.length > 0 && !block.isShadow()) {
-    try {
-      var ownTextParts = [];
-      for (var ii = 0, inp; inp = block.inputList[ii]; ii++) {
-        for (var jj = 0, fld; fld = inp.fieldRow[jj]; jj++) {
-          if (fld.getText) {
-            ownTextParts.push(fld.getText());
-          }
-        }
-      }
-      var blockOwnText = ownTextParts.join(' ');
-      if (blockOwnText && blockOwnText.indexOf(key_word) !== -1) {
-        var tem_data = [block.workspace.temp_xy[0], block.workspace.temp_xy[1]];
-        block.workspace.search_.push(tem_data);
-        block.workspace.search_head_index.push(block.workspace.search_head_index_num);
-        if (block.workspace.search_blocks_) block.workspace.search_blocks_.push(block);
-      }
-    } catch (e) {}
+  if (typeof key_word === 'string' && key_word.length > 0 &&
+      Blockly.Xml.blockMatchesKeyword_(block, key_word)) {
+    pushMatch();
   }
 
   var last_key = '';
@@ -116,12 +426,15 @@ Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
       var container = goog.dom.createDom('field', null, field.getValue());
     }
   }
+  var registerKeyword = Blockly.Xml.parseRegisterSearchKeyword_(key_word);
+  var keywordUpper = typeof key_word === 'string' ?
+      Blockly.Xml.normalizeSearchToken_(key_word.replace(/\s+/g, '')) : '';
   if (true) {
     if (block.type != "math_variableNotes") {//把注释排除
-      for (var i = 0, input; input = block.inputList[i]; i++) {
-        for (var j = 0, field; field = input.fieldRow[j]; j++) {
+      var searchTokens = Blockly.Xml.getBlockSearchTokens_(block);
+      for (var j = 0; j < searchTokens.length; j++) {
           // fieldToDom(field);
-          tem_key = last_key + field.getValue();
+          tem_key = last_key + searchTokens[j];
 
           //alert("last_key:"+last_key+" ;field.getValue():"+field.getValue());
           tem_key = tem_key.replace("ADD", "");
@@ -162,15 +475,15 @@ Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
 
           tem_key = tem_key.replace(/[\u4e00-\u9fff]/g, ""); // 关键修改：去除所有中文字符
 
-          last_key = field.getValue();
-          last_key = last_key.charAt(0);
+          last_key = searchTokens[j];
+          last_key = last_key ? last_key.charAt(0) : '';
 
           var pureNumber = /^\d+$/.test(tem_key);
           if (pureNumber) {
             block.workspace.code_serch += tem_key;
           } else {
-    block.workspace.code_serch = "";
-  }
+            block.workspace.code_serch = "";
+          }
 
           block.workspace.code_serch = block.workspace.code_serch.replace("DD", "D");
           block.workspace.code_serch = block.workspace.code_serch.replace("MD", "D");
@@ -198,17 +511,22 @@ Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
           block.workspace.code_serch = block.workspace.code_serch.replace("WS", "S");
           block.workspace.code_serch = block.workspace.code_serch.replace("CS", "S");
 
-          //alert(block.workspace.code_serch+"====x:"+x+" ;y:"+y);
-          // if (block.workspace.code_serch.indexOf( key_word.toUpperCase()) !== -1) {
-          if (block.workspace.code_serch == key_word.toUpperCase()) {
-            var tem_data = [block.workspace.temp_xy[0], block.workspace.temp_xy[1]];
-            block.workspace.search_.push(tem_data);
-            //alert(block.workspace.code_serch+"====x:"+x+" ;y:"+y);
-            //添加当前block的索引
-            block.workspace.search_head_index.push(block.workspace.search_head_index_num);
-            if (block.workspace.search_blocks_) block.workspace.search_blocks_.push(block);
+          if (registerKeyword) {
+            if (Blockly.Xml.normalizeSearchToken_(tem_key) === registerKeyword) {
+              pushMatch();
+            }
+            if (Blockly.Xml.normalizeSearchToken_(block.workspace.code_serch) ===
+                registerKeyword) {
+              pushMatch();
+            }
+          } else if (keywordUpper &&
+              Blockly.Xml.normalizeSearchToken_(tem_key) === keywordUpper) {
+            pushMatch();
+          } else if (keywordUpper &&
+              Blockly.Xml.normalizeSearchToken_(block.workspace.code_serch) ===
+              keywordUpper) {
+            pushMatch();
           }
-        }
       }
 
     }
@@ -220,28 +538,30 @@ Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
   } else {
     block.workspace.code_serch = "";
   }
-  for (var i = 0, input; input = block.inputList[i]; i++) {
-    var empty = true;
-    if (input.type == Blockly.DUMMY_INPUT) {
-      continue;
-    } else {
-      var childBlock = input.connection.targetBlock();
-      var shadow = input.connection.getShadowDom();
-      if (shadow && (!childBlock || !childBlock.isShadow())) {
-        Blockly.Xml.cloneShadow_(shadow);
-      }
-      if (childBlock) {
-        Blockly.Xml.search_MD_XY(childBlock, opt_noId, key_word);
-        empty = false;
-      }
+  if (!matched && registerKeyword) {
+    if (Blockly.Xml.normalizeSearchToken_(tem_key) === registerKeyword ||
+        Blockly.Xml.normalizeSearchToken_(block.workspace.code_serch) ===
+        registerKeyword) {
+      pushMatch();
+    }
+  } else if (!matched && keywordUpper) {
+    if (Blockly.Xml.normalizeSearchToken_(tem_key) === keywordUpper ||
+        Blockly.Xml.normalizeSearchToken_(block.workspace.code_serch) ===
+        keywordUpper) {
+      pushMatch();
     }
   }
-  var nextBlock = block.getNextBlock();
-  if (nextBlock) {
-    Blockly.Xml.search_MD_XY(nextBlock, opt_noId, key_word);
+};
+
+/**
+ * 按关键字搜索块树；始终遍历 getDescendants，折叠块内子块也计入个数。
+ */
+Blockly.Xml.search_MD_XY = function (block, opt_noId, key_word) {
+  var descendants = block.getDescendants();
+  for (var i = 0; i < descendants.length; i++) {
+    block.workspace.code_serch = '';
+    Blockly.Xml.search_MD_XY_matchBlock_(descendants[i], opt_noId, key_word);
   }
-
-
 };
 
 /**
@@ -540,6 +860,9 @@ Blockly.Xml.domToWorkspace = function (xml, workspace) {
   if (workspace.setResizesEnabled) {
     workspace.setResizesEnabled(false);
   }
+  // Batch mode: defer per-block render/connection timers until all XML is loaded.
+  workspace.batchLoadBlocks_ = true;
+  workspace.batchLoadTopBlocks_ = [];
   var variablesFirst = true;
   try {
     for (var i = 0; i < childCount; i++) {
@@ -576,6 +899,25 @@ Blockly.Xml.domToWorkspace = function (xml, workspace) {
     }
   }
   finally {
+    if (workspace.batchLoadBlocks_) {
+      if (workspace.rendered && workspace.batchLoadTopBlocks_.length) {
+        workspace.render();
+        var batchTopBlocks = workspace.batchLoadTopBlocks_;
+        setTimeout(function() {
+          for (var t = 0; t < batchTopBlocks.length; t++) {
+            var batchBlock = batchTopBlocks[t];
+            if (batchBlock.workspace) {
+              batchBlock.setConnectionsHidden(false);
+            }
+          }
+        }, 1);
+        for (var t = 0; t < batchTopBlocks.length; t++) {
+          batchTopBlocks[t].updateDisabled();
+        }
+      }
+      workspace.batchLoadBlocks_ = false;
+      workspace.batchLoadTopBlocks_ = null;
+    }
     if (!existingGroup) {
       Blockly.Events.setGroup(false);
     }
@@ -667,24 +1009,28 @@ Blockly.Xml.domToBlock = function (xmlBlock, workspace) {
       topBlock.setConnectionsHidden(true);
       // Generate list of all blocks.
       var blocks = topBlock.getDescendants();
-      // Render each block.
       for (var i = blocks.length - 1; i >= 0; i--) {
         blocks[i].initSvg();
       }
-      for (var i = blocks.length - 1; i >= 0; i--) {
-        blocks[i].render(false);
-      }
-      // Populating the connection database may be deferred until after the
-      // blocks have rendered.
-      setTimeout(function () {
-        if (topBlock.workspace) {  // Check that the block hasn't been deleted.
-          topBlock.setConnectionsHidden(false);
+      if (workspace.batchLoadBlocks_) {
+        workspace.batchLoadTopBlocks_.push(topBlock);
+      } else {
+        // Render each block.
+        for (var i = blocks.length - 1; i >= 0; i--) {
+          blocks[i].render(false);
         }
-      }, 1);
-      topBlock.updateDisabled();
-      // Allow the scrollbars to resize and move based on the new contents.
-      // TODO(@picklesrus): #387. Remove when domToBlock avoids resizing.
-      workspace.resizeContents();
+        // Populating the connection database may be deferred until after the
+        // blocks have rendered.
+        setTimeout(function () {
+          if (topBlock.workspace) {  // Check that the block hasn't been deleted.
+            topBlock.setConnectionsHidden(false);
+          }
+        }, 1);
+        topBlock.updateDisabled();
+        // Allow the scrollbars to resize and move based on the new contents.
+        // TODO(@picklesrus): #387. Remove when domToBlock avoids resizing.
+        workspace.resizeContents();
+      }
     }
   } finally {
     Blockly.Events.enable();

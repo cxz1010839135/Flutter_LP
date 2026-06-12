@@ -664,12 +664,7 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
 
     if (this.workspace.options.collapse) {
       // Option to collapse/expand block.
-      // 普通块只能展开不能折叠；自定义块（procedures类型）可折叠可展开
-      var isCustomBlock = this.type == 'procedures_defnoreturn' ||
-                          this.type == 'procedures_defreturn';
-
       if (this.collapsed_) {
-        //展开块：所有块都可展开（向下兼容，旧项目里已折叠的普通块可展开）
         var expandOption = {enabled: true};
         expandOption.text = Blockly.Msg.EXPAND_BLOCK;
         expandOption.callback = function() {
@@ -677,8 +672,7 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
         };
         menuOptions.push(expandOption);
       } else {
-        //折叠块：仅自定义块可折叠，普通块禁用
-        var collapseOption = {enabled: isCustomBlock};
+        var collapseOption = {enabled: true};
         collapseOption.text = Blockly.Msg.COLLAPSE_BLOCK;
         collapseOption.callback = function() {
           block.setCollapsed(true);
@@ -783,14 +777,23 @@ Blockly.BlockSvg.prototype.setDragging = function(adding) {
     var group = this.getSvgRoot();
     group.translate_ = '';
     group.skew_ = '';
-    Blockly.draggingConnections_ =
-        Blockly.draggingConnections_.concat(this.getConnections_(true));
+    if (!Blockly.draggingConnections_.length) {
+      Blockly.BlockDragger.collectDraggingConnections_(this);
+    }
     Blockly.utils.addClass(/** @type {!Element} */ (this.svgGroup_),
                       'blocklyDragging');
+    // Drag surface moves the whole subtree as one SVG; skip recursive work.
+    if (this.useDragSurface_) {
+      return;
+    }
   } else {
     Blockly.draggingConnections_ = [];
+    Blockly.draggingConnectionSet_ = null;
     Blockly.utils.removeClass(/** @type {!Element} */ (this.svgGroup_),
                          'blocklyDragging');
+    if (this.useDragSurface_) {
+      return;
+    }
   }
   // Recurse through all blocks attached under this one.
   for (var i = 0; i < this.childBlocks_.length; i++) {

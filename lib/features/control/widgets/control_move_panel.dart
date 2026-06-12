@@ -162,19 +162,25 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            final inset = constraints.maxWidth *
-                ControlMoveLayout.formHorizontalInsetRatio;
-            final formWidth = constraints.maxWidth - inset * 2;
+            final formWidth = (constraints.maxWidth *
+                    ControlMoveLayout.formMaxWidthRatio)
+                .clamp(
+                  ControlMoveLayout.formMinWidth,
+                  ControlMoveLayout.formMaxWidthCap,
+                );
             final labelWidth =
                 formWidth * ControlMoveLayout.labelWidthRatio;
-            final fieldWidth = formWidth - labelWidth;
+            final fieldWidth = formWidth -
+                labelWidth -
+                ControlMoveLayout.labelFieldGap;
             final gap = ControlMoveLayout.rowGap;
 
             return Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: inset),
+              child: SizedBox(
+                width: formWidth,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _MoveLabelFieldRow(
                       labelWidth: labelWidth,
@@ -207,12 +213,23 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
                           RobotTelemetry.instance.setSpeedPercentValue,
                       onChangeEnd: _applySpeedPercent,
                     ),
-                    SizedBox(height: gap),
-                    _MoveConfirmRow(
-                      labelWidth: labelWidth,
-                      fieldWidth: fieldWidth,
-                      loading: _moving,
-                      onPressed: _onConfirm,
+                    SizedBox(height: ControlMoveLayout.confirmTopGap),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width:
+                              labelWidth + ControlMoveLayout.labelFieldGap,
+                        ),
+                        SizedBox(
+                          width: fieldWidth,
+                          height: ControlMoveLayout.confirmHeight,
+                          child: _ConfirmButton(
+                            loading: _moving,
+                            onPressed: _onConfirm,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -246,22 +263,20 @@ class _MoveLabelFieldRow extends StatelessWidget {
         SizedBox(
           width: labelWidth,
           child: Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Text(
-                label,
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                style: const TextStyle(
-                  fontSize: ControlMoveLayout.labelFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: LpRobotColors.textDark,
-                ),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              textAlign: TextAlign.left,
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: ControlMoveLayout.labelFontSize,
+                fontWeight: FontWeight.w500,
+                color: LpRobotColors.textDark,
               ),
             ),
           ),
         ),
+        const SizedBox(width: ControlMoveLayout.labelFieldGap),
         SizedBox(
           width: fieldWidth,
           height: ControlMoveLayout.fieldHeight,
@@ -296,23 +311,21 @@ class _MoveSpeedRow extends StatelessWidget {
       children: [
         SizedBox(
           width: labelWidth,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Text(
-                '速度设定',
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                style: const TextStyle(
-                  fontSize: ControlMoveLayout.labelFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: LpRobotColors.textDark,
-                ),
+          child: const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '速度设定',
+              textAlign: TextAlign.left,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: ControlMoveLayout.labelFontSize,
+                fontWeight: FontWeight.w500,
+                color: LpRobotColors.textDark,
               ),
             ),
           ),
         ),
+        const SizedBox(width: ControlMoveLayout.labelFieldGap),
         SizedBox(
           width: fieldWidth,
           height: ControlMoveLayout.fieldHeight,
@@ -342,38 +355,6 @@ class _MoveSpeedRow extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MoveConfirmRow extends StatelessWidget {
-  const _MoveConfirmRow({
-    required this.labelWidth,
-    required this.fieldWidth,
-    required this.loading,
-    required this.onPressed,
-  });
-
-  final double labelWidth;
-  final double fieldWidth;
-  final bool loading;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(width: labelWidth),
-        SizedBox(
-          width: fieldWidth,
-          height: ControlMoveLayout.confirmHeight,
-          child: _ConfirmButton(
-            loading: loading,
-            onPressed: onPressed,
           ),
         ),
       ],

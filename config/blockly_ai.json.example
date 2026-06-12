@@ -1,0 +1,9 @@
+{
+  "mode": "online",
+  "onlineApiKey": "",
+  "onlineBaseUrl": "https://api.deepseek.com",
+  "onlineModel": "deepseek-chat",
+  "localBaseUrl": "http://127.0.0.1:11434",
+  "localModel": "qwen2.5:7b",
+  "applyMode": "append"
+}

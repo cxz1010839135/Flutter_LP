@@ -32,6 +32,8 @@ class LpBlocklyLoadTracker {
   final Duration maxLoadDuration;
 
   bool _active = true;
+  bool _jsShellReady = false;
+  bool _reloadMode = false;
   int _getCount = 0;
   int _estimatedTotal = 48;
   Timer? _idleTimer;
@@ -41,13 +43,18 @@ class LpBlocklyLoadTracker {
   void complete() {
     if (!_active) return;
     _active = false;
+    _jsShellReady = false;
+    _reloadMode = false;
     _idleTimer?.cancel();
     _maxTimer?.cancel();
     onProgress(100, 'Blockly 加载完成');
   }
 
-  void reset() {
+  /// [reload] 为 true 时放宽结束条件（WebView 刷新常走缓存，GET 很少）。
+  void reset({bool reload = false}) {
     _active = true;
+    _jsShellReady = false;
+    _reloadMode = reload;
     _getCount = 0;
     _estimatedTotal = 48;
     _idleTimer?.cancel();
@@ -63,9 +70,10 @@ class LpBlocklyLoadTracker {
     _active = false;
   }
 
-  /// JS `bound.loadComplete`（仅表示 HTML 壳就绪，不代表资源拉取完毕）。
+  /// JS `bound.loadComplete` / `onPageFinished`（页面壳就绪）。
   void markJsLoadComplete() {
     if (!_active) return;
+    _jsShellReady = true;
     onProgress(
       _progressPercent.clamp(85, 92),
       '正在加载 Blockly 模块…',
@@ -103,10 +111,15 @@ class LpBlocklyLoadTracker {
 
   void _scheduleIdleComplete() {
     _idleTimer?.cancel();
-    _idleTimer = Timer(idleDuration, () {
+    final delay = _reloadMode
+        ? const Duration(milliseconds: 600)
+        : idleDuration;
+    _idleTimer = Timer(delay, () {
       if (!_active) return;
-      // 至少拉取若干资源后再允许结束，避免首屏 HTML 后误关遮罩
-      if (_getCount < 6) return;
+      final canFinish = _getCount >= 6 ||
+          (_jsShellReady && _reloadMode) ||
+          (_jsShellReady && _getCount >= 1);
+      if (!canFinish) return;
       complete();
     });
   }

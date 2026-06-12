@@ -378,7 +378,11 @@ Blockly.Connection.prototype.isConnectionAllowed = function(candidate) {
   }
 
   // Don't let blocks try to connect to themselves or ones they nest.
-  if (Blockly.draggingConnections_.indexOf(candidate) != -1) {
+  if (Blockly.draggingConnectionSet_) {
+    if (Blockly.draggingConnectionSet_[goog.getUid(candidate)]) {
+      return false;
+    }
+  } else if (Blockly.draggingConnections_.indexOf(candidate) != -1) {
     return false;
   }
 

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Windows 平台一键打包：Release 构建 + MSI 安装程序。
@@ -19,11 +19,27 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# 路径仅依赖脚本自身位置，与当前工作目录、工程是否移动无关
-$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-if (-not (Test-Path (Join-Path $ProjectRoot 'pubspec.yaml'))) {
-    throw "Invalid project root (pubspec.yaml missing): $ProjectRoot"
+
+function Resolve-ProjectRoot {
+    $candidates = @()
+    if ($env:LPROBOT_PROJECT_ROOT) { $candidates += $env:LPROBOT_PROJECT_ROOT }
+    if ($PSScriptRoot) { $candidates += (Join-Path $PSScriptRoot '..\..') }
+    $candidates += (Get-Location).Path
+    foreach ($raw in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+        try {
+            $root = (Resolve-Path -LiteralPath $raw -ErrorAction Stop).Path
+        } catch {
+            continue
+        }
+        if (Test-Path -LiteralPath (Join-Path $root 'pubspec.yaml')) {
+            return $root
+        }
+    }
+    throw 'Invalid project root (pubspec.yaml missing). Use 打包Windows安装包.bat'
 }
+
+$ProjectRoot = Resolve-ProjectRoot
 Set-Location $ProjectRoot
 Write-Host "Project root: $ProjectRoot"
 
@@ -62,7 +78,6 @@ function Build-MsiDotNet {
     Ensure-DotNet
     $wixproj = Join-Path $ProjectRoot "installer\LPRobot.Installer.wixproj"
 
-    # 清除 Heat 缓存，避免仍引用已从 dll 删掉的 zip/lnk 等旧文件
     foreach ($rel in @('installer\obj', 'build\installer')) {
         $dir = Join-Path $ProjectRoot $rel
         if (Test-Path $dir) {
@@ -132,14 +147,48 @@ function Find-Wix3Bin {
     return $null
 }
 
+function Ensure-PubHostedUrl {
+    if ($env:PUB_HOSTED_URL) { return }
+    $env:PUB_HOSTED_URL = 'https://pub.flutter-io.cn'
+    Write-Host ">>> PUB_HOSTED_URL=$($env:PUB_HOSTED_URL) (pub.dev may be blocked on corporate DNS)"
+}
+
+function Invoke-ExternalCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$CommandArgs
+    )
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Name @CommandArgs
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 $productVersion = Get-ProductVersion -Override $Version
 Write-Host "Product version: $productVersion"
 
 if (-not $SkipFlutterBuild) {
     Write-Host ">>> sync app version from pubspec.yaml"
-    dart "${ProjectRoot}/tool/sync_app_version.dart"
+    Invoke-ExternalCommand dart "${ProjectRoot}/tool/sync_app_version.dart"
+    if ($LASTEXITCODE -ne 0) { throw 'sync_app_version.dart failed' }
+    Ensure-PubHostedUrl
+    Write-Host ">>> sync Blockly zip (pubspec asset)"
+    Invoke-ExternalCommand dart run tool/sync_blockly_assets.dart
+    if ($LASTEXITCODE -ne 0) { throw 'sync_blockly_assets.dart failed' }
+    Write-Host ">>> flutter pub get"
+    Invoke-ExternalCommand flutter pub get --offline
+    if ($LASTEXITCODE -ne 0) {
+        Invoke-ExternalCommand flutter pub get
+        if ($LASTEXITCODE -ne 0) { throw 'flutter pub get failed' }
+    }
     Write-Host ">>> flutter build windows --release"
-    flutter build windows --release
+    Invoke-ExternalCommand flutter build windows --release
+    if ($LASTEXITCODE -ne 0) { throw 'flutter build windows --release failed' }
 }
 
 $releaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
@@ -160,7 +209,6 @@ if (Test-Path $legacyExe) {
     Remove-Item $legacyExe -Force
 }
 
-# VC++ 运行库（VCRUNTIME140_1.dll 等）—— 目标机若没装 VC Redist 也能运行
 $vcredistSrc = Join-Path $ProjectRoot "vcredist"
 if (Test-Path $vcredistSrc) {
     Write-Host ">>> copy vcredist/ DLLs -> Release"
@@ -169,10 +217,9 @@ if (Test-Path $vcredistSrc) {
         Write-Host "    $($_.Name)"
     }
 } else {
-    Write-Warning "vcredist/ not found, skipping VC++ runtime DLLs (target machine must have VC Redist installed)"
+    Write-Warning "vcredist/ not found, skipping VC++ runtime DLLs"
 }
 
-# config/ 整目录同步
 $configSrc = Join-Path $ProjectRoot "config"
 $configDst = Join-Path $releaseDir "config"
 if (Test-Path $configSrc) {
@@ -183,7 +230,6 @@ if (Test-Path $configSrc) {
     Write-Warning "Missing config/: $configSrc"
 }
 
-# 仅打包 Blockly 运行所需 dll/visualprogram（勿把 zip、deb、.lnk 等打进 MSI）
 $blocklySrc = Join-Path $ProjectRoot "dll\visualprogram"
 $dllDstRoot = Join-Path $releaseDir "dll"
 $blocklyDst = Join-Path $dllDstRoot "visualprogram"
@@ -197,7 +243,6 @@ if (Test-Path $dllDstRoot) {
 }
 New-Item -ItemType Directory -Force -Path $dllDstRoot | Out-Null
 Write-Host ">>> copy dll/visualprogram/ -> Release"
-# 必须复制整个 visualprogram 文件夹，不能用 '*' + LiteralPath（会得到空目录）
 Copy-Item -Path $blocklySrc -Destination $dllDstRoot -Recurse -Force
 if (-not (Test-Path $blocklyEntry)) {
     throw "Blockly staging failed (missing $blocklyEntry). Check dll/visualprogram in project root."

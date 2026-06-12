@@ -8,6 +8,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_static/shelf_static.dart';
 
 import '../core/robot_paths.dart';
+import 'lp_blockly_asset_bootstrap.dart';
 import 'lp_blockly_config.dart';
 import 'lp_blockly_load_tracker.dart';
 
@@ -220,7 +221,13 @@ Future<bool> _isBlocklyRoot(String root) async {
 }
 
 /// 查找 dll 包根目录（开发态、exe 同级目录等）
-Future<String> resolveDllRoot() async {
+Future<String> resolveDllRoot({
+  void Function(int percent, String message)? onBootstrapProgress,
+}) async {
+  await LpBlocklyAssetBootstrap.ensureInstalled(
+    onProgress: onBootstrapProgress,
+  );
+
   final seen = <String>{};
   final candidates = <String>[];
 

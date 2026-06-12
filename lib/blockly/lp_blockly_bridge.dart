@@ -11,6 +11,7 @@ import '../core/robot_state.dart';
 import '../network/http_manager.dart';
 import 'lp_blockly_file_picker.dart';
 
+/// 非 Windows 平台下从目录列表选手 XML；取消时返回 null。
 typedef PickXmlFromList = Future<String?> Function(String browseDir);
 typedef BlocklyTaskProgressCallback = void Function(int percent, String message);
 
@@ -438,11 +439,14 @@ class LpBlocklyBridge {
   Future<void> _pickAndLoadXml() async {
     try {
       final initialDir = await RobotPaths.serverDir();
-      var pickedPath = await LpBlocklyFilePicker.pickXmlFile(initialDir);
-
-      if ((pickedPath == null || pickedPath.isEmpty) &&
-          pickXmlFromList != null) {
+      final String? pickedPath;
+      if (Platform.isWindows) {
+        // Windows 原生对话框：取消或关闭时返回 null，不再弹出备选列表。
+        pickedPath = await LpBlocklyFilePicker.pickXmlFile(initialDir);
+      } else if (pickXmlFromList != null) {
         pickedPath = await pickXmlFromList!(initialDir);
+      } else {
+        pickedPath = await LpBlocklyFilePicker.pickXmlFile(initialDir);
       }
 
       if (pickedPath == null || pickedPath.isEmpty) return;
@@ -459,9 +463,9 @@ class LpBlocklyBridge {
     final xml = await File(pickedPath).readAsString();
     final encoded = jsonEncode(xml);
     await controller.runJavaScript(
-      'if(window.Code&&Code.replaceBlocksfromXml){Code.replaceBlocksfromXml($encoded);}',
+      'if(window.Code&&Code.appendBlocksfromXml){Code.appendBlocksfromXml($encoded);}',
     );
-    final message = '已加载：$pickedPath';
+    final message = '已追加导入：$pickedPath';
     showMessage(message);
   }
 }

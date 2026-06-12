@@ -33,6 +33,21 @@ goog.require('goog.asserts');
 
 
 /**
+ * Above this descendant count, skip snap-search while dragging.
+ * @const {number}
+ * @private
+ */
+Blockly.BlockDragger.LARGE_STACK_THRESHOLD_ = 200;
+
+/**
+ * Above this descendant count, throttle snap-search to one frame.
+ * @const {number}
+ * @private
+ */
+Blockly.BlockDragger.DRAG_THROTTLE_THRESHOLD_ = 80;
+
+
+/**
  * Class for a block dragger.  It moves blocks around the workspace when they
  * are being dragged by a mouse or touch.
  * @param {!Blockly.Block} block The block to drag.
@@ -94,6 +109,37 @@ Blockly.BlockDragger = function(block, workspace) {
    * @private
    */
   this.dragIconData_ = Blockly.BlockDragger.initIconData_(block);
+
+  this.dragStackSize_ = block.getDescendants().length;
+  this.skipConnectionSearch_ =
+      this.dragStackSize_ > Blockly.BlockDragger.LARGE_STACK_THRESHOLD_;
+  this.throttleConnectionSearch_ =
+      !this.skipConnectionSearch_ &&
+      this.dragStackSize_ > Blockly.BlockDragger.DRAG_THROTTLE_THRESHOLD_;
+  this.pendingDragFrame_ = false;
+  this.pendingDragDelta_ = null;
+  this.pendingDragEvent_ = null;
+};
+
+/**
+ * Collect all connections in a dragged stack once.
+ * @param {!Blockly.BlockSvg} rootBlock The root block being dragged.
+ * @package
+ */
+Blockly.BlockDragger.collectDraggingConnections_ = function(rootBlock) {
+  var descendants = rootBlock.getDescendants();
+  var connections = [];
+  var set = {};
+  for (var i = 0; i < descendants.length; i++) {
+    var blockConnections = descendants[i].getConnections_(true);
+    for (var j = 0; j < blockConnections.length; j++) {
+      var conn = blockConnections[j];
+      connections.push(conn);
+      set[goog.getUid(conn)] = true;
+    }
+  }
+  Blockly.draggingConnections_ = connections;
+  Blockly.draggingConnectionSet_ = set;
 };
 
 /**
@@ -184,12 +230,58 @@ Blockly.BlockDragger.prototype.dragBlock = function(e, currentDragDeltaXY) {
   var delta = this.pixelsToWorkspaceUnits_(currentDragDeltaXY);
   var newLoc = goog.math.Coordinate.sum(this.startXY_, delta);
 
+  // Keep translation synchronous so large stacks still follow the pointer.
   this.draggingBlock_.moveDuringDrag(newLoc);
-  this.dragIcons_(delta);
 
+  if (this.skipConnectionSearch_) {
+    this.pendingDragDelta_ = delta;
+    this.pendingDragEvent_ = e;
+    if (!this.pendingDragFrame_) {
+      this.pendingDragFrame_ = true;
+      var self = this;
+      requestAnimationFrame(function() {
+        self.pendingDragFrame_ = false;
+        if (!self.draggingBlock_ || !self.pendingDragDelta_) {
+          return;
+        }
+        self.dragIcons_(self.pendingDragDelta_);
+      });
+    }
+    return;
+  }
+
+  if (this.throttleConnectionSearch_) {
+    this.pendingDragDelta_ = delta;
+    this.pendingDragEvent_ = e;
+    if (!this.pendingDragFrame_) {
+      this.pendingDragFrame_ = true;
+      var self = this;
+      requestAnimationFrame(function() {
+        self.pendingDragFrame_ = false;
+        self.flushDragFrame_();
+      });
+    }
+    return;
+  }
+
+  this.flushDragFrame_(delta, e);
+};
+
+/**
+ * Run the expensive per-frame drag side effects.
+ * @param {!goog.math.Coordinate=} opt_delta Workspace delta.
+ * @param {Event=} opt_e The most recent move event.
+ * @private
+ */
+Blockly.BlockDragger.prototype.flushDragFrame_ = function(opt_delta, opt_e) {
+  var delta = opt_delta || this.pendingDragDelta_;
+  var e = opt_e || this.pendingDragEvent_;
+  if (!delta || !e) {
+    return;
+  }
+  this.dragIcons_(delta);
   this.deleteArea_ = this.workspace_.isDeleteArea(e);
   this.draggedConnectionManager_.update(delta, this.deleteArea_);
-
   this.updateCursorDuringBlockDrag_();
 };
 
@@ -201,8 +293,13 @@ Blockly.BlockDragger.prototype.dragBlock = function(e, currentDragDeltaXY) {
  * @package
  */
 Blockly.BlockDragger.prototype.endBlockDrag = function(e, currentDragDeltaXY) {
+  this.pendingDragFrame_ = false;
   // Make sure internal state is fresh.
   this.dragBlock(e, currentDragDeltaXY);
+  if (!this.skipConnectionSearch_) {
+    var delta = this.pixelsToWorkspaceUnits_(currentDragDeltaXY);
+    this.flushDragFrame_(delta, e);
+  }
   this.dragIconData_ = [];
 
   Blockly.BlockSvg.disconnectUiStop_();

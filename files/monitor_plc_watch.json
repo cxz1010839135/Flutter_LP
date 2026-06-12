@@ -7,6 +7,18 @@
     {
       "kind": "D",
       "address": 100
+    },
+    {
+      "kind": "D",
+      "address": 402
+    },
+    {
+      "kind": "Y",
+      "address": 0
+    },
+    {
+      "kind": "Y",
+      "address": 1
     }
   ],
   "autoRefresh": true,

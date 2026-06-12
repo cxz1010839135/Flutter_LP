@@ -3,7 +3,7 @@
 // Run: dart tool/sync_app_version.dart
 
 /// 应用版本名（如 1.5.2），与 [pubspec.yaml] `version:` 冒号前一致。
-const String kAppVersion = '1.5.4';
+const String kAppVersion = '1.6.6';
 
 /// 构建号（如 1），与 [pubspec.yaml] `version:` 加号后一致。
 const String kAppBuildNumber = '1';

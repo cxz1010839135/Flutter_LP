@@ -113,7 +113,7 @@ Blockly.Workspace.prototype.rendered = false;
  * Maximum number of undo events in stack. `0` turns off undo, `Infinity` sets it to unlimited.
  * @type {number}
  */
-Blockly.Workspace.prototype.MAX_UNDO = 1024;
+Blockly.Workspace.prototype.MAX_UNDO = 64;
 
 /**
  * Dispose of this workspace.

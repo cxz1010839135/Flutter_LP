@@ -297,8 +297,8 @@
         alert('未找到文件：' + name + '.xml');
         return;
       }
-      Code.replaceBlocksfromXml(xml);
-      alert('已加载 config/server/' + name + '.xml');
+      Code.appendBlocksfromXml(xml);
+      alert('已追加 config/server/' + name + '.xml');
     } catch (e) {
       alert('加载失败：' + e);
     }

@@ -52,20 +52,6 @@ class ControlModeTile extends StatelessWidget {
   }
 
   BoxDecoration _decoration() {
-    if (_isDistance) {
-      return BoxDecoration(
-        color: selected
-            ? LpRobotColors.primary.withValues(alpha: 0.12)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: LpRobotColors.primary.withValues(alpha: selected ? 1 : 0.8),
-          width: selected ? 2 : 1.2,
-        ),
-        boxShadow: _glow(selected ? 0.28 : 0.2),
-      );
-    }
-
     if (selected) {
       return BoxDecoration(
         color: LpRobotColors.primary,
@@ -108,46 +94,39 @@ class ControlModeTile extends StatelessWidget {
   }
 
   Widget _distanceBody() {
+    final accent = selected ? Colors.white : LpRobotColors.primary;
+    // 选中时橙底 + 白字在部分 Windows 主题下会不可见，数字改用白底橙字。
+    final valueColor = LpRobotColors.primary;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
       child: Column(
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: LpRobotColors.primary,
+              color: accent,
               height: 1.1,
             ),
           ),
           Expanded(
             child: Center(
-              child: TextField(
-                controller: distanceController,
-                textAlign: TextAlign.center,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(r'^-?\d*\.?\d*'),
-                  ),
-                ],
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: LpRobotColors.textDark,
-                  height: 1.1,
-                ),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
-                ),
-                onTap: onTap,
-              ),
+              child: selected
+                  ? Container(
+                      constraints: const BoxConstraints(minWidth: 40),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: _distanceField(valueColor),
+                    )
+                  : _distanceField(LpRobotColors.textDark),
             ),
           ),
           SizedBox(
@@ -156,12 +135,40 @@ class ControlModeTile extends StatelessWidget {
             child: CustomPaint(
               painter: _ModeBracketPainter(
                 scale: bracketScale,
-                color: LpRobotColors.primary,
+                color: accent,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _distanceField(Color textColor) {
+    return TextField(
+      controller: distanceController,
+      textAlign: TextAlign.center,
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
+      ],
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: textColor,
+        height: 1.1,
+      ),
+      cursorColor: textColor,
+      decoration: const InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.zero,
+        border: InputBorder.none,
+        filled: false,
+      ),
+      onTap: onTap,
     );
   }
 }

@@ -18,6 +18,8 @@ import '../core/robot_state.dart';
 import '../network/http_manager.dart';
 import '../features/connect/connect_page.dart';
 import '../features/control/project_catalog.dart';
+import 'ai/lp_blockly_ai_controller.dart';
+import 'ai/lp_blockly_ai_panel.dart';
 import 'lp_blockly_server.dart';
 
 /// 加载 dll 目录下领鹏 Blockly 可视化编程页面
@@ -47,6 +49,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   String _progressMessage = '正在加载…';
   String? _pathHint;
   bool _userProjectInjected = false;
+  LpBlocklyAiController? _aiController;
+  bool _aiPanelOpen = false;
+  Timer? _refreshFallbackTimer;
 
   @override
   void initState() {
@@ -83,13 +88,81 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     if (!_loading) return;
     _setProgress(percent, message);
     if (percent >= 100) {
+      _refreshFallbackTimer?.cancel();
       Future.delayed(const Duration(milliseconds: 400), () async {
         if (!mounted) return;
         setState(() => _loading = false);
         _scheduleWebViewVisibilitySync();
+        _ensureAiController();
+        if (Platform.isAndroid) {
+          final c = _controller;
+          if (c != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              notifyBlocklyWebViewResized(c);
+            });
+          }
+        }
         await _injectUserProjectIfNeeded();
       });
     }
+  }
+
+  void _ensureAiController() {
+    final controller = _controller;
+    if (controller == null) return;
+    if (_aiController != null) return;
+    _aiController = LpBlocklyAiController(webViewController: controller)
+      ..loadConfig();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _refreshBlockly() async {
+    final url = _server?.entryUrl;
+    final controller = _controller;
+    if (url == null || controller == null || _loading || _taskActive) {
+      return;
+    }
+
+    _refreshFallbackTimer?.cancel();
+    setState(() {
+      _loading = true;
+      _aiPanelOpen = false;
+      _progressPercent = 8;
+      _progressMessage = '正在刷新…';
+    });
+    _loadTracker?.reset(reload: true);
+    await setBlocklyWebViewVisible(controller, false);
+    _scheduleWebViewVisibilitySync();
+
+    final base = Uri.parse(url);
+    final refreshUri = base.replace(
+      queryParameters: {
+        ...base.queryParameters,
+        'r': '${DateTime.now().millisecondsSinceEpoch}',
+      },
+    );
+    await controller.loadRequest(refreshUri);
+
+    _refreshFallbackTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted || !_loading) return;
+      debugPrint('Blockly refresh fallback: force complete');
+      _loadTracker?.markJsLoadComplete();
+      _loadTracker?.complete();
+    });
+  }
+
+  void _toggleAiPanel() {
+    if (_showProgressOverlay) {
+      _showMessage('Blockly 加载中，请稍后再打开 AI 助手');
+      return;
+    }
+    _ensureAiController();
+    if (_aiController == null) {
+      _showMessage('AI 助手未就绪', isError: true);
+      return;
+    }
+    setState(() => _aiPanelOpen = !_aiPanelOpen);
+    _scheduleWebViewVisibilitySync();
   }
 
   Future<void> _injectUserProjectIfNeeded() async {
@@ -161,10 +234,13 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         }
       }
 
-      _setProgress(15, '正在启动本地服务…');
+      _setProgress(12, '正在准备 Blockly 资源…');
       final serverDir = await RobotPaths.serverDir();
       final xmlDir = await RobotPaths.xmlLibraryDir();
-      final dllRoot = await resolveDllRoot();
+      final dllRoot = await resolveDllRoot(
+        onBootstrapProgress: (percent, message) => _setProgress(percent, message),
+      );
+      _setProgress(15, '正在启动本地服务…');
       _loadTracker = LpBlocklyLoadTracker(onProgress: _onLoadRequestProgress);
       _loadTracker!.reset();
       final server = LpBlocklyServer(
@@ -179,7 +255,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       }
 
       _setProgress(18, '正在初始化 WebView…');
-      final controller = WebViewController();
+      final controller = createBlocklyWebViewController();
       final bridge = LpBlocklyBridge(
         controller: controller,
         showMessage: _showMessage,
@@ -200,6 +276,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _server = server;
         _controller = controller;
       });
+      _ensureAiController();
       _scheduleWebViewVisibilitySync();
       await _awaitWebViewPlatformReady();
 
@@ -230,9 +307,13 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   /// 等待 [WebViewWidget] 完成首帧挂载（桌面端 WebView2 依赖此步骤）。
   Future<void> _awaitWebViewPlatformReady() async {
     await WidgetsBinding.instance.endOfFrame;
-    if (!Platform.isWindows && !Platform.isLinux) return;
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    await WidgetsBinding.instance.endOfFrame;
+    if (Platform.isWindows || Platform.isLinux) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await WidgetsBinding.instance.endOfFrame;
+    } else if (Platform.isAndroid) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await WidgetsBinding.instance.endOfFrame;
+    }
   }
 
   Future<void> _configureAndLoadWebView({
@@ -277,7 +358,15 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
           onWebResourceError: (error) {
             debugPrint('Blockly WebView error: ${error.description}');
           },
-          onPageFinished: (_) => _loadTracker?.markJsLoadComplete(),
+          onPageFinished: (_) {
+            _loadTracker?.markJsLoadComplete();
+            if (Platform.isAndroid) {
+              final c = controller;
+              Future<void>.delayed(const Duration(milliseconds: 300), () {
+                notifyBlocklyWebViewResized(c);
+              });
+            }
+          },
         ),
       ),
       'WebView 导航',
@@ -391,8 +480,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     }
 
     if (!mounted) return null;
-    return showDialog<String>(
+    return showBlocklyAwareDialog<String>(
       context: context,
+      webViewController: _controller,
       builder: (ctx) => AlertDialog(
         title: Text('从 ${RobotPathLayout.serverDir} 加载'),
         content: SizedBox(
@@ -434,6 +524,8 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
 
   @override
   void dispose() {
+    _refreshFallbackTimer?.cancel();
+    _aiController?.dispose();
     _loadTracker?.dispose();
     _server?.stop();
     super.dispose();
@@ -467,23 +559,19 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
             actions: [
               if (_controller != null)
                 IconButton(
+                  icon: Icon(
+                    _aiPanelOpen
+                        ? Icons.auto_awesome
+                        : Icons.auto_awesome_outlined,
+                  ),
+                  tooltip: 'AI 编程助手',
+                  onPressed: _toggleAiPanel,
+                ),
+              if (_controller != null)
+                IconButton(
                   icon: const Icon(Icons.refresh),
                   tooltip: '刷新',
-                  onPressed: _showProgressOverlay
-                      ? null
-                      : () async {
-                          final url = _server?.entryUrl;
-                          if (url == null || _controller == null) return;
-                          setState(() {
-                            _loading = true;
-                            _progressPercent = 5;
-                            _progressMessage = '正在刷新…';
-                          });
-                          _loadTracker?.reset();
-                          await setBlocklyWebViewVisible(_controller!, false);
-                          await _controller!.loadRequest(Uri.parse(url));
-                          _scheduleWebViewVisibilitySync();
-                        },
+                  onPressed: (_loading || _taskActive) ? null : _refreshBlockly,
                 ),
             ],
           ),
@@ -518,12 +606,33 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       );
     }
 
+    final showAiPanel =
+        _aiPanelOpen && _aiController != null && !_showProgressOverlay;
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        LpBlocklyWebViewHost(
-          controller: _controller!,
-          visible: !_showProgressOverlay,
+        // Windows 原生 WebView 浮在 Flutter 上层，必须用 Row 缩小占位而非 Stack 叠加。
+        Positioned.fill(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: LpBlocklyWebViewHost(
+                  controller: _controller!,
+                  visible: !_showProgressOverlay,
+                ),
+              ),
+              if (showAiPanel)
+                LpBlocklyAiPanel(
+                  controller: _aiController!,
+                  onClose: () {
+                    setState(() => _aiPanelOpen = false);
+                    _scheduleWebViewVisibilitySync();
+                  },
+                ),
+            ],
+          ),
         ),
         if (_showProgressOverlay)
           Positioned.fill(
@@ -570,6 +679,17 @@ class _ErrorPanel extends StatelessWidget {
       return 'Windows 请安装 Microsoft WebView2 运行时（Evergreen）：\n'
           'https://developer.microsoft.com/microsoft-edge/webview2/\n\n'
           '安装后重启应用再试。';
+    }
+    if (Platform.isAndroid) {
+      if (lower.contains('cleartext') ||
+          message.contains('ERR_CLEARTEXT_NOT_PERMITTED')) {
+        return 'Android 禁止加载 http:// 明文页面。\n'
+            '请确认 AndroidManifest 已开启 usesCleartextTraffic，'
+            '并重新安装应用。';
+      }
+      return 'Android 需将 Blockly 打入 APK 并在首次打开时解压。\n'
+          '开发/打包前请执行：dart run tool/sync_blockly_assets.dart\n'
+          '然后重新 flutter run 或 打包Android安装包.bat';
     }
     return '请确认 dll 目录位于工程根目录：\n'
         '${LpBlocklyConfig.dllRelativePath}/\n'

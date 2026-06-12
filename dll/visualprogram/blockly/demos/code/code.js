@@ -278,7 +278,50 @@ Code.LANG = Code.getLang();
  */
 Code.TABS_ = ['blocks', 'csharp', 'llrobot', 'javascript', 'php', 'python', 'dart', 'lua', 'xml'];
 
+/**
+ * 会触发 workspaceToCode / workspaceToDom 的预览 Tab（不含 blocks）。
+ * @private
+ */
+Code.PREVIEW_TABS_ = ['csharp', 'llrobot', 'javascript', 'php', 'python', 'dart', 'lua', 'xml'];
+
+/** 工作区自上次预览刷新后是否有改动。 */
+Code.previewStale_ = true;
+
 Code.selected = 'blocks';//Initalize the selected tabs
+
+/**
+ * 当前选中 Tab 是否需要代码/ XML 预览。
+ * @return {boolean}
+ * @private
+ */
+Code.needsPreviewRefresh_ = function () {
+  return Code.PREVIEW_TABS_.indexOf(Code.selected) !== -1;
+};
+
+/**
+ * 轻量 change 监听：仅标记预览过期，不在拖动/编辑时全量 workspaceToCode。
+ * @param {!Blockly.Events.Abstract} event Workspace change event.
+ * @private
+ */
+Code.onWorkspaceChange_ = function (event) {
+  if (!event || event.type === Blockly.Events.UI) {
+    return;
+  }
+  if (!Blockly.Events.isEnabled()) {
+    return;
+  }
+  if (Code.workspace && Code.workspace.isDragging()) {
+    return;
+  }
+  Code.previewStale_ = true;
+};
+
+/**
+ * 标记预览需要刷新（加载 XML 等批量操作后调用）。
+ */
+Code.invalidatePreview = function () {
+  Code.previewStale_ = true;
+};
 
 
 
@@ -325,7 +368,7 @@ Code.tabClick = function (clickedName) {
   // Show the selected pane.
   document.getElementById('content_' + clickedName).style.visibility =
     'visible';
-  Code.renderContent();
+  Code.renderContent(true);
   if (clickedName == 'blocks') {
     Code.workspace.setVisible(true);
   }
@@ -336,8 +379,15 @@ Code.tabClick = function (clickedName) {
  *
 使用从块生成的内容填充当前选定的窗格。
  * Populate the currently selected pane with content generated from the blocks.
+ * @param {boolean=} opt_force 为 true 时强制生成（切换 Tab）；否则仅在预览过期时生成。
  */
-Code.renderContent = function () {
+Code.renderContent = function (opt_force) {
+  if (!Code.needsPreviewRefresh_()) {
+    return;
+  }
+  if (!opt_force && !Code.previewStale_) {
+    return;
+  }
   var content = document.getElementById('content_' + Code.selected);
   // Initialize the pane.
   if (content.id == 'content_xml') {
@@ -420,6 +470,7 @@ Code.renderContent = function () {
       content.innerHTML = code;
     }
   }
+  Code.previewStale_ = false;
 };
 
 /**
@@ -487,18 +538,23 @@ Code.init = function () {
         spacing: 0,///////////////////////// 0 no grid
         length: 1,
         colour: '#ccc',
-        snap: true
+        snap: false
       },
       media: '../../media/',//资源路径
       rtl: rtl,
       toolbox: toolboxXml,
+      trashcan: false,
+      sounds: false,
+      scrollbars: true,
       zoom:
       {
         controls: true,
-        wheel: true
+        wheel: true,
+        startScale: 0.85
       }
     });
 
+  Code.workspace.addChangeListener(Code.onWorkspaceChange_);
 
   // Add to reserved word list: Local variables in execution environment (runJS)
   // and the infinite loop detection function.
@@ -668,6 +724,35 @@ Code.init = function () {
   //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
   SearchDownButton.title = "上一个";
 
+  var SearchResultsPanel = document.createElement('div');
+  SearchResultsPanel.className = 'SearchResultsPanel';
+  SearchResultsPanel.id = 'searchResultsPanel';
+  SearchResultsPanel.style.top = (IconTop * 0.6 + IconHeight * 1.9 + 4) + 'px';
+  SearchResultsPanel.style.right = (8.3 * IconHeight) + 'px';
+  SearchResultsPanel.style.width = (IconHeight * 14) + 'px';
+  var SearchResultsHeader = document.createElement('div');
+  SearchResultsHeader.className = 'SearchResultsHeader';
+  SearchResultsHeader.id = 'searchResultsHeader';
+  var SearchResultsTitle = document.createElement('span');
+  SearchResultsTitle.className = 'SearchResultsTitle';
+  SearchResultsTitle.id = 'searchResultsTitle';
+  var SearchResultsCollapseBtn = document.createElement('button');
+  SearchResultsCollapseBtn.className = 'SearchResultsCollapseBtn';
+  SearchResultsCollapseBtn.type = 'button';
+  SearchResultsCollapseBtn.title = '收起';
+  SearchResultsCollapseBtn.textContent = '▲';
+  SearchResultsCollapseBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    Code.hideSearchResultsPanel();
+  }, true);
+  SearchResultsHeader.appendChild(SearchResultsTitle);
+  SearchResultsHeader.appendChild(SearchResultsCollapseBtn);
+  var SearchResultsList = document.createElement('div');
+  SearchResultsList.className = 'SearchResultsList';
+  SearchResultsList.id = 'searchResultsList';
+  SearchResultsPanel.appendChild(SearchResultsHeader);
+  SearchResultsPanel.appendChild(SearchResultsList);
+  Code.searchResultsPanel = SearchResultsPanel;
 
   //添加鼠标单击事件
   SaveDocDiv.addEventListener('click', Code.SaveDoc, true);
@@ -678,11 +763,17 @@ Code.init = function () {
   SearchUpButton.addEventListener('click', Code.SearchDataUp, true);
   SearchDownButton.addEventListener('click', Code.SearchDataDown, true);
   SearchGrup.addEventListener('click', Code.SearchGrup_none, true);
+  SearchInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      Code.SearchData();
+    }
+  }, true);
 
   //添加到DIV元素中
   // 挂到覆盖层上，确保在 SVG 之上且可交互
   [Searchbg, SearchInput, SaveDocDiv, NewDocDiv, BlueToothDiv, HelperDiv,
-    SearchButton, SearchGrup, SearchDownButton, SearchUpButton].forEach(function(el) {
+    SearchButton, SearchGrup, SearchDownButton, SearchUpButton,
+    SearchResultsPanel].forEach(function(el) {
     if (!el) return;
     el.style.pointerEvents = 'auto';
     uiHost.appendChild(el);
@@ -959,6 +1050,249 @@ Code.BlueTooth = function () {
 };
 
 
+Code.escapeHtml_ = function (text) {
+  return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+};
+
+/** 高亮关键字片段（用于结果列表）。 */
+Code.highlightKeywordInLabel_ = function (text, keyword) {
+  var safe = Code.escapeHtml_(text);
+  if (!keyword) {
+    return safe;
+  }
+  var registerKeyword = Blockly.Xml.parseRegisterSearchKeyword_(keyword);
+  if (registerKeyword) {
+    var parts = registerKeyword.match(Blockly.Xml.REGISTER_KEYWORD_RE_);
+    if (parts) {
+      var prefix = parts[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var num = parts[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var re = new RegExp('(' + prefix + '\\s*' + num + '(?!\\d))', 'gi');
+      return safe.replace(re, '<span class="match">$1</span>');
+    }
+  }
+  var compact = keyword.replace(/\s+/g, '');
+  if (!compact) {
+    return safe;
+  }
+  var re = new RegExp('(' + compact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return safe.replace(re, '<span class="match">$1</span>');
+};
+
+/** 列表展示用块：变量读取等子块提升到赋值/比较表达式。 */
+Code.getSearchResultDisplayBlock_ = function (block) {
+  if (!block) {
+    return block;
+  }
+  var expressionTypes = {
+    'math_variable': true,
+    'logic_compare': true,
+    'logic_operation': true,
+    'logic_boolean': true
+  };
+  if (expressionTypes[block.type]) {
+    return block;
+  }
+  var isVariableLeaf = block.type === 'thread_get_data' ||
+      block.type.indexOf('thread_get_') === 0 ||
+      block.type === 'math_number';
+  if (!isVariableLeaf) {
+    return block;
+  }
+  var cur = block;
+  var parent = cur.getParent();
+  while (parent) {
+    if (parent.getInputWithBlock(cur)) {
+      if (expressionTypes[parent.type]) {
+        return parent;
+      }
+      cur = parent;
+      parent = cur.getParent();
+    } else {
+      break;
+    }
+  }
+  return block;
+};
+
+/** 匹配块是否位于「如果/循环」等判断条件输入槽内（非执行体）。 */
+Code.isSearchResultInCondition_ = function (block) {
+  if (!block) {
+    return false;
+  }
+  var cur = block;
+  var parent = cur.getParent();
+  while (parent) {
+    var input = parent.getInputWithBlock(cur);
+    if (input) {
+      if (/^IF\d+$/.test(input.name)) {
+        return true;
+      }
+      if ((parent.type === 'controls_whileUntil' ||
+          parent.type === 'controls_repeat') &&
+          input.name === 'BOOL') {
+        return true;
+      }
+      cur = parent;
+      parent = cur.getParent();
+    } else {
+      break;
+    }
+  }
+  return false;
+};
+
+/** 单条搜索结果的显示文案。 */
+Code.getSearchResultLabel_ = function (block, index) {
+  var displayBlock = Code.getSearchResultDisplayBlock_(block);
+  var text = '';
+  if (displayBlock && displayBlock.toString) {
+    text = goog.string.trim(displayBlock.toString(56));
+  }
+  if (!text) {
+    var tokens = Blockly.Xml.getBlockSearchTokens_(displayBlock || block);
+    text = goog.string.trim(tokens.join(' '));
+  }
+  text = text.replace(/\s+/g, ' ');
+  if (Code.isSearchResultInCondition_(displayBlock || block)) {
+    text = '【判断】' + text;
+  }
+  if (text.length > 52) {
+    text = text.substring(0, 49) + '...';
+  }
+  var prefix = '';
+  var root = block.getRootBlock();
+  if (root && (root.type === 'procedures_defnoreturn' ||
+      root.type === 'procedures_defreturn')) {
+    var procName = root.getFieldValue('NAME');
+    if (procName) {
+      prefix = procName + ' · ';
+    }
+  } else if (root && root.type.indexOf('procedures_call') >= 0) {
+    var callName = root.getFieldValue('NAME');
+    if (callName) {
+      prefix = callName + ' · ';
+    }
+  }
+  return (index + 1) + '. ' + prefix + text;
+};
+
+Code.hideSearchResultsPanel = function () {
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  if (panel) {
+    panel.style.display = 'none';
+  }
+};
+
+/** 渲染可点击的搜索结果简表。 */
+Code.renderSearchResultsPanel = function (keyword) {
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  var title = document.getElementById('searchResultsTitle');
+  var list = document.getElementById('searchResultsList');
+  if (!panel || !title || !list) {
+    return;
+  }
+  var count = Code.workspace.search_.length;
+  list.innerHTML = '';
+  if (count === 0) {
+    title.textContent = '未找到「' + keyword + '」';
+    var empty = document.createElement('div');
+    empty.className = 'SearchResultsEmpty';
+    empty.textContent = '请尝试其他关键字';
+    list.appendChild(empty);
+    panel.style.display = 'flex';
+    return;
+  }
+  title.textContent = '共 ' + count + ' 处「' + keyword + '」，点击定位';
+  for (var i = 0; i < count; i++) {
+  (function (idx) {
+      var block = Code.workspace.search_blocks_ &&
+          Code.workspace.search_blocks_[idx];
+      var item = document.createElement('div');
+      item.className = 'SearchResultsItem' +
+          (idx === Code.workspace.search_index ? ' active' : '');
+      item.title = Code.getSearchResultLabel_(block, idx);
+      item.innerHTML = Code.highlightKeywordInLabel_(
+          Code.getSearchResultLabel_(block, idx), keyword);
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        Code.gotoSearchResult(idx);
+      }, true);
+      list.appendChild(item);
+    })(i);
+  }
+  panel.style.display = 'flex';
+  var active = list.querySelector('.SearchResultsItem.active');
+  if (active && active.scrollIntoView) {
+    active.scrollIntoView({block: 'nearest'});
+  }
+};
+
+Code.updateSearchResultsActiveItem_ = function () {
+  var list = document.getElementById('searchResultsList');
+  if (!list) {
+    return;
+  }
+  var items = list.getElementsByClassName('SearchResultsItem');
+  for (var i = 0; i < items.length; i++) {
+    if (i === Code.workspace.search_index) {
+      items[i].className = 'SearchResultsItem active';
+      if (items[i].scrollIntoView) {
+        items[i].scrollIntoView({block: 'nearest'});
+      }
+    } else {
+      items[i].className = 'SearchResultsItem';
+    }
+  }
+};
+
+/** 跳转到第 index 个搜索结果并高亮对应块。 */
+Code.gotoSearchResult = function (index) {
+  if (!Code.workspace.search_ || !Code.workspace.search_.length) {
+    return;
+  }
+  var len = Code.workspace.search_.length;
+  if (index < 0 || index >= len) {
+    return;
+  }
+  Code.workspace.search_index = index;
+  var idx = Code.workspace.search_head_index[index];
+  var blocks = Code.workspace.getTopBlocks(true);
+  var selBlock = Code.workspace.search_blocks_ &&
+      Code.workspace.search_blocks_[index] ?
+      Code.workspace.search_blocks_[index] : blocks[idx];
+  Code.expandBlocksForSearch(selBlock);
+  blocks[idx].bringToFront();
+  Code.workspace.setScale(1);
+  selBlock.select();
+  Code.workspace.scrollCenter_xy(
+      Code.workspace.search_[index][0] - Code.workspace.head_xy[0],
+      Code.workspace.search_[index][1] - Code.workspace.head_xy[1]);
+  Code.updateSearchResultsActiveItem_();
+};
+
+/** 跳转到搜索结果前展开目标块及其所有折叠的祖先块。 */
+Code.expandBlocksForSearch = function (selBlock) {
+  if (!selBlock) {
+    return;
+  }
+  var parent = selBlock.getSurroundParent();
+  while (parent) {
+    if (parent.isCollapsed()) {
+      parent.setCollapsed(false);
+    }
+    parent = parent.getSurroundParent();
+  }
+  if (selBlock.isCollapsed()) {
+    selBlock.setCollapsed(false);
+  }
+};
+
 Code.SearchData = function () {
   var opt_noId = false;
   Code.workspace.search_ = [];
@@ -973,22 +1307,15 @@ Code.SearchData = function () {
   var key_word = document.getElementById('searchInput').value;
   var blocks = Code.workspace.getTopBlocks(true);
   for (var i = 0, block; block = blocks[i]; i++) {
+    Code.workspace.code_serch = '';
     Blockly.Xml.search_MD_XY(block, opt_noId, key_word);
 
     Code.workspace.search_head_index_num++;
   }
-  //如果搜索到有数据才会跳转到
+  Blockly.Xml.deduplicateSearchMatches_(Code.workspace);
+  Code.renderSearchResultsPanel(key_word);
   if (Code.workspace.search_.length > 0) {
-    UILLRobot.alert("搜索结果", "一共搜索到：" + Code.workspace.search_.length + "个" + key_word);
-    var idx = Code.workspace.search_head_index[0];
-    blocks[idx].setCollapsed(false); // 展开式折叠或者展开
-    blocks[idx].bringToFront();
-    Code.workspace.setScale(1);
-    var selBlock = Code.workspace.search_blocks_ && Code.workspace.search_blocks_[0] ? Code.workspace.search_blocks_[0] : blocks[idx];
-    selBlock.select();
-    Code.workspace.scrollCenter_xy(Code.workspace.search_[0][0] - Code.workspace.head_xy[0], Code.workspace.search_[0][1] - Code.workspace.head_xy[1]);
-  } else {
-    UILLRobot.alert("搜索结果", "没有找到：" + key_word);
+    Code.gotoSearchResult(0);
   }
 
 };
@@ -1019,6 +1346,7 @@ Code.SearchGrup_none = function () {
     SearchButtonObj.style.display = 'none';
     SearchDownButtonObj.style.display = 'none';
     SearchUpButtonObj.style.display = 'none';
+    Code.hideSearchResultsPanel();
     Code.workspace.hid_group = true;
   }
 
@@ -1044,45 +1372,21 @@ Code.SearchGrup_block = function () {
 };
 
 Code.SearchDataUp = function () {
-  //如果搜索到有数据才会跳转到
   if (Code.workspace.search_.length > 0) {
     var len = Code.workspace.search_.length;
-    Code.workspace.search_index = (Code.workspace.search_index + 1) % len;
-
-    var idx = Code.workspace.search_head_index[Code.workspace.search_index];
-    var blocks = Code.workspace.getTopBlocks(true);
-    blocks[idx].setCollapsed(false);
-    blocks[idx].bringToFront();
-    Code.workspace.setScale(1);
-    var selBlock = Code.workspace.search_blocks_ && Code.workspace.search_blocks_[Code.workspace.search_index] ? Code.workspace.search_blocks_[Code.workspace.search_index] : blocks[idx];
-    selBlock.select();
-    Code.workspace.scrollCenter_xy(Code.workspace.search_[Code.workspace.search_index][0] - Code.workspace.head_xy[0], Code.workspace.search_[Code.workspace.search_index][1] - Code.workspace.head_xy[1]);
-  } else {
-    UILLRobot.alert("搜索结果", "没有找到：" + key_word);
-    //alert("没有找到："+key_word);
+    var next = (Code.workspace.search_index + 1) % len;
+    Code.gotoSearchResult(next);
   }
 };
 
 Code.SearchDataDown = function () {
-  //如果搜索到有数据才会跳转到
   if (Code.workspace.search_.length > 0) {
-    Code.workspace.search_index = Code.workspace.search_index - 1;
-    if (Code.workspace.search_index < 0) Code.workspace.search_index = Code.workspace.search_.length - 1;
-
-    var idx = Code.workspace.search_head_index[Code.workspace.search_index];
-    var blocks = Code.workspace.getTopBlocks(true);
-    blocks[idx].setCollapsed(false);
-    blocks[idx].bringToFront();
-    Code.workspace.setScale(1);
-    var selBlock = Code.workspace.search_blocks_ && Code.workspace.search_blocks_[Code.workspace.search_index] ? Code.workspace.search_blocks_[Code.workspace.search_index] : blocks[idx];
-    selBlock.select();
-    Code.workspace.scrollCenter_xy(Code.workspace.search_[Code.workspace.search_index][0] - Code.workspace.head_xy[0], Code.workspace.search_[Code.workspace.search_index][1] - Code.workspace.head_xy[1]);
-  } else {
-    UILLRobot.alert("搜索结果", "没有找到：" + key_word);
-    //alert("没有找到："+key_word);
+    var prev = Code.workspace.search_index - 1;
+    if (prev < 0) {
+      prev = Code.workspace.search_.length - 1;
+    }
+    Code.gotoSearchResult(prev);
   }
-
-
 };
 
 /**
@@ -1090,7 +1394,34 @@ Code.SearchDataDown = function () {
  */
 Code.Helper = function () {
 
- UILLRobot.alert("版本信息","版本号1.2.1 \r\n1.0.4:添加了圆弧指令，优化了UI界面 \r\n1.0.5:添加了电子齿轮指令 \r\n1.0.6:优化了圆弧运动的块表达 \r\n1.0.8:更新了地址偏移，搜索优化\r\n1.1.0修复了多重搜索\r\n1.1.1修复了点子齿轮G代码解析分子分母负数有()\r\n1.1.2改为精确搜索，并且添加了母块高亮\r\n1.1.3添加复制粘贴模块\r\n1.1.4修复和或运算保存异常不提示\r\n1.1.5添加小数点操作\r\n1.1.6优化函数折叠不能搜索功能\r\n1.1.7优化UI、添加批量操作功能块\r\n1.1.8优化中文搜索以及搜索高亮\r\n1.2.0优化注释显示更加明显r\n1.2.1向下兼容普通块也能展开但是不能折叠");
+  UILLRobot.alert(
+      '版本信息',
+      '版本号1.6.5\r\n' +
+      '1.6.5:Android Blockly 资源解压与 WebView 全屏修复；Windows 打包脚本修复\r\n' +
+      '1.6.4:预览 Tab 仅在切换或编译时生成代码，拖动不再全量 workspaceToCode\r\n' +
+      '1.6.3:优化超大嵌套块（数千块）拖动卡顿\r\n' +
+      '1.6.2:修复搜索去重误删相邻语句；增强 D400/中文块名匹配\r\n' +
+      '1.6.1:搜索结果显示可点击简表，点击或上下键快速定位\r\n' +
+      '1.6.0:修复展开块内变量搜索（D0/S0 等 value 子块字段合并）；折叠与展开均可正确统计个数\r\n' +
+      '1.5.4:Flutter版—控制器无程序或拉取失败可进入Blockly，WebView加载修复\r\n' +
+      '1.3.1:修复折叠块内无法搜索；跳转时自动展开折叠祖先块\r\n' +
+      '1.3.0:普通块支持折叠展开；空白处折叠仅函数块、展开全部嵌套块\r\n' +
+      '1.2.2:修复加载工程取消后仍弹出文件列表\r\n' +
+      '1.2.1:向下兼容普通块也能展开但是不能折叠\r\n' +
+      '1.2.0:优化注释显示更加明显\r\n' +
+      '1.1.8:优化中文搜索以及搜索高亮\r\n' +
+      '1.1.7:优化UI、添加批量操作功能块\r\n' +
+      '1.1.6:优化函数折叠不能搜索功能\r\n' +
+      '1.1.5:添加小数点操作\r\n' +
+      '1.1.4:修复和或运算保存异常不提示\r\n' +
+      '1.1.3:添加复制粘贴模块\r\n' +
+      '1.1.2:改为精确搜索，并且添加了母块高亮\r\n' +
+      '1.1.1:修复了电子齿轮G代码解析分子分母负数有()\r\n' +
+      '1.1.0:修复了多重搜索\r\n' +
+      '1.0.8:更新了地址偏移，搜索优化\r\n' +
+      '1.0.6:优化了圆弧运动的块表达\r\n' +
+      '1.0.5:添加了电子齿轮指令\r\n' +
+      '1.0.4:添加了圆弧指令，优化了UI界面');
 
   // Code.saveXmlFile("motion");
 };
@@ -1258,52 +1589,56 @@ Code.replaceBlocksfromXml = function (blocksXml) {
     return false;
   }
 
-  var parser = new DOMParser();
-  var xmlDoc = parser.parseFromString(blocksXml, 'text/xml');
-  // 查找要修改的标签
-  var blocks = xmlDoc.getElementsByTagName('field'); // 获取第一个child元素
+  // 仅旧版 XML（Idx 等为 field 而非 value/shadow）才走 DOM 迁移，避免大工程重复解析。
+  var needsFieldMigration = /<field name="(Idx|Variable_Idx|Variable_Value)">/.test(blocksXml);
+  if (needsFieldMigration) {
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(blocksXml, 'text/xml');
+    var blocks = xmlDoc.getElementsByTagName('field');
 
-  for (var i = 0; i < blocks.length; i++) {
-    var block = blocks[i];
-
-    // 查找block中的 <field name="Idx"> 元素
-    var idxField = block.querySelector('field[name="Idx"]');
-    var field_name = block.getAttribute('name');
-    // 如果找到了 <field name="Idx">，进行替换
-    //    if (idxField) {
-    if (field_name == 'Idx' || field_name == 'Variable_Idx' || field_name == 'Variable_Value') {
-      var textNode = block.firstChild;
-      var fieldValue = textNode.nodeType === Node.TEXT_NODE ? textNode.textContent : null;
-      //alert('1111111111111'+block.getAttribute('name')+"num:"+fieldValue+"====="+idxField);
-      // 创建新的 <value> 元素
-      var valueElement = document.createElement('value');
-      valueElement.setAttribute('name', block.getAttribute('name'));
-      // 创建新的 <shadow> 元素
-      var shadowElement = document.createElement('shadow');
-      shadowElement.setAttribute('type', 'math_number');
-      shadowElement.setAttribute('id', ',b^^jksa.BVQjcbm/UJu');
-      // 创建新的 <field> 元素，名字为 "NUM"，值为原 <field name="Idx"> 的值
-      var newFieldElement = document.createElement('field');
-      newFieldElement.setAttribute('name', 'NUM');
-      newFieldElement.appendChild(document.createTextNode(fieldValue));
-      // 将新的 <field> 元素添加到 <shadow> 中，然后将 <shadow> 添加到 <value> 中
-      shadowElement.appendChild(newFieldElement);
-      valueElement.appendChild(shadowElement);
-      //       // 将新的 <value> 元素插入到 <block> 中，替换掉原来的 <field name="Idx"> 元素
-      block.parentNode.replaceChild(valueElement, block);
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      var field_name = block.getAttribute('name');
+      if (field_name == 'Idx' || field_name == 'Variable_Idx' || field_name == 'Variable_Value') {
+        var textNode = block.firstChild;
+        var fieldValue = textNode.nodeType === Node.TEXT_NODE ? textNode.textContent : null;
+        var valueElement = document.createElement('value');
+        valueElement.setAttribute('name', block.getAttribute('name'));
+        var shadowElement = document.createElement('shadow');
+        shadowElement.setAttribute('type', 'math_number');
+        shadowElement.setAttribute('id', ',b^^jksa.BVQjcbm/UJu');
+        var newFieldElement = document.createElement('field');
+        newFieldElement.setAttribute('name', 'NUM');
+        newFieldElement.appendChild(document.createTextNode(fieldValue));
+        shadowElement.appendChild(newFieldElement);
+        valueElement.appendChild(shadowElement);
+        block.parentNode.replaceChild(valueElement, block);
+      }
     }
+    var serializer = new XMLSerializer();
+    xmlDom = Blockly.Xml.textToDom(serializer.serializeToString(xmlDoc));
   }
-  // 将修改后的XML转换回字符串
-  var serializer = new XMLSerializer();
-  var xmlString = serializer.serializeToString(xmlDoc);
 
-
-  xmlDom = Blockly.Xml.textToDom(xmlString);
   var sucess = false;
   if (xmlDom) {
-    sucess = Code.loadBlocksfromXmlDom(xmlDom);
+    sucess = Code.loadBlocksfromXmlDom(xmlDom, true);
   }
   return sucess;
+};
+
+/**
+ * Append blocks from XML without clearing the workspace (AI 追加模式等).
+ * @param {!string} blocksXml
+ * @return {!boolean}
+ */
+Code.appendBlocksfromXml = function (blocksXml) {
+  var xmlDom = null;
+  try {
+    xmlDom = Blockly.Xml.textToDom(blocksXml);
+  } catch (e) {
+    return false;
+  }
+  return Code.loadBlocksfromXmlDom(xmlDom, false);
 };
 
 /**
@@ -1311,12 +1646,22 @@ Code.replaceBlocksfromXml = function (blocksXml) {
  * @param {!string} blocksXmlDom String of XML DOM code for the blocks.
  * @return {!boolean} Indicates if the XML into blocks parse was successful.
  */
-Code.loadBlocksfromXmlDom = function (blocksXmlDom) {
+Code.loadBlocksfromXmlDom = function (blocksXmlDom, opt_clear) {
   try {
-    Blockly.Xml.domToWorkspace(blocksXmlDom, Code.workspace);
+    if (opt_clear && Code.workspace) {
+      Code.workspace.clear();
+    }
+    Blockly.Events.disable();
+    try {
+      Blockly.Xml.domToWorkspace(blocksXmlDom, Code.workspace);
+    } finally {
+      Blockly.Events.enable();
+      Blockly.svgResize(Code.workspace);
+    }
   } catch (e) {
     return false;
   }
+  Code.invalidatePreview();
   return true;
 };
 

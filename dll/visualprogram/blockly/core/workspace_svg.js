@@ -1219,56 +1219,51 @@ Blockly.WorkspaceSvg.prototype.showContextMenu_ = function(e) {
   }
 
   // Add a little animation to collapsing and expanding.
-  // 普通块只能展开不能折叠；自定义块可折叠可展开。展开全部时展开所有块，折叠全部时只折叠自定义块。
+  // 空白处：折叠全部仅作用于函数块；展开全部作用于工作区内所有已折叠块（含嵌套块）。
   var DELAY = 10;
   if (this.options.collapse) {
-    var hasCollapsedBlocks = false;
-    var hasExpandedBlocks = false;
+    var isFunctionBlock = function(block) {
+      return block.type == 'procedures_defnoreturn' ||
+          block.type == 'procedures_defreturn';
+    };
+
+    var workspaceBlocks = [];
     for (var i = 0; i < topBlocks.length; i++) {
-      var block = topBlocks[i];
-      while (block) {
-        if (block.isCollapsed()) {
-          hasCollapsedBlocks = true;  // 任意块已折叠则显示「展开块」
-        } else {
-          var isCustomBlock = block.type == 'procedures_defnoreturn' ||
-                              block.type == 'procedures_defreturn';
-          if (isCustomBlock) {
-            hasExpandedBlocks = true;  // 仅统计自定义块是否已展开，用于「折叠块」
-          }
-        }
-        block = block.getNextBlock();
+      workspaceBlocks.push.apply(
+          workspaceBlocks, topBlocks[i].getDescendants());
+    }
+
+    var hasCollapsedBlocks = false;
+    var hasExpandedFunctionBlocks = false;
+    for (var j = 0; j < workspaceBlocks.length; j++) {
+      var wsBlock = workspaceBlocks[j];
+      if (wsBlock.isCollapsed()) {
+        hasCollapsedBlocks = true;
+      } else if (isFunctionBlock(wsBlock)) {
+        hasExpandedFunctionBlocks = true;
       }
     }
 
-    /**
-     * 展开全部：展开所有已折叠的块（含普通块，向下兼容）
-     * 折叠全部：仅折叠自定义块（procedures类型）
-     */
     var toggleOption = function(shouldCollapse) {
       var ms = 0;
-      for (var i = 0; i < topBlocks.length; i++) {
-        var block = topBlocks[i];
-        while (block) {
-          if (shouldCollapse) {
-            var isCustomBlock = block.type == 'procedures_defnoreturn' ||
-                                block.type == 'procedures_defreturn';
-            if (isCustomBlock) {
-              setTimeout(block.setCollapsed.bind(block, true), ms);
-              ms += DELAY;
-            }
-          } else {
-            if (block.isCollapsed()) {
-              setTimeout(block.setCollapsed.bind(block, false), ms);
-              ms += DELAY;
-            }
+      for (var k = 0; k < workspaceBlocks.length; k++) {
+        var target = workspaceBlocks[k];
+        if (shouldCollapse) {
+          if (!target.isCollapsed() && isFunctionBlock(target)) {
+            setTimeout(target.setCollapsed.bind(target, true), ms);
+            ms += DELAY;
           }
-          block = block.getNextBlock();
+        } else {
+          if (target.isCollapsed()) {
+            setTimeout(target.setCollapsed.bind(target, false), ms);
+            ms += DELAY;
+          }
         }
       }
     };
 
     // Option to collapse top blocks.
-    var collapseOption = {enabled: hasExpandedBlocks};
+    var collapseOption = {enabled: hasExpandedFunctionBlocks};
     collapseOption.text = Blockly.Msg.COLLAPSE_ALL;
     collapseOption.callback = function() {
       toggleOption(true);

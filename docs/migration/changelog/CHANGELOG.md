@@ -7,6 +7,45 @@
 
 ---
 
+## [1.6.5] - 2026-06-10
+
+**类型**：Android Blockly 可用性 + Windows 打包修复
+
+### 新增
+
+- **Android Blockly 资源**：`dll/visualprogram` 打成 `assets/blockly/visualprogram.zip`，首次进入编程页解压到应用数据目录
+- **构建脚本**：`tool/sync_blockly_assets.dart`；Android Gradle `preBuild` / `android.ps1` / `windows.ps1` 构建前自动打包
+
+### 修复
+
+- **Android 白屏/红屏**：`usesCleartextTraffic` 允许本地 `http://127.0.0.1` shelf 服务；WebView 改用 Virtual Display 全屏渲染
+- **Windows 打包 bat**：`打包Windows安装包.bat` 改为 ASCII，避免 GBK cmd 把中文注释解析成乱码命令
+- **windows.ps1**：修复换行损坏导致 `$ProjectRoot` 等变量未赋值；`Invoke-ExternalCommand` 避免 Flutter stderr 中断构建
+
+### 优化
+
+- 打包前默认 `PUB_HOSTED_URL=pub.flutter-io.cn`（公司 DNS 屏蔽 pub.dev 时仍可 `flutter pub get` / build）
+
+详情见 [`2026-06-10.md`](./2026-06-10.md)。
+
+---
+
+## [1.6.0] - 2026-06-09
+
+**类型**：Blockly 搜索与折叠改版
+
+### 修复
+
+- **展开块搜索**：`math_variable` 等块的下标在 value 子块（如 `0`）中时，展开状态可正确搜到 `D0`、`S0` 等关键字，匹配个数与画布一致
+- **折叠块搜索**：折叠摘要与展开子块均纳入搜索；跳转前自动展开折叠祖先块
+
+### 优化
+
+- 单块右键支持折叠/展开；空白处右键「折叠」仅函数块、「展开」展开全部嵌套块
+- Windows 加载工程取消文件对话框后不再弹出备选列表
+
+---
+
 ## [1.5.4] - 2026-06-09
 
 **类型**：Blockly 在线同步容错 + Windows WebView 初始化修复
