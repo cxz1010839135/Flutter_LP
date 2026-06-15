@@ -145,6 +145,7 @@ class _StatusRow extends StatelessWidget {
         _FootStatus(
           label: '电机报警：',
           value: alarmText,
+          maxLines: 2,
           valueColor: online && !motorAlarm
               ? LpRobotColors.liveValue
               : online
@@ -161,11 +162,13 @@ class _FootStatus extends StatelessWidget {
     required this.label,
     required this.value,
     required this.valueColor,
+    this.maxLines = 1,
   });
 
   final String label;
   final String value;
   final Color valueColor;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +185,7 @@ class _FootStatus extends StatelessWidget {
         Flexible(
           child: Text(
             value,
-            maxLines: 1,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 13,

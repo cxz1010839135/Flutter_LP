@@ -129,12 +129,12 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Expanded(
-                    flex: 5,
+                    flex: 18,
                     child: _CenterDiagram(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    flex: 4,
+                    flex: 7,
                     child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -237,6 +237,7 @@ class _CenterDiagram extends StatelessWidget {
                   child: Image.asset(
                     asset,
                     fit: BoxFit.contain,
+                    alignment: Alignment.center,
                     filterQuality: FilterQuality.medium,
                     errorBuilder: (context, error, stackTrace) {
                       return Center(

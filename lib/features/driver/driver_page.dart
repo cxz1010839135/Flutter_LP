@@ -7,9 +7,9 @@ import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
-import '../../network/http_manager.dart';
 import 'driver_params_model.dart';
 import 'driver_params_service.dart';
+import 'driver_tech_mode_gate.dart';
 import 'widgets/driver_params_panel.dart';
 import 'widgets/driver_status_bar.dart';
 import 'widgets/driver_waveform_panel.dart';
@@ -31,6 +31,7 @@ class _DriverPageState extends State<DriverPage>
   late final TabController _tabController;
   Timer? _pollTimer;
   bool _busy = false;
+  bool _exiting = false;
   bool _waveLoading = false;
   bool _pendingParamsRead = false;
 
@@ -63,7 +64,10 @@ class _DriverPageState extends State<DriverPage>
     _initAxisRows();
     _startPolling();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _readDriverParams();
+      if (!mounted) return;
+      if (!DriverTechModeGate.instance.sessionActive) return;
+      if (DriverTechModeGate.instance.transitionBusy) return;
+      _readDriverParams();
     });
   }
 
@@ -80,7 +84,8 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _pollAxisStatus() async {
-    if (!RobotState.instance.isConnected || _busy) return;
+    if (!RobotState.instance.isConnected || _busy || _exiting) return;
+    if (DriverTechModeGate.instance.transitionBusy) return;
     try {
       final status = await _service.pollAxisStatus(_curAxis);
       if (!mounted) return;
@@ -140,10 +145,36 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _exitPage() async {
+    if (_exiting) return;
+    _exiting = true;
+    _pollTimer?.cancel();
+    setState(() => _busy = true);
     try {
-      await HttpManager.instance.robotTechModeOnOff(modeState: 0);
-    } catch (_) {}
-    if (mounted) Navigator.of(context).pop();
+      await DriverTechModeGate.instance.exit();
+    } catch (e) {
+      LpStatusLog.instance.warning('退出调试模式失败：$e');
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('提示'),
+            content: Text('$e'),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      _exiting = false;
+      if (mounted) {
+        setState(() => _busy = false);
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   /// 按当前轴号读取驱动参数（对齐 Android Spinner 切换即 getParams）。
@@ -331,15 +362,18 @@ class _DriverPageState extends State<DriverPage>
               onBack: _exitPage,
             ),
             DriverStatusBar(live: _live),
-            TabBar(
-              controller: _tabController,
-              labelColor: LpRobotColors.primary,
-              unselectedLabelColor: LpRobotColors.label,
-              indicatorColor: LpRobotColors.primary,
-              tabs: const [
-                Tab(text: '驱动器参数'),
-                Tab(text: '波形观测'),
-              ],
+            IgnorePointer(
+              ignoring: _busy || _exiting,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: LpRobotColors.primary,
+                unselectedLabelColor: LpRobotColors.label,
+                indicatorColor: LpRobotColors.primary,
+                tabs: const [
+                  Tab(text: '驱动器参数'),
+                  Tab(text: '波形观测'),
+                ],
+              ),
             ),
             if (_busy)
               const LinearProgressIndicator(
@@ -349,6 +383,9 @@ class _DriverPageState extends State<DriverPage>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
+                physics: (_busy || _exiting)
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(6),

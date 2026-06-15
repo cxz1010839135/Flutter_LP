@@ -39,7 +39,13 @@ class ConfigFileService {
       return const ConfigFileLoadResult(exists: false);
     }
     final rows = ConfigFileCodec.parse(step, raw);
-    return ConfigFileLoadResult(exists: true, rows: rows, raw: raw);
+    return ConfigFileLoadResult(
+      exists: true,
+      rows: rows,
+      raw: ConfigFileCodec.isWhitespaceOnlyFile(raw)
+          ? ConfigFileCodec.emptyFilePlaceholder
+          : raw,
+    );
   }
 
   Future<void> save(ConfigFileStepDef step, List<ConfigFileRow> rows) async {
@@ -48,6 +54,7 @@ class ConfigFileService {
       step.remotePath,
       content,
       mode: ConfigFileUploadMode.singleFile,
+      chmodAfterUpload: false,
     );
   }
 
@@ -58,6 +65,7 @@ class ConfigFileService {
       step.remotePath,
       content,
       mode: ConfigFileUploadMode.singleFile,
+      chmodAfterUpload: false,
     );
   }
 
@@ -68,7 +76,7 @@ class ConfigFileService {
       buf.writeln(row.values.first.trim());
     }
     final res = await HttpManager.instance.createEtherCAT(
-      configType: buf.toString().isEmpty ? ' ' : buf.toString(),
+      configType: ConfigFileCodec.finalizeUploadContent(buf.toString()),
     );
     res.ensureOk();
   }
@@ -104,6 +112,7 @@ class ConfigFileService {
       path,
       content,
       mode: ConfigFileUploadMode.singleFile,
+      chmodAfterUpload: false,
     );
   }
 
@@ -113,6 +122,7 @@ class ConfigFileService {
     ConfigFileUploadMode mode = ConfigFileUploadMode.replaceBeforeUpload,
     bool chmodAfterUpload = true,
   }) async {
+    final safeContent = ConfigFileCodec.finalizeUploadContent(content);
     final slash = remotePath.lastIndexOf('/');
     if (slash < 0) {
       throw Exception('无效路径：$remotePath');
@@ -124,7 +134,7 @@ class ConfigFileService {
     if (mode == ConfigFileUploadMode.singleFile) {
       final tempDir = Directory.systemTemp.createTempSync('lp_config_upload_');
       localFile = File(p.join(tempDir.path, fileName));
-      await localFile.writeAsString(content, flush: true);
+      await localFile.writeAsString(safeContent, flush: true);
     } else {
       final session = await RobotFileTransfer.downloadSessionRoot();
       var relative =
@@ -133,7 +143,7 @@ class ConfigFileService {
         p.join(session.path, relative.replaceAll('/', p.separator)),
       );
       await localFile.parent.create(recursive: true);
-      await localFile.writeAsString(content, flush: true);
+      await localFile.writeAsString(safeContent, flush: true);
     }
 
     if (mode == ConfigFileUploadMode.replaceBeforeUpload) {

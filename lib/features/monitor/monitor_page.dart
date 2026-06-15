@@ -11,6 +11,8 @@ import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
 import '../../network/http_manager.dart';
 import 'rp4_program_loader.dart';
+import 'monitor_d9000_status.dart';
+import 'monitor_watch_status.dart';
 import 'widgets/monitor_register_sidebar.dart';
 
 /// 监控页 MVP：RP4 主程序 + 运行行高亮（对齐 Android MonitorActivity）。
@@ -541,9 +543,19 @@ class _PrintPanel extends StatelessWidget {
           ),
           Expanded(
             child: ListenableBuilder(
-              listenable: RobotTelemetry.instance,
+              listenable: Listenable.merge([
+                RobotTelemetry.instance,
+                MonitorWatchStatus.instance,
+              ]),
               builder: (context, _) {
-                final lines = RobotTelemetry.instance.printInfo;
+                final printLines = RobotTelemetry.instance.printInfo;
+                final d9000Line =
+                    MonitorWatchStatus.instance.d9000StatusLine;
+                final lines = <String>[
+                  ?d9000Line,
+                  ...printLines,
+                ];
+
                 if (lines.isEmpty) {
                   return const Center(
                     child: Text(
@@ -556,13 +568,26 @@ class _PrintPanel extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   itemCount: lines.length,
                   itemBuilder: (context, index) {
+                    final line = lines[index];
+                    final isD9000 =
+                        d9000Line != null && index == 0 && line == d9000Line;
+                    final value = MonitorWatchStatus.instance.d9000Value;
+                    final color = isD9000 && value != null
+                        ? (MonitorD9000Status.isFailure(value)
+                            ? LpRobotColors.alarm
+                            : MonitorD9000Status.isBusy(value)
+                                ? LpRobotColors.primary
+                                : LpRobotColors.liveValue)
+                        : null;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        lines[index],
-                        style: const TextStyle(
+                        line,
+                        style: TextStyle(
                           fontSize: 13,
                           fontFamily: 'Consolas',
+                          color: color,
                         ),
                       ),
                     );

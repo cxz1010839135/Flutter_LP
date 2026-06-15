@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../../../app/lp_robot_colors.dart';
 import '../../../core/robot_state.dart';
 import '../../../network/http_manager.dart';
+import '../monitor_special_register_dialog.dart';
 import '../monitor_plc_watch_storage.dart';
+import '../monitor_watch_status.dart';
 
 /// 寄存器监视（D/M/S/X/Y 分 tab，最多 30 项）。
 class MonitorPlcWatchPanel extends StatefulWidget {
@@ -64,7 +66,12 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
       _autoRefresh = config.autoRefresh;
       _intervalMs = config.intervalMs;
     });
+    _syncWatchStatus();
     _syncPolling();
+  }
+
+  void _syncWatchStatus() {
+    MonitorWatchStatus.instance.updateFromEntries(_entries);
   }
 
   Future<void> _persist() async {
@@ -106,6 +113,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
       }
       if (!mounted) return;
       setState(() => _entries = updated);
+      _syncWatchStatus();
     } finally {
       _polling = false;
     }
@@ -221,6 +229,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
         MonitorPlcWatchEntry(kind: kind, address: addr, label: label),
       ];
     });
+    _syncWatchStatus();
     await _persist();
     _syncPolling();
   }
@@ -233,6 +242,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
           )
           .toList();
     });
+    _syncWatchStatus();
     unawaited(_persist());
     _syncPolling();
   }
@@ -374,6 +384,14 @@ class _Toolbar extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
+              IconButton(
+                tooltip: '特殊寄存器说明',
+                onPressed: () => showMonitorSpecialRegisterDialog(context),
+                iconSize: 20,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.menu_book_outlined),
+                color: LpRobotColors.primary,
+              ),
               IconButton(
                 tooltip: '立即刷新',
                 onPressed: onRefresh,

@@ -11,4 +11,7 @@ abstract final class RobotTypes {
   static const maDuo = 8;
   static const axis5 = 9;
   static const axis6 = 10;
+  static const xyBot = 11;
+  static const nsBot = 12;
+  static const nslBot = 13;
 }

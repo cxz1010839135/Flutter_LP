@@ -16,6 +16,7 @@ import '../connect/connect_page.dart';
 import '../control/control_page.dart';
 import '../monitor/monitor_page.dart';
 import '../config_file/config_file_page.dart';
+import 'home_robot_assets.dart';
 
 /// 主界面（对齐 Android MainActivity 权重：左 6 / 中 51 / 右 6，中间上 11 / 下 1）。
 class MainHomePage extends StatefulWidget {
@@ -274,19 +275,29 @@ class _NavButton extends StatelessWidget {
   }
 }
 
-/// 中央视口（预留 3D / 机型图，对齐 Android fl_main_robot）。
+/// 中央视口（机型示意图，对齐 Android `iv_main_robot` / `fl_main_robot`）。
 class _RobotViewport extends StatelessWidget {
   const _RobotViewport({required this.online});
 
   final bool online;
 
+  static const _imageAspect = 4 / 3;
+  static const _heightFactor = 0.8;
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: RobotTelemetry.instance,
+      listenable: Listenable.merge([
+        RobotState.instance,
+        RobotTelemetry.instance,
+      ]),
       builder: (context, _) {
         final t = RobotTelemetry.instance;
         final moving = t.isRobotMoving;
+        final asset = HomeRobotAssets.diagramForRobotType(
+          RobotState.instance.robotType,
+        );
+        final caption = RobotState.instance.displayRobotLabel;
 
         return DecoratedBox(
           decoration: BoxDecoration(
@@ -296,42 +307,69 @@ class _RobotViewport extends StatelessWidget {
               color: LpRobotColors.borderWarm.withValues(alpha: 0.25),
             ),
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.precision_manufacturing_outlined,
-                      size: 96,
-                      color: LpRobotColors.textDark.withValues(alpha: 0.75),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      RobotState.instance.displayRobotLabel,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: LpRobotColors.label,
-                      ),
-                    ),
-                    if (online && moving)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          '运行中 ${t.speedPercentValue}%',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: LpRobotColors.primary,
-                            fontWeight: FontWeight.w600,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              var imageHeight = constraints.maxHeight * _heightFactor;
+              var imageWidth = imageHeight * _imageAspect;
+              final maxWidth = constraints.maxWidth * 0.92;
+              if (imageWidth > maxWidth) {
+                imageWidth = maxWidth;
+                imageHeight = imageWidth / _imageAspect;
+              }
+
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: imageWidth,
+                          height: imageHeight,
+                          child: Image.asset(
+                            asset,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
+                            filterQuality: FilterQuality.medium,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(
+                                  Icons.precision_manufacturing_outlined,
+                                  size: 96,
+                                  color: LpRobotColors.textDark
+                                      .withValues(alpha: 0.75),
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                        const SizedBox(height: 12),
+                        Text(
+                          caption,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: LpRobotColors.label,
+                          ),
+                        ),
+                        if (online && moving)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              '运行中 ${t.speedPercentValue}%',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: LpRobotColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },

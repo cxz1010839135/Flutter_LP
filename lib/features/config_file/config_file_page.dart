@@ -4,12 +4,11 @@ import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/lp_status_log.dart';
-import '../../core/robot_alarm_info.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
-import '../../network/http_manager.dart';
 import '../driver/driver_page.dart';
+import '../driver/driver_tech_mode_gate.dart';
 import '../files/files_page.dart';
 import '../tool/tool_page.dart';
 import 'config_file_defs.dart';
@@ -129,10 +128,20 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     setState(() => _loading = true);
     try {
       await _service.save(_step, _rows);
+      if (!mounted) return;
       LpStatusLog.instance.success('修改参数成功！', openPanel: false);
-      await _loadStep();
+      // 对齐 Android：上传后短暂等待再刷新，避免立即读文件竞态。
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final result = await _service.load(_step);
+      if (!mounted) return;
+      setState(() {
+        _fileExists = result.exists;
+        _rows = result.rows;
+        _selectedRow = null;
+      });
     } catch (e) {
       LpStatusLog.instance.warning('修改参数失败：$e');
+    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -306,18 +315,38 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   }
 
   Future<void> _openDebugMode() async {
-    if (!RobotState.instance.isConnected) {
-      LpStatusLog.instance.warning('请先连接控制器');
+    final gate = DriverTechModeGate.instance;
+    if (!gate.canEnterDriverPage) {
+      if (gate.transitionBusy || DriverTechModeGate.isControllerInitializing) {
+        LpStatusLog.instance.warning('调试模式切换中，请等待控制器就绪');
+      } else {
+        LpStatusLog.instance.warning('请先连接控制器');
+      }
       return;
     }
     try {
-      final res = await HttpManager.instance.robotTechModeOnOff(modeState: 1);
-      res.ensureOk();
-    } catch (_) {}
-    if (!mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const DriverPage()),
-    );
+      await gate.enter();
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const DriverPage()),
+      );
+    } catch (e) {
+      LpStatusLog.instance.warning('进入调试模式失败：$e');
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('提示'),
+          content: Text('$e'),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _editRow(int index) async {
@@ -387,28 +416,35 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final initBusy = RobotTelemetry.instance.motorAlarmCode ==
-        RobotAlarmInfo.codeInitializing;
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        RobotTelemetry.instance,
+        DriverTechModeGate.instance,
+      ]),
+      builder: (context, _) {
+        final initBusy = DriverTechModeGate.isControllerInitializing;
 
-    return Scaffold(
-      backgroundColor: LpRobotColors.background,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          LpRobotPoseBar(
-            pageTitle: '文件配置',
-            showPoseRows: false,
-            onBack: () => Navigator.of(context).pop(),
+        return Scaffold(
+          backgroundColor: LpRobotColors.background,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LpRobotPoseBar(
+                pageTitle: '文件配置',
+                showPoseRows: false,
+                onBack: () => Navigator.of(context).pop(),
+              ),
+              Expanded(
+                child: _showDriverPanel
+                    ? _buildDriverPanel()
+                    : _buildStepPanel(),
+              ),
+              _buildBottomBar(initBusy: initBusy),
+              const LpStatusPanel(),
+            ],
           ),
-          Expanded(
-            child: _showDriverPanel
-                ? _buildDriverPanel()
-                : _buildStepPanel(),
-          ),
-          _buildBottomBar(initBusy: initBusy),
-          const LpStatusPanel(),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -647,7 +683,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
             ),
             child: const Text('版本'),
           ),
-          if (initBusy)
+          if (initBusy || DriverTechModeGate.instance.transitionBusy)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: SizedBox(
@@ -658,7 +694,9 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
             )
           else
             TextButton(
-              onPressed: _openDebugMode,
+              onPressed: DriverTechModeGate.instance.canEnterDriverPage
+                  ? _openDebugMode
+                  : null,
               child: const Text('调试模式'),
             ),
           const Spacer(),
@@ -683,12 +721,12 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                 child: const Text('配置扩展'),
               ),
             ),
-          if (!_showDriverPanel && prevConfigNavIndex(_stepIndex) != null)
+          if (_showDriverPanel || prevConfigNavIndex(_stepIndex) != null)
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: OutlinedButton(
                 onPressed: _loading ? null : _goBack,
-                child: const Text('上一步'),
+                child: Text(_showDriverPanel ? '上一页' : '上一步'),
               ),
             ),
           Padding(

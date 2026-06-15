@@ -168,7 +168,6 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       editableColumnCount: 3,
       allowAdd: true,
       allowRemove: true,
-      minRows: 1,
     ),
     ConfigFileStepDef(
       index: 7,
@@ -241,7 +240,6 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       editableColumnCount: 3,
       allowAdd: true,
       allowRemove: true,
-      minRows: 1,
     ),
     ConfigFileStepDef(
       index: 12,

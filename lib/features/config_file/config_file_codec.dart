@@ -10,7 +10,11 @@ class ConfigFileCodec {
   static bool isFileNotExists(String body) =>
       body.trim() == fileNotExistsJson;
 
+  /// 驱控端「空文件」：无内容或仅空白（对齐 Android 保存单个空格）。
+  static bool isWhitespaceOnlyFile(String body) => body.trim().isEmpty;
+
   static List<ConfigFileRow> parse(ConfigFileStepDef step, String raw) {
+    if (isWhitespaceOnlyFile(raw)) return const [];
     final labels = step.buildRowLabels();
     final lines = raw.replaceAll('\r\n', '\n').split('\n');
     final out = <ConfigFileRow>[];
@@ -174,7 +178,10 @@ class ConfigFileCodec {
     return out;
   }
 
+  /// 序列化配置内容；无有效数据时返回单个空格（全步骤通用）。
   static String serialize(ConfigFileStepDef step, List<ConfigFileRow> rows) {
+    if (rows.isEmpty) return emptyFilePlaceholder;
+
     final buf = StringBuffer();
     switch (step.format) {
       case ConfigFileFormat.csv3:
@@ -184,8 +191,7 @@ class ConfigFileCodec {
         }
         break;
       case ConfigFileFormat.singleValue:
-        if (rows.isEmpty) return ' ';
-        return rows.first.values.first;
+        return finalizeUploadContent(rows.first.values.first);
       case ConfigFileFormat.manuVmax:
         if (rows.length >= 2) {
           buf.write('${rows[0].values.first},${rows[1].values.first}\n');
@@ -239,7 +245,17 @@ class ConfigFileCodec {
         }
         break;
     }
-    return buf.toString().replaceAll('\r\n', '\n');
+    return finalizeUploadContent(buf.toString());
+  }
+
+  /// 上传用占位：Android `updateParamFile` 在 length==0 时写入 `' '`。
+  static const String emptyFilePlaceholder = ' ';
+
+  /// 保证 multipart 上传非空（空白内容视为空文件）。
+  static String finalizeUploadContent(String content) {
+    final text = content.replaceAll('\r\n', '\n');
+    if (text.trim().isEmpty) return emptyFilePlaceholder;
+    return text;
   }
 
   static List<ConfigFileRow> createDefaultRows(ConfigFileStepDef step) {

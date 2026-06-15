@@ -1,4 +1,4 @@
-/// 电机报警代码与文案（对齐 Android [MainActivity] + [BackgroundService]）。
+/// 电机报警代码与文案（对齐 Android [MainActivity] + 驱控状态对照表）。
 class RobotAlarmInfo {
   RobotAlarmInfo._();
 
@@ -15,19 +15,23 @@ class RobotAlarmInfo {
   static const String controlAlarmHint =
       '电机报警，请检查电机或驱动器！重启控制卡';
 
-  /// 已知 [alarmCode] 附加说明（对齐 MainActivity switch）。
-  static String describeCode(int code) {
-    switch (code) {
-      case codeInactiveId:
-        return '未激活ID';
-      case codeDebugMode:
-        return '调试模式';
-      case codeInitializing:
-        return '初始化中';
-      default:
-        return '';
-    }
-  }
+  /// 驱控状态代码 → 展示文案（底栏「电机报警」、消息面板共用）。
+  static const Map<int, String> _codeMeanings = {
+    0: '正常状态',
+    codeDebugMode: '调试模式打开中',
+    codeInactiveId: '未激活ID',
+    codeInitializing: '初始化未完成',
+    -1: '参数文件夹不存在',
+    -2: '臂长/速比读取失败',
+    -4: 'PID参数读取失败',
+    -8: '编码器/零点读取失败',
+    -16: '寻相前避障失败',
+    -32: '直线/DD电机寻相失败',
+    -64: '电机轴电池报警',
+  };
+
+  /// 已知 [alarmCode] 附加说明。
+  static String describeCode(int code) => _codeMeanings[code] ?? '';
 
   /// 主页电机报警一行文案：`报警{code}{suffix}` / `未报警{code}{suffix}`。
   static String formatMotorAlarm({

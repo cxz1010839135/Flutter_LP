@@ -10,6 +10,7 @@ import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
 import '../../network/http_manager.dart';
 import '../driver/driver_page.dart';
+import '../driver/driver_tech_mode_gate.dart';
 import '../files/files_page.dart';
 
 /// 维护页（对齐 Android [ToolActivity]：自动运行 / 调试开关 / 文件与驱动入口）。
@@ -117,10 +118,16 @@ class _ToolPageState extends State<ToolPage> {
       await _showResultDialog('请先点击「打开调试模式」，待控制器进入调试状态后再进入驱动器参数页。');
       return;
     }
+    final gate = DriverTechModeGate.instance;
+    if (!gate.canEnterDriverPage) {
+      if (gate.transitionBusy || DriverTechModeGate.isControllerInitializing) {
+        await _showResultDialog('调试模式切换中，请等待控制器就绪后再进入驱动器参数页。');
+      }
+      return;
+    }
     setState(() => _busy = true);
     try {
-      final res = await HttpManager.instance.robotTechModeOnOff(modeState: 1);
-      res.ensureOk();
+      await gate.enter();
       if (!mounted) return;
       await Navigator.of(context).push<void>(
         MaterialPageRoute(builder: (_) => const DriverPage()),
@@ -133,6 +140,13 @@ class _ToolPageState extends State<ToolPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  bool get _canOpenDriver {
+    return _online &&
+        !_busy &&
+        _inDebugMode &&
+        DriverTechModeGate.instance.canEnterDriverPage;
   }
 
   @override
@@ -190,11 +204,17 @@ class _ToolPageState extends State<ToolPage> {
                       onPressed: _openFiles,
                     ),
                     right: ListenableBuilder(
-                      listenable: RobotTelemetry.instance,
+                      listenable: Listenable.merge([
+                        RobotTelemetry.instance,
+                        DriverTechModeGate.instance,
+                      ]),
                       builder: (context, _) {
+                        final gateBusy =
+                            DriverTechModeGate.instance.transitionBusy ||
+                            DriverTechModeGate.isControllerInitializing;
                         return _ToolEntryButton(
-                          label: '驱动器参数',
-                          enabled: actionsEnabled && _inDebugMode,
+                          label: gateBusy ? '驱动器参数…' : '驱动器参数',
+                          enabled: _canOpenDriver,
                           onPressed: _openDriverDebug,
                         );
                       },
