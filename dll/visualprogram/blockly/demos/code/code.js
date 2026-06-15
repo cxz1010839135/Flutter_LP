@@ -323,6 +323,38 @@ Code.invalidatePreview = function () {
   Code.previewStale_ = true;
 };
 
+/**
+ * 离开 GCode/预览 Tab 或 WebView 尺寸变化后，重新铺排 workspace 与浮层按钮。
+ * @private
+ */
+Code._layoutResizeHandler_ = null;
+
+Code.scheduleLayoutRefresh_ = function () {
+  var run = function () {
+    try {
+      if (Code._layoutResizeHandler_) {
+        Code._layoutResizeHandler_();
+      } else {
+        window.dispatchEvent(new Event('resize'));
+      }
+      if (Code.workspace) {
+        if (Code.selected === 'blocks') {
+          Code.workspace.setVisible(true);
+        }
+        Blockly.svgResize(Code.workspace);
+      }
+      if (typeof Code.relayoutToolboxUi_ === 'function') {
+        Code.relayoutToolboxUi_();
+      }
+    } catch (e) {
+      console.warn('scheduleLayoutRefresh_', e);
+    }
+  };
+  run();
+  window.setTimeout(run, 50);
+  window.setTimeout(run, 180);
+};
+
 
 
 /**
@@ -372,7 +404,7 @@ Code.tabClick = function (clickedName) {
   if (clickedName == 'blocks') {
     Code.workspace.setVisible(true);
   }
-  Blockly.svgResize(Code.workspace);
+  Code.scheduleLayoutRefresh_();
 };
 
 /**
@@ -506,6 +538,7 @@ Code.init = function () {
     }
   };
   window.addEventListener('resize', onresize, false);
+  Code._layoutResizeHandler_ = onresize;
   //跟随浏览器自适应调整大小   end
 
   // The toolbox XML specifies each category name using Blockly's messaging
@@ -784,33 +817,37 @@ Code.init = function () {
    *  整个toolbox 比例按照 高:宽等于 1:1.5设置
    *  屏幕视野内将toolbox分成8个等份
    */
-  for (var j = 0; j < Blockly.CustomConfig.BlocklyTreeDivNum; j++) {
-    var spanwidth, height;
-    var spans = document.getElementById(':' + (j + 1).toString()).firstChild.childNodes[1];//getElementsByClassName('blocklyTreeIcon.blocklyTreeIconNone');
+  Code.relayoutToolboxUi_ = function () {
     var treerow = document.getElementById('content_area');
+    if (!treerow || !Blockly.CustomConfig) {
+      return;
+    }
+    for (var j = 0; j < Blockly.CustomConfig.BlocklyTreeDivNum; j++) {
+      var row = document.getElementById(':' + (j + 1).toString());
+      if (!row || !row.firstChild || !row.firstChild.childNodes[1]) {
+        continue;
+      }
+      var spans = row.firstChild.childNodes[1];
+      var height = treerow.offsetHeight / Blockly.CustomConfig.BlocklyTreeDivNum;
+      var spanwidth = height * 1.0;
+      spans.style.boxSizing = 'border-box';
+      spans.style.width = spanwidth + 'px';
+      spans.style.lineHeight = height + 'px';
+      var spanlabel = document.getElementById(':' + (j + 1).toString() + '.label');
+      if (spanlabel) {
+        spanlabel.style.boxSizing = 'border-box';
+        spanlabel.style.lineHeight = height + 'px';
+        spanlabel.style.width = (height * 0.5) + 'px';
+      }
+    }
+    var divblocklyToolboxDivs = document.getElementsByClassName('blocklyToolboxDiv');
+    if (divblocklyToolboxDivs.length > 0) {
+      var divwidth = treerow.offsetHeight * 0.78 / Blockly.CustomConfig.BlocklyTreeDivNum;
+      divblocklyToolboxDivs[0].style.width = divwidth + 'px';
+    }
+  };
 
-    height = treerow.offsetHeight / Blockly.CustomConfig.BlocklyTreeDivNum;
-    //spanwidth = treerow.offsetWidth * 0.1;
-    spanwidth = height * 1.0;
-    spans.style.boxSizing = 'border-box';
-    //spans.style.width = height + 'px';
-    spans.style.width = spanwidth + 'px';
-    spans.style.lineHeight = height + 'px';
-    //spans.style.paddingTop = spanwidth + 'px';
-    //spans.style.paddingBottom = spanwidth + 'px';
-    var spanlabel = document.getElementById(':' + (j + 1).toString() + '.label');
-    //height = spanlabel.offsetHeight;
-    //sides[i].style.width = spanwidth + 'px';
-    spanlabel.style.boxSizing = 'border-box';
-    spanlabel.style.lineHeight = height + 'px';
-    var spanlabelwidth = height * 0.5;
-    spanlabel.style.width = spanlabelwidth + 'px';//'0px';
-    //spanlabel.style.display = 'none';
-  }
-
-  var divblocklyToolboxDivs = document.getElementsByClassName('blocklyToolboxDiv');
-  var divwidth = treerow.offsetHeight * 0.78 / Blockly.CustomConfig.BlocklyTreeDivNum;//+25 border-radius 圆角半径
-  divblocklyToolboxDivs[0].style.width = divwidth + 'px';
+  Code.relayoutToolboxUi_();
 
   var element1 = document.createElement("p");
   element1.textContent = Blockly.Msg.MAIN_TOOL_LOGIC;

@@ -52,6 +52,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   LpBlocklyAiController? _aiController;
   bool _aiPanelOpen = false;
   Timer? _refreshFallbackTimer;
+  bool _webViewTeardownDone = false;
 
   @override
   void initState() {
@@ -81,7 +82,17 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   Future<void> _syncWebViewVisibility() async {
     final controller = _controller;
     if (controller == null) return;
-    await setBlocklyWebViewVisible(controller, !_showProgressOverlay);
+    final visible = !_showProgressOverlay;
+    await setBlocklyWebViewVisible(controller, visible);
+    if (visible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future<void>.delayed(const Duration(milliseconds: 120), () {
+          if (mounted && !_showProgressOverlay) {
+            notifyBlocklyWebViewResized(controller);
+          }
+        });
+      });
+    }
   }
 
   void _onLoadRequestProgress(int percent, String message) {
@@ -94,13 +105,11 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         setState(() => _loading = false);
         _scheduleWebViewVisibilitySync();
         _ensureAiController();
-        if (Platform.isAndroid) {
-          final c = _controller;
-          if (c != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              notifyBlocklyWebViewResized(c);
-            });
-          }
+        final c = _controller;
+        if (c != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            notifyBlocklyWebViewResized(c);
+          });
         }
         await _injectUserProjectIfNeeded();
       });
@@ -360,12 +369,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
           },
           onPageFinished: (_) {
             _loadTracker?.markJsLoadComplete();
-            if (Platform.isAndroid) {
-              final c = controller;
-              Future<void>.delayed(const Duration(milliseconds: 300), () {
-                notifyBlocklyWebViewResized(c);
-              });
-            }
+            final c = controller;
+            Future<void>.delayed(const Duration(milliseconds: 300), () {
+              notifyBlocklyWebViewResized(c);
+            });
           },
         ),
       ),
@@ -404,21 +411,30 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     }
   }
 
+  Future<void> _teardownWebViewIfNeeded([WebViewController? controller]) async {
+    if (_webViewTeardownDone) return;
+    _webViewTeardownDone = true;
+    await teardownBlocklyWebView(controller ?? _controller);
+  }
+
   /// 在线回到主页；离线回到连接页（跳过连接时主页不在栈内，需 pushAndRemoveUntil）。
   Future<void> _returnToHome(String? message) async {
     final controller = _controller;
-    if (controller != null) {
-      await setBlocklyWebViewVisible(controller, false);
-    }
     _server?.stop();
 
-    if (!mounted) return;
-    setState(() {
-      _taskActive = false;
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _controller = null;
+        _taskActive = false;
+        _loading = false;
+      });
+    }
 
-    await Future<void>.delayed(Duration.zero);
+    // 先从组件树移除 WebViewWidget，再销毁原生浮层，避免 pop 后白屏盖住主页。
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    await _teardownWebViewIfNeeded(controller);
+
     if (!mounted) return;
 
     if (RobotState.instance.isConnected) {
@@ -527,6 +543,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     _refreshFallbackTimer?.cancel();
     _aiController?.dispose();
     _loadTracker?.dispose();
+    if (!_webViewTeardownDone) {
+      unawaited(_teardownWebViewIfNeeded(_controller));
+    }
     _server?.stop();
     super.dispose();
   }
@@ -539,44 +558,46 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       listenable: RobotState.instance,
       builder: (context, _) {
         return PopScope(
-          canPop: !_showProgressOverlay,
+          canPop: false,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
+            if (_showProgressOverlay) return;
             _triggerBlocklyReturn();
           },
           child: Scaffold(
-          backgroundColor: LpRobotColors.background,
-          appBar: AppBar(
-            title: const Text('领鹏智能编程'),
-            backgroundColor: LpRobotColors.primary,
-            foregroundColor: Colors.white,
-            automaticallyImplyLeading: false,
-            leading: IconButton(
-              icon: const BackButtonIcon(),
-              tooltip: '返回',
-              onPressed: _showProgressOverlay ? null : _triggerBlocklyReturn,
-            ),
-            actions: [
-              if (_controller != null)
-                IconButton(
-                  icon: Icon(
-                    _aiPanelOpen
-                        ? Icons.auto_awesome
-                        : Icons.auto_awesome_outlined,
+            backgroundColor: LpRobotColors.background,
+            appBar: AppBar(
+              title: const Text('领鹏智能编程'),
+              backgroundColor: LpRobotColors.primary,
+              foregroundColor: Colors.white,
+              automaticallyImplyLeading: false,
+              leading: IconButton(
+                icon: const BackButtonIcon(),
+                tooltip: '返回',
+                onPressed: _showProgressOverlay ? null : _triggerBlocklyReturn,
+              ),
+              actions: [
+                if (_controller != null)
+                  IconButton(
+                    icon: Icon(
+                      _aiPanelOpen
+                          ? Icons.auto_awesome
+                          : Icons.auto_awesome_outlined,
+                    ),
+                    tooltip: 'AI 编程助手',
+                    onPressed: _toggleAiPanel,
                   ),
-                  tooltip: 'AI 编程助手',
-                  onPressed: _toggleAiPanel,
-                ),
-              if (_controller != null)
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: '刷新',
-                  onPressed: (_loading || _taskActive) ? null : _refreshBlockly,
-                ),
-            ],
+                if (_controller != null)
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: '刷新',
+                    onPressed:
+                        (_loading || _taskActive) ? null : _refreshBlockly,
+                  ),
+              ],
+            ),
+            body: _buildBody(),
           ),
-          body: _buildBody(),
-        ),
         );
       },
     );

@@ -22,6 +22,9 @@ class LpRobotAlarmStatusBar extends StatelessWidget {
         final online = RobotState.instance.isConnected;
         final t = RobotTelemetry.instance;
         final initOk = RobotAlarmInfo.initStatusOk(t.initStatus);
+        final initText = online
+            ? RobotAlarmInfo.formatInitStatus(t.initStatus)
+            : '—';
         final alarmText = online
             ? RobotAlarmInfo.formatMotorAlarm(
                 motorAlarm: t.motorAlarm,
@@ -55,7 +58,7 @@ class LpRobotAlarmStatusBar extends StatelessWidget {
             children: [
               _StatusTile(
                 label: '启动状态',
-                value: online ? '${t.initStatus}' : '—',
+                value: initText,
                 valueColor: online && initOk
                     ? LpRobotColors.liveValue
                     : online

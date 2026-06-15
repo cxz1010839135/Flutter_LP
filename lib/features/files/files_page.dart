@@ -7,7 +7,11 @@ import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/maintenance_edit_gate.dart';
 import '../../core/robot_state.dart';
+import '../../core/robot_state_poller.dart';
+import '../../core/robot_telemetry.dart';
+import '../../network/http_manager.dart';
 import 'robot_file_backup.dart';
 import 'robot_file_transfer.dart';
 
@@ -41,11 +45,15 @@ class _FilesPageState extends State<FilesPage> {
   /// 当前驱控目录（用于上传 tagPath），以 `/` 结尾；根目录为空。
   String _remoteTagPath = '';
   bool get _canUpload =>
-      _remoteTagPath.isNotEmpty && _selectedLocal != null && !_transferring;
+      MaintenanceEditGate.canEdit() &&
+      _remoteTagPath.isNotEmpty &&
+      _selectedLocal != null &&
+      !_transferring;
 
   @override
   void initState() {
     super.initState();
+    RobotStatePoller.instance.start();
     _initLocal();
     _loadRemote('');
   }
@@ -467,6 +475,45 @@ class _FilesPageState extends State<FilesPage> {
     }
   }
 
+  Future<void> _viewRemoteFile(RemoteFileEntry entry) async {
+    if (!RobotState.instance.isConnected) {
+      LpStatusLog.instance.warning('请先连接控制器');
+      return;
+    }
+    setState(() => _transferring = true);
+    try {
+      final content = await HttpManager.instance.getFile(entry.fullPath);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('查看：${entry.name}'),
+          content: SizedBox(
+            width: 520,
+            height: 360,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                content.isEmpty ? '（空文件）' : content,
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+              ),
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      LpStatusLog.instance.warning('读取文件失败：$e');
+      if (mounted) await _showTip('读取文件失败：$e');
+    } finally {
+      if (mounted) setState(() => _transferring = false);
+    }
+  }
+
   Future<void> _showTip(String message) {
     return showDialog<void>(
       context: context,
@@ -485,6 +532,16 @@ class _FilesPageState extends State<FilesPage> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: RobotTelemetry.instance,
+      builder: (context, _) {
+        final canEdit = MaintenanceEditGate.canEdit();
+        return _buildScaffold(canEdit: canEdit);
+      },
+    );
+  }
+
+  Widget _buildScaffold({required bool canEdit}) {
     return Scaffold(
       backgroundColor: LpRobotColors.background,
       body: Column(
@@ -502,12 +559,12 @@ class _FilesPageState extends State<FilesPage> {
                 children: [
                   Expanded(child: _buildLocalPanel()),
                   const VerticalDivider(width: 1, thickness: 1),
-                  Expanded(child: _buildRemotePanel()),
+                  Expanded(child: _buildRemotePanel(canEdit: canEdit)),
                 ],
               ),
             ),
           ),
-          _buildActionBar(),
+          _buildActionBar(canEdit: canEdit),
           if (_transferring)
             const LinearProgressIndicator(
               color: LpRobotColors.primary,
@@ -519,7 +576,7 @@ class _FilesPageState extends State<FilesPage> {
     );
   }
 
-  Widget _buildActionBar() {
+  Widget _buildActionBar({required bool canEdit}) {
     final selectedName = _selectedLocal != null
         ? p.basename(_selectedLocal!.path)
         : null;
@@ -577,7 +634,7 @@ class _FilesPageState extends State<FilesPage> {
                 ),
                 const SizedBox(width: 12),
                 FilledButton.icon(
-                  onPressed: _canUpload ? _upload : null,
+                  onPressed: canEdit && _canUpload ? _upload : null,
                   icon: const Icon(Icons.cloud_upload_outlined, size: 18),
                   label: const Text('上传到驱控'),
                 ),
@@ -588,7 +645,7 @@ class _FilesPageState extends State<FilesPage> {
               children: [
                 Expanded(
                   child: FilledButton(
-                    onPressed: _transferring ? null : _startBackup,
+                    onPressed: canEdit && !_transferring ? _startBackup : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: LpRobotColors.primary,
                       foregroundColor: Colors.white,
@@ -600,7 +657,7 @@ class _FilesPageState extends State<FilesPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _transferring ? null : _startRestore,
+                    onPressed: canEdit && !_transferring ? _startRestore : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: LpRobotColors.primary,
                       foregroundColor: Colors.white,
@@ -770,7 +827,7 @@ class _FilesPageState extends State<FilesPage> {
     );
   }
 
-  Widget _buildRemotePanel() {
+  Widget _buildRemotePanel({required bool canEdit}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -850,12 +907,12 @@ class _FilesPageState extends State<FilesPage> {
             ],
           ),
         ),
-        Expanded(child: _buildRemoteList()),
+        Expanded(child: _buildRemoteList(canEdit: canEdit)),
       ],
     );
   }
 
-  Widget _buildRemoteList() {
+  Widget _buildRemoteList({required bool canEdit}) {
     if (_remoteLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -898,12 +955,15 @@ class _FilesPageState extends State<FilesPage> {
               _enterRemoteDir(item);
             } else {
               _selectRemote(item);
+              _viewRemoteFile(item);
             }
           },
-          onLongPress: () {
-            _selectRemote(item);
-            _downloadSelected();
-          },
+          onLongPress: canEdit
+              ? () {
+                  _selectRemote(item);
+                  _downloadSelected();
+                }
+              : null,
         );
       },
     );

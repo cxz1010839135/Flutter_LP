@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../core/robot_link_kind.dart';
 import '../../core/robot_pose.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
@@ -7,7 +10,7 @@ import '../lp_app_assets.dart';
 import '../lp_robot_colors.dart';
 import 'lp_image_press_button.dart';
 
-/// 顶部位姿状态栏：机型/离线 + 世界 XYZWABC + 默认 8 轴关节角。
+/// 顶部位姿状态栏（对齐 Android [TopView] / layout_top.xml）。
 class LpRobotPoseBar extends StatelessWidget {
   const LpRobotPoseBar({
     super.key,
@@ -15,6 +18,7 @@ class LpRobotPoseBar extends StatelessWidget {
     this.onBack,
     this.trailing,
     this.showPoseRows = true,
+    this.titleBarOnly = false,
     this.showConnectionActions = false,
     this.onDisconnect,
     this.onBackToConnect,
@@ -23,14 +27,21 @@ class LpRobotPoseBar extends StatelessWidget {
   final String? pageTitle;
   final VoidCallback? onBack;
   final Widget? trailing;
-  /// 是否显示 XYZWABC / 关节角读数行（驱动器调试页可关闭以节省空间）。
   final bool showPoseRows;
+  /// 仅标题 + 返回（对齐 Android ConfigFileActivity，无 Logo/坐标）。
+  final bool titleBarOnly;
   final bool showConnectionActions;
   final VoidCallback? onDisconnect;
   final VoidCallback? onBackToConnect;
 
-  static const double _dataRowHeight = 28;
-  static const double _headerRowHeight = 28;
+  static const double _barHeight = 82;
+  /// 品牌区左内边距（Logo/铭牌尽量靠左，坐标区紧随其后）。
+  static const double _brandInsetLeft = 8;
+  /// 顶栏品牌区 : 坐标区 宽度比（对齐 Android TopView 约 5:12）。
+  static const int _brandFlex = 5;
+  static const int _poseFlex = 12;
+  /// Logo 相对顶栏内高的占比（Android 约 68%～72%，勿贴满）。
+  static const double _logoHeightFactor = 0.70;
 
   @override
   Widget build(BuildContext context) {
@@ -40,92 +51,513 @@ class LpRobotPoseBar extends StatelessWidget {
         RobotTelemetry.instance,
       ]),
       builder: (context, _) {
-        final connected = RobotState.instance.isConnected;
-        final state = RobotState.instance;
-        final telemetry = RobotTelemetry.instance;
-        final pose = telemetry.pose;
-        final axisCount = telemetry.displayAxisCount;
-        final worldCount = RobotPoseSnapshot.worldLabels.length;
+        final data = _PoseBarData.from(
+          state: RobotState.instance,
+          telemetry: RobotTelemetry.instance,
+        );
 
-        final jointLabels = <String>[
-          for (var i = 0; i < axisCount; i++) 'J${i + 1}',
-        ];
-        final jointValues = <double>[
-          for (var i = 0; i < axisCount; i++)
-            i < pose.joints.length ? pose.joints[i] : 0,
-        ];
-
-        final hasHeader =
-            showConnectionActions || onBack != null || pageTitle != null;
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-          child: Material(
-            elevation: 2,
-            shadowColor: LpRobotColors.primary.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(10),
-            color: LpRobotColors.surfaceWarm,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (hasHeader)
-                    _HeaderStrip(
-                      pageTitle: pageTitle,
-                      onBack: onBack,
-                      trailing: trailing,
-                      showConnectionActions: showConnectionActions,
-                      modelLabel: state.displayRobotLabel,
-                      showModelBadge: showConnectionActions || onBack != null,
-                      connected: connected,
-                      onDisconnect: onDisconnect,
-                      onBackToConnect: onBackToConnect,
-                    ),
-                  if (showPoseRows)
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final columnCount = worldCount + axisCount;
-                        final labelSize =
-                            (width / (columnCount * 5.0)).clamp(9.0, 12.0);
-                        final valueSize =
-                            (width / (columnCount * 4.2)).clamp(10.0, 15.0);
-
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: _dataRowHeight,
-                                child: _PoseRow(
-                                  labels: RobotPoseSnapshot.worldLabels,
-                                  values: pose.worldValues,
-                                  connected: connected,
-                                  hasData: pose.hasData,
-                                  labelSize: labelSize,
-                                  valueSize: valueSize,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              SizedBox(
-                                height: _dataRowHeight,
-                                child: _PoseRow(
-                                  labels: jointLabels,
-                                  values: jointValues,
-                                  connected: connected,
-                                  hasData: pose.hasData,
-                                  labelSize: labelSize,
-                                  valueSize: valueSize,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                ],
+        if (showConnectionActions) {
+          return _UnifiedTopBar(
+            data: data,
+            height: _barHeight,
+            showBrand: true,
+            showPoseRows: true,
+            trailing: Center(
+              child: _ConnectionAction(
+                connected: data.connected,
+                onDisconnect: onDisconnect,
+                onBackToConnect: onBackToConnect,
               ),
+            ),
+          );
+        }
+
+        if (titleBarOnly) {
+          return _PageTitleBar(
+            title: pageTitle ?? '',
+            onBack: onBack,
+            trailing: trailing,
+          );
+        }
+
+        return _UnifiedTopBar(
+          data: data,
+          height: _barHeight,
+          showBrand: true,
+          showPoseRows: true,
+          trailing: _SubpageTrailing(onBack: onBack, extra: trailing),
+        );
+      },
+    );
+  }
+}
+
+class _LabelValuePair {
+  const _LabelValuePair({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
+class _PoseBarData {
+  const _PoseBarData({
+    required this.connected,
+    required this.hasData,
+    required this.subtitle,
+    required this.linkKind,
+    required this.worldPairs,
+    required this.jointPairs,
+  });
+
+  final bool connected;
+  final bool hasData;
+  final String subtitle;
+  final RobotLinkKind linkKind;
+  final List<_LabelValuePair> worldPairs;
+  final List<_LabelValuePair> jointPairs;
+
+  factory _PoseBarData.from({
+    required RobotState state,
+    required RobotTelemetry telemetry,
+  }) {
+    final pose = telemetry.pose;
+    final axisCount =
+        telemetry.displayAxisCount.clamp(1, RobotPoseSnapshot.maxJoints);
+    final connected = state.isConnected;
+
+    final worldCount = RobotPoseSnapshot.topBarWorldCount(axisCount);
+    final worldPairs = <_LabelValuePair>[
+      for (var i = 0; i < worldCount; i++)
+        _LabelValuePair(
+          label: '${RobotPoseSnapshot.worldLabels[i]}:',
+          value: _formatValue(
+            pose.worldValues[i],
+            connected: connected,
+            hasData: pose.hasData,
+          ),
+        ),
+    ];
+
+    final jointPairs = <_LabelValuePair>[
+      for (var i = 0; i < axisCount; i++)
+        _LabelValuePair(
+          label: 'J${i + 1}:',
+          value: _formatValue(
+            i < pose.joints.length ? pose.joints[i] : 0,
+            connected: connected,
+            hasData: pose.hasData,
+          ),
+        ),
+    ];
+
+    return _PoseBarData(
+      connected: connected,
+      hasData: pose.hasData,
+      subtitle: _connectionSubtitle(state),
+      linkKind: state.linkKind,
+      worldPairs: worldPairs,
+      jointPairs: jointPairs,
+    );
+  }
+
+  static String _formatValue(
+    double value, {
+    required bool connected,
+    required bool hasData,
+  }) {
+    if (!connected || !hasData) return '—';
+    return value.toStringAsFixed(4);
+  }
+
+  static String _connectionSubtitle(RobotState state) {
+    final sn = state.robotSerialNumber.trim();
+    if (sn.isNotEmpty) return sn;
+    try {
+      return Uri.parse(state.serverBaseUrl).host;
+    } catch (_) {
+      return state.serverBaseUrl;
+    }
+  }
+}
+
+/// 向导/配置页顶栏：居中标题 + 右侧返回（与其他子页一致）。
+class _PageTitleBar extends StatelessWidget {
+  const _PageTitleBar({
+    required this.title,
+    required this.onBack,
+    required this.trailing,
+  });
+
+  static const double height = 50;
+
+  final String title;
+  final VoidCallback? onBack;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    const sideWidth = 40.0;
+    return SizedBox(
+      height: height,
+      child: _MenuBg(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              const SizedBox(width: sideWidth),
+              Expanded(
+                child: title.isEmpty
+                    ? const SizedBox.shrink()
+                    : Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: LpRobotColors.primary,
+                        ),
+                      ),
+              ),
+              SizedBox(
+                width: sideWidth,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _SubpageTrailing(onBack: onBack, extra: trailing),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 主页/子页统一顶栏：可选 Logo 区 + 坐标 + 右侧操作区。
+class _UnifiedTopBar extends StatelessWidget {
+  const _UnifiedTopBar({
+    required this.data,
+    required this.height,
+    required this.showBrand,
+    required this.showPoseRows,
+    required this.trailing,
+  });
+
+  final _PoseBarData data;
+  final double height;
+  final bool showBrand;
+  final bool showPoseRows;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: _MenuBg(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            LpRobotPoseBar._brandInsetLeft,
+            1,
+            4,
+            2,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showBrand)
+                Expanded(
+                  flex: LpRobotPoseBar._brandFlex,
+                  child: ClipRect(
+                    child: _BrandColumn(
+                      subtitle: data.subtitle,
+                      connected: data.connected,
+                      linkKind: data.linkKind,
+                    ),
+                  ),
+                ),
+              if (showPoseRows)
+                Expanded(
+                  flex: showBrand ? LpRobotPoseBar._poseFlex : 1,
+                  child: _PoseColumns(
+                    worldPairs: data.worldPairs,
+                    jointPairs: data.jointPairs,
+                    live: data.connected && data.hasData,
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: trailing,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubpageTrailing extends StatelessWidget {
+  const _SubpageTrailing({required this.onBack, required this.extra});
+
+  final VoidCallback? onBack;
+  final Widget? extra;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ?extra,
+        if (onBack != null)
+          LpImagePressButton(
+            assetOff: LpAppAssets.backUnpressed,
+            assetOn: LpAppAssets.backPressed,
+            onTap: onBack!,
+            semanticLabel: '返回',
+            size: 36,
+          ),
+      ],
+    );
+  }
+}
+
+class _MenuBg extends StatelessWidget {
+  const _MenuBg({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(LpAppAssets.homeTopMenuBg),
+          fit: BoxFit.fill,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _BrandColumn extends StatelessWidget {
+  const _BrandColumn({
+    required this.subtitle,
+    required this.connected,
+    required this.linkKind,
+  });
+
+  final String subtitle;
+  final bool connected;
+  final RobotLinkKind linkKind;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final logoHeight = (constraints.maxHeight * LpRobotPoseBar._logoHeightFactor)
+            .clamp(42.0, 56.0);
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: constraints.maxWidth,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    height: logoHeight,
+                    child: Image.asset(
+                      LpAppAssets.homeTopLogo,
+                      fit: BoxFit.fitHeight,
+                      alignment: Alignment.centerLeft,
+                      errorBuilder: (_, e, st) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              SizedBox(
+                width: constraints.maxWidth,
+                child: _ConnectionLinkRow(
+                  linkKind: linkKind,
+                  subtitle: subtitle,
+                  connected: connected,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 链路行：有线显示「以太网」，无线显示 Wi‑Fi 图标 + 序列号/IP。
+class _ConnectionLinkRow extends StatelessWidget {
+  const _ConnectionLinkRow({
+    required this.linkKind,
+    required this.subtitle,
+    required this.connected,
+  });
+
+  final RobotLinkKind linkKind;
+  final String subtitle;
+  final bool connected;
+
+  static const _textStyle = TextStyle(
+    fontSize: 11,
+    color: Colors.white,
+    fontWeight: FontWeight.w600,
+    height: 1.05,
+  );
+
+  static const _iconSize = 14.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (connected && linkKind == RobotLinkKind.ethernet) {
+      return Row(
+        children: [
+          Icon(
+            Icons.settings_ethernet,
+            size: _iconSize,
+            color: Colors.white.withValues(alpha: 0.95),
+          ),
+          const SizedBox(width: 4),
+          const Expanded(
+            child: Text(
+              '以太网',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _textStyle,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Image.asset(
+          LpAppAssets.iconWifi,
+          width: _iconSize,
+          height: _iconSize,
+          fit: BoxFit.contain,
+          errorBuilder: (_, e, st) => Icon(
+            Icons.wifi,
+            size: _iconSize,
+            color: Colors.white.withValues(alpha: 0.95),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _textStyle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PoseColumns extends StatefulWidget {
+  const _PoseColumns({
+    required this.worldPairs,
+    required this.jointPairs,
+    required this.live,
+  });
+
+  final List<_LabelValuePair> worldPairs;
+  final List<_LabelValuePair> jointPairs;
+  final bool live;
+
+  @override
+  State<_PoseColumns> createState() => _PoseColumnsState();
+}
+
+class _PoseColumnsState extends State<_PoseColumns> {
+  final _scrollController = ScrollController();
+
+  static const _cellMinWidth = 96.0;
+  static const _minReadableWidth = 74.0;
+  static const _baseFontSize = 16.0;
+  static const _minFontSize = 14.0;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columnCount = math.max(
+          widget.worldPairs.length,
+          widget.jointPairs.length,
+        );
+        final contentWidth = columnCount * _cellMinWidth;
+        final perColumn = columnCount > 0
+            ? constraints.maxWidth / columnCount
+            : constraints.maxWidth;
+        final needScroll =
+            contentWidth > constraints.maxWidth + 1 ||
+            perColumn < _minReadableWidth;
+        final fontSize = needScroll
+            ? _baseFontSize
+            : (perColumn / 5.2).clamp(_minFontSize, _baseFontSize);
+
+        Widget rows({double? cellWidth}) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _PoseInlineRow(
+                  pairs: widget.worldPairs,
+                  live: widget.live,
+                  cellWidth: cellWidth,
+                  fontSize: fontSize,
+                ),
+              ),
+              Expanded(
+                child: _PoseInlineRow(
+                  pairs: widget.jointPairs,
+                  live: widget.live,
+                  cellWidth: cellWidth,
+                  fontSize: fontSize,
+                ),
+              ),
+            ],
+          );
+        }
+
+        if (!needScroll) {
+          return rows();
+        }
+
+        return Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          interactive: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: contentWidth,
+              height: constraints.maxHeight,
+              child: rows(cellWidth: _cellMinWidth),
             ),
           ),
         );
@@ -134,262 +566,126 @@ class LpRobotPoseBar extends StatelessWidget {
   }
 }
 
-class _HeaderStrip extends StatelessWidget {
-  const _HeaderStrip({
-    required this.pageTitle,
-    required this.onBack,
-    required this.trailing,
-    required this.showConnectionActions,
-    required this.modelLabel,
-    required this.showModelBadge,
-    required this.connected,
-    required this.onDisconnect,
-    required this.onBackToConnect,
+class _PoseInlineRow extends StatelessWidget {
+  const _PoseInlineRow({
+    required this.pairs,
+    required this.live,
+    required this.fontSize,
+    this.cellWidth,
   });
 
-  final String? pageTitle;
-  final VoidCallback? onBack;
-  final Widget? trailing;
-  final bool showConnectionActions;
-  final String modelLabel;
-  final bool showModelBadge;
-  final bool connected;
-  final VoidCallback? onDisconnect;
-  final VoidCallback? onBackToConnect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: LpRobotPoseBar._headerRowHeight,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LpRobotColors.primary,
-            Color(0xFFFF9A4D),
-          ],
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Row(
-        children: [
-          const SizedBox(width: 4),
-          Expanded(
-            child: showModelBadge
-                ? Center(
-                    child: _ModelBadge(
-                      label: modelLabel,
-                      connected: connected,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          if (showConnectionActions) ...[
-            if (connected && onDisconnect != null)
-              _HeaderTextButton(label: '断开', onPressed: onDisconnect!)
-            else if (!connected && onBackToConnect != null)
-              _HeaderTextButton(
-                label: '连接',
-                onPressed: onBackToConnect!,
-              ),
-          ],
-          ?trailing,
-          if (onBack != null)
-            LpImagePressButton(
-              assetOff: LpAppAssets.backUnpressed,
-              assetOn: LpAppAssets.backPressed,
-              onTap: onBack!,
-              semanticLabel: pageTitle,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModelBadge extends StatelessWidget {
-  const _ModelBadge({
-    required this.label,
-    required this.connected,
-  });
-
-  final String label;
-  final bool connected;
-
-  @override
-  Widget build(BuildContext context) {
-    if (label.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.precision_manufacturing_outlined,
-            size: 14,
-            color: connected ? LpRobotColors.primary : LpRobotColors.label,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: connected ? LpRobotColors.textDark : LpRobotColors.label,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderTextButton extends StatelessWidget {
-  const _HeaderTextButton({
-    required this.label,
-    required this.onPressed,
-  });
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        minimumSize: const Size(0, 28),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
-class _PoseRow extends StatelessWidget {
-  const _PoseRow({
-    required this.labels,
-    required this.values,
-    required this.connected,
-    required this.hasData,
-    required this.labelSize,
-    required this.valueSize,
-  });
-
-  final List<String> labels;
-  final List<double> values;
-  final bool connected;
-  final bool hasData;
-  final double labelSize;
-  final double valueSize;
+  final List<_LabelValuePair> pairs;
+  final bool live;
+  final double fontSize;
+  final double? cellWidth;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < labels.length; i++) ...[
-          if (i > 0) const SizedBox(width: 2),
-          Expanded(
-            child: _PoseCell(
-              label: labels[i],
-              value: _display(
-                i < values.length ? values[i] : 0,
-                connected,
-                hasData,
+        for (var i = 0; i < pairs.length; i++)
+          if (cellWidth != null)
+            SizedBox(
+              width: cellWidth,
+              child: _PoseInlineCell(
+                label: pairs[i].label,
+                value: pairs[i].value,
+                live: live,
+                fontSize: fontSize,
               ),
-              live: connected && hasData,
-              dimmed: false,
-              labelSize: labelSize,
-              valueSize: valueSize,
+            )
+          else
+            Expanded(
+              child: _PoseInlineCell(
+                label: pairs[i].label,
+                value: pairs[i].value,
+                live: live,
+                fontSize: fontSize,
+              ),
             ),
-          ),
-        ],
       ],
     );
   }
-
-  static String _display(double value, bool connected, bool hasData) {
-    if (!connected || !hasData) return '—';
-    return value.toStringAsFixed(4);
-  }
 }
 
-class _PoseCell extends StatelessWidget {
-  const _PoseCell({
+class _PoseInlineCell extends StatelessWidget {
+  const _PoseInlineCell({
     required this.label,
     required this.value,
     required this.live,
-    required this.dimmed,
-    required this.labelSize,
-    required this.valueSize,
+    required this.fontSize,
   });
 
   final String label;
   final String value;
   final bool live;
-  final bool dimmed;
-  final double labelSize;
-  final double valueSize;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
-    final valueColor = !live
-        ? LpRobotColors.label
-        : dimmed
-            ? LpRobotColors.label.withValues(alpha: 0.65)
-            : LpRobotColors.liveValue;
+    final valueColor =
+        live ? LpRobotColors.liveValue : LpRobotColors.label;
+    final labelStyle = TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w700,
+      color: LpRobotColors.textDark,
+      height: 1.05,
+    );
+    final valueStyle = TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w700,
+      fontFamily: 'Consolas',
+      color: valueColor,
+      height: 1.05,
+    );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surface,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: LpRobotColors.borderWarm.withValues(alpha: dimmed ? 0.35 : 0.7),
+    return Align(
+      alignment: Alignment.center,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: label, style: labelStyle),
+            TextSpan(text: value, style: valueStyle),
+          ],
         ),
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+        softWrap: false,
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.center,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: labelSize,
-                  height: 1.0,
-                  fontWeight: FontWeight.w600,
-                  color: LpRobotColors.textDark.withValues(
-                    alpha: dimmed ? 0.55 : 1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: valueSize,
-                  height: 1.0,
-                  fontFamily: 'Consolas',
-                  fontWeight: FontWeight.w700,
-                  color: valueColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    );
+  }
+}
+
+class _ConnectionAction extends StatelessWidget {
+  const _ConnectionAction({
+    required this.connected,
+    required this.onDisconnect,
+    required this.onBackToConnect,
+  });
+
+  final bool connected;
+  final VoidCallback? onDisconnect;
+  final VoidCallback? onBackToConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final VoidCallback? onTap;
+    if (connected && onDisconnect != null) {
+      onTap = onDisconnect;
+    } else if (!connected && onBackToConnect != null) {
+      onTap = onBackToConnect;
+    } else {
+      onTap = null;
+    }
+    if (onTap == null) return const SizedBox.shrink();
+
+    return LpImagePressButton(
+      assetOff: LpAppAssets.backUnpressed,
+      assetOn: LpAppAssets.backPressed,
+      onTap: onTap,
+      semanticLabel: connected ? '断开' : '返回连接',
+      size: 36,
     );
   }
 }

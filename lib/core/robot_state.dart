@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'robot_link_kind.dart';
+
 /// 运行时机器人状态（逐步从 Android RobotCommand 迁入）
 class RobotState extends ChangeNotifier {
   RobotState._();
@@ -7,6 +9,7 @@ class RobotState extends ChangeNotifier {
 
   String serverBaseUrl = 'http://192.168.11.11';
   bool isConnected = false;
+  RobotLinkKind linkKind = RobotLinkKind.unknown;
   String firmwareVersion = '';
   String robotModel = '';
   String robotSerialNumber = '';
@@ -40,6 +43,34 @@ class RobotState extends ChangeNotifier {
     this.robotType = robotType;
     lastConnectError = null;
     notifyListeners();
+    refreshLinkKind();
+  }
+
+  /// 根据本机网卡刷新顶栏链路展示（有线 → 以太网）。
+  Future<void> refreshLinkKind() async {
+    if (!isConnected) {
+      if (linkKind != RobotLinkKind.unknown) {
+        linkKind = RobotLinkKind.unknown;
+        notifyListeners();
+      }
+      return;
+    }
+    final host = connectionHost;
+    if (host.isEmpty) return;
+    final detected = await RobotLinkKindDetector.detectForHost(host);
+    if (linkKind != detected) {
+      linkKind = detected;
+      notifyListeners();
+    }
+  }
+
+  /// 从 [serverBaseUrl] 解析主机名/IP。
+  String get connectionHost {
+    try {
+      return Uri.parse(serverBaseUrl).host;
+    } catch (_) {
+      return serverBaseUrl;
+    }
   }
 
   void setConnectFailed(String message) {
@@ -54,6 +85,7 @@ class RobotState extends ChangeNotifier {
     robotModel = '';
     robotSerialNumber = '';
     robotType = 0;
+    linkKind = RobotLinkKind.unknown;
     notifyListeners();
   }
 

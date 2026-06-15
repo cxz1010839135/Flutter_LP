@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,10 @@ WebViewController createBlocklyWebViewController() {
   late final PlatformWebViewControllerCreationParams params;
   if (WebViewPlatform.instance is AndroidWebViewPlatform) {
     params = AndroidWebViewControllerCreationParams();
+  } else if (Platform.isWindows || Platform.isLinux) {
+    params = const WindowsWebViewControllerCreationParams(
+      suspendDuringDeactive: true,
+    );
   } else {
     params = const PlatformWebViewControllerCreationParams();
   }
@@ -24,9 +29,8 @@ WebViewController createBlocklyWebViewController() {
   return controller;
 }
 
-/// Android：页面就绪后触发 Blockly 重新计算布局（WebView 初次尺寸常不准）。
+/// Android / Windows / Linux：页面就绪后触发 Blockly 重新计算布局。
 Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
-  if (!Platform.isAndroid) return;
   try {
     await controller.runJavaScript('''
 (function() {
@@ -36,9 +40,13 @@ Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
       meta.setAttribute('content',
         'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
     }
-    window.dispatchEvent(new Event('resize'));
-    if (window.Blockly && Blockly.svgResize) {
-      Blockly.svgResize(Blockly.getMainWorkspace());
+    if (window.Code && typeof Code.scheduleLayoutRefresh_ === 'function') {
+      Code.scheduleLayoutRefresh_();
+    } else {
+      window.dispatchEvent(new Event('resize'));
+      if (window.Blockly && Blockly.svgResize && Blockly.getMainWorkspace) {
+        Blockly.svgResize(Blockly.getMainWorkspace());
+      }
     }
   } catch (e) {
     console.warn('notifyBlocklyWebViewResized', e);
@@ -47,6 +55,29 @@ Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
 ''');
   } catch (e, st) {
     debugPrint('notifyBlocklyWebViewResized failed: $e\n$st');
+  }
+}
+
+/// 离开编程页前销毁原生 WebView，避免 Windows 浮层残留到主页。
+Future<void> teardownBlocklyWebView(WebViewController? controller) async {
+  if (controller == null) return;
+
+  try {
+    await setBlocklyWebViewVisible(controller, false);
+
+    if (Platform.isWindows || Platform.isLinux) {
+      final platform = controller.platform;
+      if (platform is WindowsPlatformWebViewController) {
+        await platform.controller.dispose();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return;
+      }
+    }
+
+    await controller.loadRequest(Uri.parse('about:blank'));
+    await setBlocklyWebViewVisible(controller, false);
+  } catch (e, st) {
+    debugPrint('teardownBlocklyWebView failed: $e\n$st');
   }
 }
 
@@ -131,7 +162,24 @@ class _LpBlocklyWebViewHostState extends State<LpBlocklyWebViewHost> {
           notifyBlocklyWebViewResized(widget.controller);
         });
       }
+      if (widget.visible && (Platform.isWindows || Platform.isLinux)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future<void>.delayed(const Duration(milliseconds: 120), () {
+            if (mounted && widget.visible) {
+              notifyBlocklyWebViewResized(widget.controller);
+            }
+          });
+        });
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    if (Platform.isWindows || Platform.isLinux) {
+      unawaited(setBlocklyWebViewVisible(widget.controller, false));
+    }
+    super.dispose();
   }
 
   void _applyVisibility() {

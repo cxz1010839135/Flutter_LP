@@ -4,6 +4,7 @@ import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/maintenance_edit_gate.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
@@ -196,6 +197,11 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
 
   Future<void> _editDriverRow(int index) async {
     final row = _driverRows[index];
+    final readOnly = !MaintenanceEditGate.canEdit();
+    if (readOnly) {
+      await _showDriverRowViewDialog(row);
+      return;
+    }
     final axisCount = _driverAxisCount;
     final headers = DriverParamsDpsCodec.axisHeadersFor(axisCount);
     final controllers = List.generate(
@@ -351,6 +357,11 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
 
   Future<void> _editRow(int index) async {
     final row = _rows[index];
+    final readOnly = !MaintenanceEditGate.canEdit();
+    if (readOnly) {
+      await _showRowViewDialog(row);
+      return;
+    }
     final controllers = List.generate(
       _step.editableColumnCount,
       (i) => TextEditingController(
@@ -414,6 +425,72 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     }
   }
 
+  Future<void> _showRowViewDialog(ConfigFileRow row) {
+    final lines = <String>[];
+    for (var i = 0; i < _step.editableColumnCount; i++) {
+      final header = i < _step.columnHeaders.length
+          ? _step.columnHeaders[i]
+          : '值';
+      final value = i < row.values.length ? row.values[i] : '';
+      if (header.isEmpty && _step.editableColumnCount == 1) {
+        lines.add(value);
+      } else if (header.isNotEmpty) {
+        lines.add('$header：$value');
+      }
+    }
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('查看：${row.name}'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Text(
+              lines.isEmpty ? '（无数据）' : lines.join('\n'),
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDriverRowViewDialog(DriverParamsRow row) {
+    final headers = DriverParamsDpsCodec.axisHeadersFor(_driverAxisCount);
+    final lines = <String>[];
+    for (var i = 0; i < _driverAxisCount; i++) {
+      final value = i < row.values.length ? row.values[i] : '';
+      lines.add('${headers[i]}：$value');
+    }
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('查看：${row.name}'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Text(
+              lines.join('\n'),
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -423,6 +500,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
       ]),
       builder: (context, _) {
         final initBusy = DriverTechModeGate.isControllerInitializing;
+        final canEdit = MaintenanceEditGate.canEdit();
 
         return Scaffold(
           backgroundColor: LpRobotColors.background,
@@ -431,7 +509,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
             children: [
               LpRobotPoseBar(
                 pageTitle: '文件配置',
-                showPoseRows: false,
+                titleBarOnly: true,
                 onBack: () => Navigator.of(context).pop(),
               ),
               Expanded(
@@ -439,7 +517,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                     ? _buildDriverPanel()
                     : _buildStepPanel(),
               ),
-              _buildBottomBar(initBusy: initBusy),
+              _buildBottomBar(initBusy: initBusy, canEdit: canEdit),
               const LpStatusPanel(),
             ],
           ),
@@ -498,7 +576,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                           )
                         : _buildTable(),
               ),
-              if (_fileExists && _step.allowAdd)
+              if (_fileExists && _step.allowAdd && MaintenanceEditGate.canEdit())
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
@@ -591,7 +669,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                     )
                   : _buildDriverTable(),
         ),
-        if (_driverExists)
+        if (_driverExists && MaintenanceEditGate.canEdit())
           Padding(
             padding: const EdgeInsets.all(12),
             child: Align(
@@ -660,7 +738,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     );
   }
 
-  Widget _buildBottomBar({required bool initBusy}) {
+  Widget _buildBottomBar({required bool initBusy, required bool canEdit}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -694,18 +772,18 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
             )
           else
             TextButton(
-              onPressed: DriverTechModeGate.instance.canEnterDriverPage
+              onPressed: canEdit && DriverTechModeGate.instance.canEnterDriverPage
                   ? _openDebugMode
                   : null,
               child: const Text('调试模式'),
             ),
           const Spacer(),
-          if (!_showDriverPanel && !_fileExists)
+          if (!_showDriverPanel && !_fileExists && canEdit)
             FilledButton(
               onPressed: _loading ? null : _createFile,
               child: const Text('创建该文件'),
             ),
-          if (!_showDriverPanel && _fileExists && !_step.hideSave)
+          if (!_showDriverPanel && _fileExists && !_step.hideSave && canEdit)
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: FilledButton(
@@ -713,7 +791,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                 child: const Text('保存文件'),
               ),
             ),
-          if (!_showDriverPanel && _fileExists && _step.showEtherCatButton)
+          if (!_showDriverPanel && _fileExists && _step.showEtherCatButton && canEdit)
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: FilledButton(

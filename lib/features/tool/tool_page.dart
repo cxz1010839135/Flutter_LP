@@ -4,6 +4,7 @@ import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/maintenance_edit_gate.dart';
 import '../../core/robot_alarm_info.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
@@ -145,15 +146,20 @@ class _ToolPageState extends State<ToolPage> {
   bool get _canOpenDriver {
     return _online &&
         !_busy &&
+        MaintenanceEditGate.canEdit() &&
         _inDebugMode &&
         DriverTechModeGate.instance.canEnterDriverPage;
   }
 
   @override
   Widget build(BuildContext context) {
-    final actionsEnabled = _online && !_busy;
+    return ListenableBuilder(
+      listenable: RobotTelemetry.instance,
+      builder: (context, _) {
+        final stopped = MaintenanceEditGate.canEdit();
+        final actionsEnabled = _online && !_busy && stopped;
 
-    return Scaffold(
+        return Scaffold(
       backgroundColor: LpRobotColors.background,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -235,6 +241,8 @@ class _ToolPageState extends State<ToolPage> {
           const LpStatusPanel(),
         ],
       ),
+    );
+      },
     );
   }
 }

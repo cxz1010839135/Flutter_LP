@@ -120,6 +120,11 @@ class RobotPoseSnapshot {
 
   static const List<String> worldLabels = ['X', 'Y', 'Z', 'W', 'A', 'B', 'C'];
 
+  /// 顶栏世界坐标列数：≤6 轴显示 XYZW，>6 轴显示 XYZWABC（对齐 Android TopView）。
+  static int topBarWorldCount(int jointAxisCount) {
+    return jointAxisCount > 6 ? worldLabels.length : 4;
+  }
+
   List<double> get worldValues => [x, y, z, w, a, b, c];
 
   static double _readDouble(dynamic value) {

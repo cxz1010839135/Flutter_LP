@@ -24,6 +24,9 @@ class LpRobotFootBar extends StatelessWidget {
         final online = RobotState.instance.isConnected;
         final t = RobotTelemetry.instance;
         final initOk = RobotAlarmInfo.initStatusOk(t.initStatus);
+        final initText = online
+            ? RobotAlarmInfo.formatInitStatus(t.initStatus)
+            : '—';
         final alarmText = online
             ? RobotAlarmInfo.formatMotorAlarm(
                 motorAlarm: t.motorAlarm,
@@ -50,7 +53,7 @@ class LpRobotFootBar extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
                           child: _StatusRow(
                             online: online,
-                            initStatus: t.initStatus,
+                            initText: initText,
                             initOk: initOk,
                             alarmText: alarmText,
                             motorAlarm: t.motorAlarm,
@@ -78,7 +81,7 @@ class LpRobotFootBar extends StatelessWidget {
                             child: Center(
                               child: _StatusRow(
                                 online: online,
-                                initStatus: t.initStatus,
+                                initText: initText,
                                 initOk: initOk,
                                 alarmText: alarmText,
                                 motorAlarm: t.motorAlarm,
@@ -113,14 +116,14 @@ class LpRobotFootBar extends StatelessWidget {
 class _StatusRow extends StatelessWidget {
   const _StatusRow({
     required this.online,
-    required this.initStatus,
+    required this.initText,
     required this.initOk,
     required this.alarmText,
     required this.motorAlarm,
   });
 
   final bool online;
-  final int initStatus;
+  final String initText;
   final bool initOk;
   final String alarmText;
   final bool motorAlarm;
@@ -135,7 +138,8 @@ class _StatusRow extends StatelessWidget {
       children: [
         _FootStatus(
           label: '启动状态：',
-          value: online ? '$initStatus' : '—',
+          value: initText,
+          maxLines: 2,
           valueColor: online && initOk
               ? LpRobotColors.liveValue
               : online

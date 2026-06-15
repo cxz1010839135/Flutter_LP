@@ -113,7 +113,7 @@ class _MainHomePageState extends State<MainHomePage> {
                           onControl: moving ? null : _openControl,
                           onProgram: _openBlockly,
                           onMonitor: online ? _openMonitor : null,
-                          onTool: _openTool,
+                          onTool: online ? _openTool : null,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -163,7 +163,7 @@ class _MainNavRail extends StatelessWidget {
   final VoidCallback? onControl;
   final VoidCallback onProgram;
   final VoidCallback? onMonitor;
-  final VoidCallback onTool;
+  final VoidCallback? onTool;
 
   static const _items = [
     (Icons.gamepad_outlined, '操控'),
@@ -215,7 +215,7 @@ class _MainNavRail extends StatelessWidget {
   }
 }
 
-class _NavButton extends StatelessWidget {
+class _NavButton extends StatefulWidget {
   const _NavButton({
     required this.icon,
     required this.label,
@@ -227,46 +227,59 @@ class _NavButton extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  State<_NavButton> createState() => _NavButtonState();
+}
+
+class _NavButtonState extends State<_NavButton> {
+  bool _hovered = false;
+
+  Color get _backgroundColor {
+    if (widget.onTap == null) return Colors.transparent;
+    if (_hovered) return LpRobotColors.primary;
+    return LpRobotColors.surface;
+  }
+
+  Color get _foregroundColor {
+    if (widget.onTap == null) return Colors.grey;
+    if (_hovered) return Colors.white;
+    return LpRobotColors.primary;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final on = onTap != null;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        hoverColor: on
-            ? LpRobotColors.primary.withValues(alpha: 0.08)
-            : Colors.transparent,
-        splashColor: on
-            ? LpRobotColors.primary.withValues(alpha: 0.12)
-            : Colors.transparent,
-        highlightColor: on
-            ? LpRobotColors.primary.withValues(alpha: 0.06)
-            : Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            color: on
-                ? LpRobotColors.primary.withValues(alpha: 0.04)
-                : null,
-          ),
-          child: SizedBox.expand(
-            child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: on ? LpRobotColors.primary : Colors.grey,
+    final on = widget.onTap != null;
+    return MouseRegion(
+      onEnter: on ? (_) => setState(() => _hovered = true) : null,
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          splashColor: LpRobotColors.primary.withValues(alpha: 0.28),
+          highlightColor: LpRobotColors.primary.withValues(alpha: 0.14),
+          hoverColor: Colors.transparent,
+          child: Container(
+            color: _backgroundColor,
+            child: SizedBox.expand(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 32,
+                    color: _foregroundColor,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _foregroundColor,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: on ? LpRobotColors.primary : Colors.grey,
-                ),
-              ),
-            ],
             ),
           ),
         ),
