@@ -177,9 +177,11 @@ if (-not $SkipFlutterBuild) {
     Invoke-ExternalCommand dart "${ProjectRoot}/tool/sync_app_version.dart"
     if ($LASTEXITCODE -ne 0) { throw 'sync_app_version.dart failed' }
     Ensure-PubHostedUrl
-    Write-Host ">>> sync Blockly zip (pubspec asset)"
+    Write-Host ">>> sync Blockly zip + LPK pack"
     Invoke-ExternalCommand dart run tool/sync_blockly_assets.dart
     if ($LASTEXITCODE -ne 0) { throw 'sync_blockly_assets.dart failed' }
+    Invoke-ExternalCommand dart run tool/package_blockly_lpk.dart
+    if ($LASTEXITCODE -ne 0) { throw 'package_blockly_lpk.dart failed' }
     Write-Host ">>> flutter pub get"
     Invoke-ExternalCommand flutter pub get --offline
     if ($LASTEXITCODE -ne 0) {
@@ -230,25 +232,20 @@ if (Test-Path $configSrc) {
     Write-Warning "Missing config/: $configSrc"
 }
 
-$blocklySrc = Join-Path $ProjectRoot "dll\visualprogram"
+$blocklyLpkSrc = Join-Path $ProjectRoot "dll\visualprogram.lpk"
 $dllDstRoot = Join-Path $releaseDir "dll"
-$blocklyDst = Join-Path $dllDstRoot "visualprogram"
-$blocklyEntry = Join-Path $blocklyDst "blockly\demos\code\index.html"
-if (-not (Test-Path $blocklySrc)) {
-    throw "Missing Blockly assets: $blocklySrc"
+if (-not (Test-Path $blocklyLpkSrc)) {
+    throw "Missing Blockly pack: $blocklyLpkSrc`nRun: dart run tool/sync_blockly_assets.dart && dart run tool/package_blockly_lpk.dart"
 }
 if (Test-Path $dllDstRoot) {
-    Write-Host ">>> refresh dll/ in Release (remove stale files)"
+    Write-Host ">>> refresh dll/ in Release (remove stale Blockly tree)"
     Remove-Item -LiteralPath $dllDstRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $dllDstRoot | Out-Null
-Write-Host ">>> copy dll/visualprogram/ -> Release"
-Copy-Item -Path $blocklySrc -Destination $dllDstRoot -Recurse -Force
-if (-not (Test-Path $blocklyEntry)) {
-    throw "Blockly staging failed (missing $blocklyEntry). Check dll/visualprogram in project root."
-}
-$fileCount = (Get-ChildItem -LiteralPath $blocklyDst -Recurse -File).Count
-Write-Host ">>> staged $fileCount files under dll/visualprogram/"
+Write-Host ">>> copy dll/visualprogram.lpk -> Release (encrypted pack only)"
+Copy-Item -LiteralPath $blocklyLpkSrc -Destination (Join-Path $dllDstRoot "visualprogram.lpk") -Force
+$lpk = Get-Item (Join-Path $dllDstRoot "visualprogram.lpk")
+Write-Host ">>> staged Blockly LPK ($([math]::Round($lpk.Length / 1MB, 2)) MB)"
 
 $distDir = Join-Path $ProjectRoot "dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null

@@ -7,6 +7,27 @@
 
 ---
 
+## [1.7.3] - 2026-06-17
+
+**类型**：Blockly 资源加密打包（安装目录不含明文 JS）
+
+### 新增
+
+- **Blockly 加密包**（`visualprogram.lpk`）：安装包内仅单文件，不再释放 `dll/visualprogram/` 源码树
+- **构建脚本** `tool/package_blockly_lpk.dart`：打包前由 zip 生成 LPK
+
+### 优化
+
+- **Windows / Android 发布**：MSI / APK 只携带 `.lpk`；首次进入编程页解密解压到用户缓存目录
+- **开发模式不变**：工程内保留 `dll/visualprogram/` 时仍直接加载明文目录
+
+### 说明
+
+- LPK 为 XOR 混淆，防止安装目录直接浏览 JS，非强加密
+- 运行时 WebView 仍需解压到 `%LOCALAPPDATA%\Lingpeng\LPRobot\cache\visualprogram\`
+
+---
+
 ## [1.7.2] - 2026-06-17
 
 **类型**：顶栏对齐 Android + Blockly 退出修复 + 主页交互

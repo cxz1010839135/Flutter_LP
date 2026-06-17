@@ -49,9 +49,11 @@ $ver = Get-AppVersion
 Write-Host "App version: $($ver.Name)+$($ver.Build)"
 
 if (-not $SkipFlutterBuild) {
-    Write-Host ">>> sync Blockly assets for Android (visualprogram.zip)"
+    Write-Host ">>> sync Blockly zip + LPK pack"
     dart run tool/sync_blockly_assets.dart
     if ($LASTEXITCODE -ne 0) { throw 'sync_blockly_assets.dart failed' }
+    dart run tool/package_blockly_lpk.dart
+    if ($LASTEXITCODE -ne 0) { throw 'package_blockly_lpk.dart failed' }
 
     Write-Host ">>> flutter pub get"
     flutter pub get

@@ -132,9 +132,19 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
 
-# 仅安装 Blockly 运行目录 dll/visualprogram（与 LpBlocklyConfig.dllRelativePath 一致）
+# 仅安装 Blockly 加密包 dll/visualprogram.lpk（明文目录仅开发/工程内维护）
+set(BLOCKLY_LPK "${CMAKE_CURRENT_SOURCE_DIR}/../dll/visualprogram.lpk")
 set(BLOCKLY_DLL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../dll/visualprogram")
-if(EXISTS "${BLOCKLY_DLL_DIR}")
+if(EXISTS "${BLOCKLY_LPK}")
+  install(CODE "
+    file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/dll/visualprogram\")
+    " COMPONENT Runtime)
+  install(FILES "${BLOCKLY_LPK}"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/dll"
+    RENAME "visualprogram.lpk"
+    COMPONENT Runtime)
+elseif(EXISTS "${BLOCKLY_DLL_DIR}")
+  message(STATUS "Blockly LPK not found; installing plain dll/visualprogram for dev")
   install(CODE "
     file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/dll\")
     " COMPONENT Runtime)

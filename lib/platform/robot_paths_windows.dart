@@ -45,6 +45,9 @@ class RobotPathsWindows extends RobotPathsBase {
     return fallback;
   }
 
+  Future<String> blocklyCacheRoot() =>
+      _ensureSubdirOn(RobotPathLayout.blocklyCacheDir, writable: true);
+
   @override
   Future<String> installRoot() async {
     if (_bundleRoot != null) return _bundleRoot!;
@@ -149,6 +152,9 @@ class RobotPathsWindows extends RobotPathsBase {
   Future<bool> _looksLikeInstallRoot(String root) async {
     if (await File(p.join(root, 'pubspec.yaml')).exists()) return true;
     if (await Directory(p.join(root, 'dll')).exists()) return true;
+    if (await File(p.join(root, RobotPathLayout.blocklyPackRelative)).exists()) {
+      return true;
+    }
     for (final name in RobotPathLayout.windowsExeNames) {
       if (await File(p.join(root, name)).exists()) return true;
     }

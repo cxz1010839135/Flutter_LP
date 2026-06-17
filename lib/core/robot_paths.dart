@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../blockly/lp_blockly_asset_bootstrap.dart';
 import '../blockly/lp_blockly_config.dart';
 import '../platform/robot_paths_android.dart';
 import '../platform/robot_paths_platform.dart';
@@ -166,6 +167,23 @@ class RobotPaths {
   static Future<String> dllVisualProgramRoot() async {
     return p.normalize(
       p.join(await installRoot(), LpBlocklyConfig.dllRelativePath),
+    );
+  }
+
+  /// Blockly 运行时根目录（解压后的 visualprogram）。
+  static Future<String> blocklyRuntimeRoot() async {
+    final plain = await LpBlocklyAssetBootstrap.findPlainDevRoot();
+    if (plain != null) return plain;
+
+    if (Platform.isWindows && platform is RobotPathsWindows) {
+      return (platform as RobotPathsWindows).blocklyCacheRoot();
+    }
+    return dllVisualProgramRoot();
+  }
+
+  static Future<File> blocklyPackFile() async {
+    return File(
+      p.join(await installRoot(), RobotPathLayout.blocklyPackRelative),
     );
   }
 }

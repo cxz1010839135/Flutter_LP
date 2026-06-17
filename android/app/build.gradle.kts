@@ -50,7 +50,7 @@ flutter {
     source = "../.."
 }
 
-// Android 无 exe 旁 dll/，构建前将 dll/visualprogram 打成 Flutter 资源包。
+// Android 无 exe 旁 dll/，构建前将 dll/visualprogram 打成加密 LPK 资源包。
 val syncBlocklyAssets = tasks.register<Exec>("syncBlocklyAssets") {
     val projectRoot = rootProject.projectDir.parentFile.parentFile
     workingDir = projectRoot
@@ -58,6 +58,14 @@ val syncBlocklyAssets = tasks.register<Exec>("syncBlocklyAssets") {
     onlyIf { File(projectRoot, "dll/visualprogram").exists() }
 }
 
-tasks.named("preBuild").configure {
+val packageBlocklyLpk = tasks.register<Exec>("packageBlocklyLpk") {
+    val projectRoot = rootProject.projectDir.parentFile.parentFile
+    workingDir = projectRoot
+    commandLine("dart", "run", "tool/package_blockly_lpk.dart")
     dependsOn(syncBlocklyAssets)
+    onlyIf { File(projectRoot, "dll/visualprogram").exists() }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(packageBlocklyLpk)
 }

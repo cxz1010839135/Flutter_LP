@@ -710,6 +710,7 @@ class _ErrorPanel extends StatelessWidget {
       }
       return 'Android 需将 Blockly 打入 APK 并在首次打开时解压。\n'
           '开发/打包前请执行：dart run tool/sync_blockly_assets.dart\n'
+          '        dart run tool/package_blockly_lpk.dart\n'
           '然后重新 flutter run 或 打包Android安装包.bat';
     }
     return '请确认 dll 目录位于工程根目录：\n'

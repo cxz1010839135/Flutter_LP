@@ -61,4 +61,10 @@ class RobotPathLayout {
   /// 安装目录不可写时，用户数据根：%LOCALAPPDATA%\Lingpeng\LPRobot
   static const String windowsWritableDataParent = 'Lingpeng';
   static const String windowsWritableDataLeaf = 'LPRobot';
+
+  /// 安装包内 Blockly 加密包：`dll/visualprogram.lpk`（不含明文 JS 目录）
+  static const String blocklyPackRelative = 'dll/visualprogram.lpk';
+
+  /// 运行时解压目录（相对可写数据根）
+  static const String blocklyCacheDir = 'cache/visualprogram';
 }

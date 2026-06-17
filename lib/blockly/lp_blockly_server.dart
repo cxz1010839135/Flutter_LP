@@ -232,6 +232,10 @@ Future<String> resolveDllRoot({
   final candidates = <String>[];
 
   try {
+    candidates.add(await RobotPaths.blocklyRuntimeRoot());
+  } catch (_) {}
+
+  try {
     candidates.add(await RobotPaths.dllVisualProgramRoot());
   } catch (_) {}
 
