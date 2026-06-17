@@ -314,15 +314,24 @@
     }, 500);
   });
 
-  document.onreadystatechange = function () {
-    if (document.readyState === 'complete') {
-      window.setTimeout(function () {
-        if (window.Code && typeof Code.ReLoadXML === 'function') {
-          Code.ReLoadXML();
-        } else if (window.Code && typeof Code.loadComplete === 'function') {
-          Code.loadComplete();
-        }
-      }, 300);
-    }
-  };
+  function scheduleInitialLoad() {
+    window.setTimeout(function () {
+      if (window.Code && typeof Code.ReLoadXML === 'function') {
+        Code.ReLoadXML();
+      } else if (window.Code && typeof Code.loadComplete === 'function') {
+        Code.loadComplete();
+      }
+    }, 400);
+  }
+
+  if (document.readyState === 'complete') {
+    scheduleInitialLoad();
+  } else {
+    document.addEventListener('readystatechange', function onReady() {
+      if (document.readyState === 'complete') {
+        document.removeEventListener('readystatechange', onReady);
+        scheduleInitialLoad();
+      }
+    });
+  }
 })();

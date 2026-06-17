@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
-import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
+import 'driver_address_debug_page.dart';
 import 'driver_params_model.dart';
 import 'driver_params_service.dart';
 import 'driver_tech_mode_gate.dart';
+import 'driver_ui_style.dart';
 import 'widgets/driver_params_panel.dart';
 import 'widgets/driver_status_bar.dart';
+import 'widgets/driver_title_bar.dart';
 import 'widgets/driver_waveform_panel.dart';
 
 /// 驱动器调试（对齐 Android [DriverActivity]）。
@@ -43,6 +45,9 @@ class _DriverPageState extends State<DriverPage>
   String _sampleCount = '2000';
   String _delayMs = '0';
   String _jerk = '0';
+  String _currentMaxLimit = '5';
+  String _speedMaxLimit = '3000';
+  String _posErrMaxLimit = '10000';
   bool _refreshChart = false;
   bool _roundTrip = false;
   bool _loopMove = false;
@@ -57,10 +62,7 @@ class _DriverPageState extends State<DriverPage>
     super.initState();
     RobotStatePoller.instance.start();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return;
-      setState(() {});
-    });
+    _tabController.addListener(() => setState(() {}));
     _initAxisRows();
     _startPolling();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -326,6 +328,14 @@ class _DriverPageState extends State<DriverPage>
     }
   }
 
+  void _openAddressDebug() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => DriverAddressDebugPage(initialAxis: _curAxis),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -335,44 +345,52 @@ class _DriverPageState extends State<DriverPage>
 
   @override
   Widget build(BuildContext context) {
-    final tabIndex = _tabController.index;
-    final secondary = tabIndex == 0 ? _tabTitles[1] : _tabTitles[0];
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _exitPage();
       },
       child: Scaffold(
-        backgroundColor: LpRobotColors.background,
+        backgroundColor: DriverUiStyle.pageBackground,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LpRobotPoseBar(
-              pageTitle: _tabTitles[tabIndex],
-              showPoseRows: false,
-              trailing: Text(
-                secondary,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: LpRobotColors.primary,
-                ),
-              ),
+            DriverTitleBar(
+              title: _tabTitles[_tabController.index],
               onBack: _exitPage,
             ),
-            DriverStatusBar(live: _live),
+            DriverStatusBar(
+              live: _live,
+              currentMaxLimit: _currentMaxLimit,
+              speedMaxLimit: _speedMaxLimit,
+              posErrMaxLimit: _posErrMaxLimit,
+              onCurrentMaxLimitChanged: (v) => _currentMaxLimit = v,
+              onSpeedMaxLimitChanged: (v) => _speedMaxLimit = v,
+              onPosErrMaxLimitChanged: (v) => _posErrMaxLimit = v,
+              onAddressDebug: _openAddressDebug,
+            ),
             IgnorePointer(
               ignoring: _busy || _exiting,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: LpRobotColors.primary,
-                unselectedLabelColor: LpRobotColors.label,
-                indicatorColor: LpRobotColors.primary,
-                tabs: const [
-                  Tab(text: '驱动器参数'),
-                  Tab(text: '波形观测'),
-                ],
+              child: Material(
+                color: DriverUiStyle.pageBackground,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: LpRobotColors.primary,
+                  unselectedLabelColor: LpRobotColors.textDark,
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  indicatorColor: LpRobotColors.primary,
+                  tabs: const [
+                    Tab(text: '驱动器参数'),
+                    Tab(text: '波形观测'),
+                  ],
+                ),
               ),
             ),
             if (_busy)

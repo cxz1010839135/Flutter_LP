@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_foot_bar.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
+import '../../app/widgets/lp_robot_io_panel.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/robot_state_poller.dart';
 import 'control_section.dart';
@@ -62,7 +63,11 @@ class _ControlPageState extends State<ControlPage> {
             onBack: () => Navigator.of(context).pop(),
           ),
           Expanded(
-            child: Padding(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LpRobotColors.controlCanvasGradient,
+              ),
+              child: Padding(
               padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,9 +90,11 @@ class _ControlPageState extends State<ControlPage> {
                         ),
                         const SizedBox(height: 4),
                         const SizedBox(
-                          height: 72,
+                          height: 58,
                           child: LpRobotFootBar(
                             canvasColor: LpRobotColors.controlCanvas,
+                            ioLayout: IoPanelLayout.horizontalSplit,
+                            showStatus: false,
                           ),
                         ),
                       ],
@@ -105,6 +112,7 @@ class _ControlPageState extends State<ControlPage> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
           const LpStatusPanel(),

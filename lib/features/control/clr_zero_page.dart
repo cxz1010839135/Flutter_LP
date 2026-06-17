@@ -114,7 +114,7 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
     final cfg = ClrZeroAxisConfig.forCurrentRobot();
 
     return Scaffold(
-      backgroundColor: LpRobotColors.controlCanvas,
+      backgroundColor: LpRobotColors.pageBackground,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

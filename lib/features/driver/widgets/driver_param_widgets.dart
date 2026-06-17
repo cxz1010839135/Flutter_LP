@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../app/lp_robot_colors.dart';
 import '../driver_params_defs.dart';
 import '../driver_params_model.dart';
+import '../driver_ui_style.dart';
 
 class DriverTabChip extends StatelessWidget {
   const DriverTabChip({
@@ -32,15 +33,16 @@ class DriverTabChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: selected ? LpRobotColors.primary : LpRobotColors.borderWarm,
+              color: selected ? LpRobotColors.primary : DriverUiStyle.boxBorder,
+              width: DriverUiStyle.boxBorderWidth,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected ? LpRobotColors.primary : LpRobotColors.label,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? LpRobotColors.primary : LpRobotColors.textDark,
             ),
           ),
         ),
@@ -104,7 +106,7 @@ class _DriverParamFieldState extends State<DriverParamField> {
             child: Text(
               widget.def.label,
               textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 11, color: LpRobotColors.label),
+              style: DriverUiStyle.labelStyle,
             ),
           ),
           const SizedBox(width: 4),
@@ -118,26 +120,8 @@ class _DriverParamFieldState extends State<DriverParamField> {
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'-?\d*')),
               ],
-              style: const TextStyle(fontSize: 11, color: LpRobotColors.textDark),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                filled: true,
-                fillColor: LpRobotColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(2),
-                  borderSide: BorderSide(
-                    color: LpRobotColors.borderWarm.withValues(alpha: 0.5),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(2),
-                  borderSide: BorderSide(
-                    color: LpRobotColors.borderWarm.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
+              style: DriverUiStyle.fieldTextStyle,
+              decoration: DriverUiStyle.fieldDecoration(enabled: widget.enabled),
             ),
           ),
         ],
@@ -172,11 +156,7 @@ class DriverParamColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final fields = tabIndex < fieldGroups.length ? fieldGroups[tabIndex] : const <DriverFieldDef>[];
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surfaceWarm,
-        border: Border.all(color: LpRobotColors.borderWarm.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
-      ),
+      decoration: DriverUiStyle.panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -185,11 +165,7 @@ class DriverParamColumn extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: LpRobotColors.primary,
-              ),
+              style: DriverUiStyle.sectionTitleStyle,
             ),
           ),
           Row(
@@ -257,23 +233,12 @@ class DriverGainColumn extends StatelessWidget {
       );
     }
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surfaceWarm,
-        border: Border.all(color: LpRobotColors.borderWarm.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
-      ),
+      decoration: DriverUiStyle.panelDecoration(),
       child: Column(
         children: [
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              '增益调整',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: LpRobotColors.primary,
-              ),
-            ),
+            child: Text('增益调整', style: DriverUiStyle.sectionTitleStyle),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

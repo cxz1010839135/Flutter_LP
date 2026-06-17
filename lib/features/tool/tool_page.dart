@@ -12,6 +12,7 @@ import '../../core/robot_telemetry.dart';
 import '../../network/http_manager.dart';
 import '../driver/driver_page.dart';
 import '../driver/driver_tech_mode_gate.dart';
+import '../driver/driver_ui_style.dart';
 import '../files/files_page.dart';
 
 /// 维护页（对齐 Android [ToolActivity]：自动运行 / 调试开关 / 文件与驱动入口）。
@@ -160,7 +161,7 @@ class _ToolPageState extends State<ToolPage> {
         final actionsEnabled = _online && !_busy && stopped;
 
         return Scaffold(
-      backgroundColor: LpRobotColors.background,
+      backgroundColor: DriverUiStyle.pageBackground,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -295,7 +296,7 @@ class _ToolActionButton extends StatelessWidget {
     );
 
     return Material(
-      color: LpRobotColors.surface,
+      color: DriverUiStyle.panelBackground,
       elevation: enabled ? 2 : 0,
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(10),
@@ -307,8 +308,7 @@ class _ToolActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: enabled
-                  ? LpRobotColors.primary
-                      .withValues(alpha: primary ? 0.45 : 0.25)
+                  ? LpRobotColors.borderWarm.withValues(alpha: primary ? 0.85 : 0.55)
                   : Colors.grey.shade300,
             ),
           ),
@@ -337,7 +337,7 @@ class _ToolEntryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: LpRobotColors.surface,
+      color: DriverUiStyle.panelBackground,
       elevation: enabled ? 1 : 0,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
@@ -360,7 +360,7 @@ class _ToolEntryButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: enabled ? LpRobotColors.label : Colors.grey,
+                color: enabled ? LpRobotColors.textDark : Colors.grey,
               ),
             ),
           ),

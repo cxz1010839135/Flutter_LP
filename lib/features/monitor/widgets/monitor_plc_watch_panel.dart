@@ -282,7 +282,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
             },
           ),
           Material(
-            color: LpRobotColors.controlCanvas,
+            color: LpRobotColors.pageBackground,
             child: TabBar(
               controller: _tabController,
               isScrollable: true,

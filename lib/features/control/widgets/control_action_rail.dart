@@ -21,50 +21,37 @@ class ControlActionRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        children: [
+          for (final section in ControlSection.rightNav)
+            Expanded(
+              child: _RightActionTile(
+                label: _labelFor(section),
+                assetOff: ControlAssets.rightNavAssets(section).$1,
+                assetOn: ControlAssets.rightNavAssets(section).$2,
+                selected: selected == section,
+                onTap: () => onSectionSelected(section),
+              ),
+            ),
+          Expanded(
+            child: _RightActionTile(
+              label: '点位编辑',
+              assetOff: ControlAssets.pointEditOff,
+              assetOn: ControlAssets.pointEditOn,
+              onTap: onPointEdit,
+            ),
+          ),
+          Expanded(
+            child: _RightActionTile(
+              label: '界面清零',
+              assetOff: ControlAssets.clearUiOff,
+              assetOn: ControlAssets.clearUiOn,
+              onTap: onClearUi,
+            ),
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
-          children: [
-            for (final section in ControlSection.rightNav)
-              Expanded(
-                child: _RightActionTile(
-                  label: _labelFor(section),
-                  assetOff: ControlAssets.rightNavAssets(section).$1,
-                  assetOn: ControlAssets.rightNavAssets(section).$2,
-                  selected: selected == section,
-                  onTap: () => onSectionSelected(section),
-                ),
-              ),
-            Expanded(
-              child: _RightActionTile(
-                label: '点位编辑',
-                assetOff: ControlAssets.pointEditOff,
-                assetOn: ControlAssets.pointEditOn,
-                onTap: onPointEdit,
-              ),
-            ),
-            Expanded(
-              child: _RightActionTile(
-                label: '界面清零',
-                assetOff: ControlAssets.clearUiOff,
-                assetOn: ControlAssets.clearUiOn,
-                onTap: onClearUi,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

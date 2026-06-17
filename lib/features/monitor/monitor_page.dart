@@ -173,7 +173,7 @@ class _MonitorPageState extends State<MonitorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LpRobotColors.controlCanvas,
+      backgroundColor: LpRobotColors.pageBackground,
       body: Column(
         children: [
           LpRobotPoseBar(

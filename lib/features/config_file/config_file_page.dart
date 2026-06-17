@@ -10,6 +10,7 @@ import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
 import '../driver/driver_page.dart';
 import '../driver/driver_tech_mode_gate.dart';
+import '../driver/driver_ui_style.dart';
 import '../files/files_page.dart';
 import '../tool/tool_page.dart';
 import 'config_file_defs.dart';
@@ -447,7 +448,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           child: SingleChildScrollView(
             child: Text(
               lines.isEmpty ? '（无数据）' : lines.join('\n'),
-              style: const TextStyle(fontSize: 14, height: 1.5),
+              style: DriverUiStyle.configBodyStyle,
             ),
           ),
         ),
@@ -477,7 +478,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           child: SingleChildScrollView(
             child: Text(
               lines.join('\n'),
-              style: const TextStyle(fontSize: 14, height: 1.5),
+              style: DriverUiStyle.configBodyStyle,
             ),
           ),
         ),
@@ -502,8 +503,10 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
         final initBusy = DriverTechModeGate.isControllerInitializing;
         final canEdit = MaintenanceEditGate.canEdit();
 
-        return Scaffold(
-          backgroundColor: LpRobotColors.background,
+        return Theme(
+          data: DriverUiStyle.configFilePageTheme(Theme.of(context)),
+          child: Scaffold(
+          backgroundColor: DriverUiStyle.pageBackground,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -521,6 +524,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
               const LpStatusPanel(),
             ],
           ),
+        ),
         );
       },
     );
@@ -534,31 +538,26 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           width: 280,
           margin: const EdgeInsets.all(8),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: LpRobotColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: LpRobotColors.borderWarm),
-          ),
+          decoration: DriverUiStyle.panelDecoration(),
           child: SingleChildScrollView(
             child: Text(
               _step.tips.isEmpty ? ' ' : _step.tips,
-              style: const TextStyle(fontSize: 13, height: 1.5),
+              style: DriverUiStyle.configBodyStyle.copyWith(height: 1.65),
             ),
           ),
         ),
         Expanded(
-          child: Column(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+            decoration: DriverUiStyle.panelDecoration(),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                 child: Text(
                   _step.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: LpRobotColors.textDark,
-                  ),
+                  style: DriverUiStyle.configTitleStyle,
                 ),
               ),
               Expanded(
@@ -568,10 +567,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                         ? const Center(
                             child: Text(
                               '文件不存在',
-                              style: TextStyle(
-                                fontSize: 22,
-                                color: LpRobotColors.label,
-                              ),
+                              style: DriverUiStyle.configPlaceholderStyle,
                             ),
                           )
                         : _buildTable(),
@@ -596,6 +592,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                   ),
                 ),
             ],
+            ),
           ),
         ),
       ],
@@ -614,7 +611,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-            LpRobotColors.primary.withValues(alpha: 0.08),
+            LpRobotColors.primary.withValues(alpha: 0.12),
           ),
           columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
           rows: [
@@ -646,7 +643,10 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   }
 
   Widget _buildDriverPanel() {
-    return Column(
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: DriverUiStyle.panelDecoration(),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -654,7 +654,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           child: Text(
             '驱控文件参数(保存后请重启驱控) · 当前 $_driverAxisCount 轴',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: LpRobotColors.label),
+            style: DriverUiStyle.configTitleStyle,
           ),
         ),
         Expanded(
@@ -664,7 +664,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                   ? const Center(
                       child: Text(
                         '该文件不存在',
-                        style: TextStyle(fontSize: 18),
+                        style: DriverUiStyle.configPlaceholderStyle,
                       ),
                     )
                   : _buildDriverTable(),
@@ -681,6 +681,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
             ),
           ),
       ],
+      ),
     );
   }
 
@@ -695,42 +696,39 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            LpRobotColors.primary.withValues(alpha: 0.08),
-          ),
-          columnSpacing: 20,
-          columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
-          rows: [
-            for (var i = 0; i < _driverRows.length; i++)
-              DataRow(
-                selected: _selectedDriverRow == i,
-                onSelectChanged: (_) {
-                  setState(() => _selectedDriverRow = i);
-                  _editDriverRow(i);
-                },
-                cells: [
-                  DataCell(
-                    SizedBox(
-                      width: 140,
-                      child: Text(
-                        _driverRows[i].name,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ),
-                  ...List.generate(
-                    _driverAxisCount,
-                    (col) => DataCell(
-                      Text(
-                        col < _driverRows[i].values.length
-                            ? _driverRows[i].values[col]
-                            : '',
-                      ),
-                    ),
-                  ),
-                ],
+              headingRowColor: WidgetStateProperty.all(
+                LpRobotColors.primary.withValues(alpha: 0.12),
               ),
-          ],
+              columnSpacing: 20,
+              columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
+              rows: [
+                for (var i = 0; i < _driverRows.length; i++)
+                  DataRow(
+                    selected: _selectedDriverRow == i,
+                    onSelectChanged: (_) {
+                      setState(() => _selectedDriverRow = i);
+                      _editDriverRow(i);
+                    },
+                    cells: [
+                      DataCell(
+                        SizedBox(
+                          width: 140,
+                          child: Text(_driverRows[i].name),
+                        ),
+                      ),
+                      ...List.generate(
+                        _driverAxisCount,
+                        (col) => DataCell(
+                          Text(
+                            col < _driverRows[i].values.length
+                                ? _driverRows[i].values[col]
+                                : '',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
           ),
         ),
@@ -742,9 +740,9 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: LpRobotColors.surface,
+        color: DriverUiStyle.panelBackground,
         border: Border(
-          top: BorderSide(color: LpRobotColors.borderWarm.withValues(alpha: 0.5)),
+          top: BorderSide(color: LpRobotColors.borderWarm.withValues(alpha: 0.65)),
         ),
       ),
       child: Row(
@@ -815,9 +813,6 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                   : _showDriverPanel
                       ? () => Navigator.of(context).pop()
                       : _goNext,
-              style: FilledButton.styleFrom(
-                backgroundColor: LpRobotColors.primary,
-              ),
               child: Text(_showDriverPanel ? '完成' : '下一步'),
             ),
           ),

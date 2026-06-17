@@ -170,7 +170,7 @@ mixin RobotHttpDriverMixin on RobotHttpApiMixin {
     required int addr,
   }) {
     return robotCmd(
-      'robotDriverGetParam',
+      RobotCommands.robotGetLocalDriverPara,
       data: {'axis': axis, 'addr': addr},
     );
   }
@@ -181,7 +181,7 @@ mixin RobotHttpDriverMixin on RobotHttpApiMixin {
     required int value,
   }) {
     return robotCmd(
-      'robotDriverSetParam',
+      RobotCommands.robotSetLocalDriverPara,
       data: {'axis': axis, 'addr': addr, 'value': value},
     );
   }

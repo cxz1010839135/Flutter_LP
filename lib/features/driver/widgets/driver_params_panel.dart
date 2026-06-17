@@ -5,6 +5,7 @@ import '../../../app/lp_robot_colors.dart';
 import '../driver_params_defs.dart';
 import '../driver_params_model.dart';
 import '../driver_params_service.dart';
+import '../driver_ui_style.dart';
 import 'driver_param_widgets.dart';
 
 typedef DriverAction = Future<void> Function();
@@ -102,7 +103,7 @@ class DriverParamsPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 7,
+          flex: 5,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -152,9 +153,9 @@ class DriverParamsPanel extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Expanded(
-          flex: 4,
+          flex: 6,
           child: _buildBottomControls(context),
         ),
       ],
@@ -164,46 +165,50 @@ class DriverParamsPanel extends StatelessWidget {
   Widget _buildBottomControls(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: LpRobotColors.surface,
-        border: Border.all(color: LpRobotColors.borderWarm.withValues(alpha: 0.35)),
+        color: DriverUiStyle.panelBackground,
+        border: Border.all(
+          color: LpRobotColors.borderWarm.withValues(alpha: 0.55),
+        ),
+        borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildAxisToolbar(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-            child: Row(
-              children: [
-                const Text('当前轴号:', style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 8),
-                DropdownButton<int>(
-                  value: curAxis,
-                  items: List.generate(
-                    axisCount,
-                    (i) => DropdownMenuItem(value: i, child: Text('${i + 1}')),
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    child: _miniField('控制模式', controlMode, onControlModeChanged),
                   ),
-                  onChanged: busy ? null : (v) => v == null ? null : onAxisChanged(v),
-                ),
-                const SizedBox(width: 12),
-                _actionBtn('读驱动参数', onReadDriver),
-                const SizedBox(width: 6),
-                _actionBtn('写驱动参数', onWriteDriver),
-                const SizedBox(width: 6),
-                _actionBtn('写文件参数', onWriteFile),
-                const Spacer(),
-                _miniField('控制模式', controlMode, onControlModeChanged, width: 70),
-                const SizedBox(width: 6),
-                _miniField('JOG速度', jogSpeed, onJogSpeedChanged, width: 70),
-                const SizedBox(width: 6),
-                _miniField('采样数量', sampleCount, onSampleCountChanged, width: 70),
-                const SizedBox(width: 6),
-                _miniField('矢量Jerk', jerk, onJerkChanged, width: 70),
-              ],
+                  SizedBox(
+                    width: 150,
+                    child: _miniField('JOG速度', jogSpeed, onJogSpeedChanged),
+                  ),
+                  SizedBox(
+                    width: 150,
+                    child: _miniField('采样数量', sampleCount, onSampleCountChanged),
+                  ),
+                  SizedBox(
+                    width: 150,
+                    child: _miniField('矢量Jerk', jerk, onJerkChanged),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (var i = 0; i < axisRows.length; i++)
                     _axisDebugRow(i, axisRows[i]),
@@ -211,74 +216,150 @@ class DriverParamsPanel extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
-            child: Row(
-              children: [
-                _actionBtn('软复位', onSoftReset),
-                const SizedBox(width: 8),
-                _actionBtn('电机寻相', onFindPhase),
-                const SizedBox(width: 8),
-                _actionBtn('采集波形', onSample, enabled: refreshChart),
-                const SizedBox(width: 8),
-                _actionBtn('点动', onPosRef),
-                const SizedBox(width: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAxisToolbar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: DriverUiStyle.toolbarBarDecoration(),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text('当前轴号:', style: DriverUiStyle.toolbarLabelStyle),
+          const SizedBox(width: 10),
+          _axisDropdown(prominent: true),
+          const SizedBox(width: 18),
+          _actionBtn('读驱动参数', onReadDriver),
+          const SizedBox(width: 10),
+          _actionBtn('写驱动参数', onWriteDriver),
+          const SizedBox(width: 10),
+          _actionBtn('写文件参数', onWriteFile),
+          const Spacer(),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.end,
+            children: [
                 _check('刷新', refreshChart, onRefreshChartChanged),
                 _check('往返', roundTrip, onRoundTripChanged),
                 _check('循环', loopMove, onLoopChanged),
-                const SizedBox(width: 8),
-                _miniField('延时(ms)', delayMs, onDelayChanged, width: 80),
-              ],
-            ),
+                SizedBox(
+                  width: 130,
+                  child: _miniField('延时(ms)', delayMs, onDelayChanged),
+                ),
+                _actionBtn('软复位', onSoftReset),
+                _actionBtn('电机寻相', onFindPhase),
+                _actionBtn('采集波形', onSample, enabled: refreshChart),
+                _actionBtn('点动', onPosRef),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _axisDropdown({bool prominent = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: prominent ? 12 : 6,
+        vertical: prominent ? 2 : 0,
+      ),
+      constraints: prominent ? const BoxConstraints(minWidth: 52) : null,
+      decoration: DriverUiStyle.valueBoxDecoration(emphasize: true),
+      child: DropdownButton<int>(
+        value: curAxis,
+        underline: const SizedBox.shrink(),
+        isDense: !prominent,
+        style: prominent
+            ? DriverUiStyle.fieldTextStyle
+            : DriverUiStyle.compactFieldTextStyle,
+        items: List.generate(
+          axisCount,
+          (i) => DropdownMenuItem(
+            value: i,
+            child: Text(
+              '${i + 1}',
+              style: prominent
+                  ? DriverUiStyle.fieldTextStyle
+                  : DriverUiStyle.compactFieldTextStyle,
+            ),
+          ),
+        ),
+        onChanged: busy ? null : (v) => v == null ? null : onAxisChanged(v),
       ),
     );
   }
 
   Widget _axisDebugRow(int index, AxisDebugRow row) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 36,
-            child: Text('J${index + 1}', style: const TextStyle(fontSize: 11)),
-          ),
-          _rowCheck('伺服', row.servoOn, (v) {
-            row.servoOn = v;
-            onAxisServoChanged(index, v);
-          }),
-          _rowCheck('运动', row.motionOn, (v) {
-            row.motionOn = v;
-            onAxisMotionChanged(index, v);
-          }),
-          const SizedBox(width: 4),
-          _rowField('加速度', row.acc, (v) {
-            row.acc = v;
-            onAxisMotionFieldChanged(index, row);
-          }),
-          _rowField('速度', row.vel, (v) {
-            row.vel = v;
-            onAxisMotionFieldChanged(index, row);
-          }),
-          _rowField('距离(pls)', row.distance, (v) {
-            row.distance = v;
-            onAxisMotionFieldChanged(index, row);
-          }),
-        ],
+      padding: const EdgeInsets.only(bottom: 5),
+      child: SizedBox(
+        width: double.infinity,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 32,
+              child: Text(
+                'J${index + 1}',
+                style: DriverUiStyle.controlLabelStyle,
+              ),
+            ),
+            _rowCheck('伺服', row.servoOn, (v) {
+              row.servoOn = v;
+              onAxisServoChanged(index, v);
+            }),
+            _rowCheck('运动', row.motionOn, (v) {
+              row.motionOn = v;
+              onAxisMotionChanged(index, v);
+            }),
+            const SizedBox(width: 4),
+            Expanded(child: _rowField('加速度', row.acc, (v) {
+              row.acc = v;
+              onAxisMotionFieldChanged(index, row);
+            })),
+            const SizedBox(width: 4),
+            Expanded(child: _rowField('速度', row.vel, (v) {
+              row.vel = v;
+              onAxisMotionFieldChanged(index, row);
+            })),
+            const SizedBox(width: 4),
+            Expanded(child: _rowField('距离', row.distance, (v) {
+              row.distance = v;
+              onAxisMotionFieldChanged(index, row);
+            })),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _actionBtn(String label, DriverAction action, {bool enabled = true}) {
+  Widget _actionBtn(
+    String label,
+    DriverAction action, {
+    bool enabled = true,
+    bool compact = false,
+  }) {
     return OutlinedButton(
       onPressed: (busy || !enabled) ? null : () => action(),
       style: OutlinedButton.styleFrom(
         foregroundColor: LpRobotColors.primary,
         side: const BorderSide(color: LpRobotColors.primary),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        textStyle: const TextStyle(fontSize: 12),
+        padding: compact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+            : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minimumSize: compact ? Size.zero : const Size(0, 36),
+        tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
+        visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
+        textStyle: TextStyle(
+          fontSize: compact ? 12 : 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       child: Text(label),
     );
@@ -287,49 +368,58 @@ class DriverParamsPanel extends StatelessWidget {
   Widget _miniField(
     String label,
     String value,
-    ValueChanged<String> onChanged, {
-    required double width,
-  }) {
-    return SizedBox(
-      width: width + 50,
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10)),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: width,
-            height: 30,
+    ValueChanged<String> onChanged,
+  ) {
+    return Row(
+      children: [
+        Flexible(
+          flex: 0,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DriverUiStyle.controlLabelStyle,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Expanded(
+          child: SizedBox(
+            height: 32,
             child: _DriverSmallField(
               value: value,
               enabled: !busy,
               onChanged: onChanged,
-              fontSize: 11,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _rowField(String label, String value, ValueChanged<String> onChanged) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Row(
-          children: [
-            Text(label, style: const TextStyle(fontSize: 10)),
-            const SizedBox(width: 2),
-            Expanded(
-              child: _DriverSmallField(
-                value: value,
-                enabled: !busy,
-                onChanged: onChanged,
-                fontSize: 10,
-              ),
-            ),
-          ],
+    return Row(
+      children: [
+        Flexible(
+          flex: 0,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DriverUiStyle.controlLabelStyle,
+          ),
         ),
-      ),
+        const SizedBox(width: 2),
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: _DriverSmallField(
+              value: value,
+              enabled: !busy,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -343,7 +433,7 @@ class DriverParamsPanel extends StatelessWidget {
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
         ),
-        Text(label, style: const TextStyle(fontSize: 10)),
+        Text(label, style: DriverUiStyle.compactControlLabelStyle),
       ],
     );
   }
@@ -357,7 +447,7 @@ class DriverParamsPanel extends StatelessWidget {
           onChanged: busy ? null : (v) => onChanged(v ?? false),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        Text(label, style: const TextStyle(fontSize: 11)),
+        Text(label, style: DriverUiStyle.compactControlLabelStyle),
       ],
     );
   }
@@ -367,13 +457,11 @@ class _DriverSmallField extends StatefulWidget {
   const _DriverSmallField({
     required this.value,
     required this.onChanged,
-    required this.fontSize,
     this.enabled = true,
   });
 
   final String value;
   final ValueChanged<String> onChanged;
-  final double fontSize;
   final bool enabled;
 
   @override
@@ -411,11 +499,10 @@ class _DriverSmallFieldState extends State<_DriverSmallField> {
       onChanged: widget.onChanged,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: TextStyle(fontSize: widget.fontSize),
-      decoration: const InputDecoration(
-        isDense: true,
-        contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        border: OutlineInputBorder(),
+      style: DriverUiStyle.fieldTextStyle,
+      decoration: DriverUiStyle.fieldDecoration(
+        enabled: widget.enabled,
+        compact: true,
       ),
     );
   }

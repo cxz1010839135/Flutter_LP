@@ -75,6 +75,15 @@ class RobotAlarmInfo {
     return '$prefix$alarmCode$suffix';
   }
 
+  /// 主页底栏气泡：仅数值（对齐 Android `tv_init_status`）。
+  static String formatHomeFootInitStatus(int initStatus) => '$initStatus';
+
+  /// 主页底栏气泡：前缀 + 码，无后缀（对齐 Android `tv_motor_alarm`）。
+  static String formatHomeFootMotorAlarm({
+    required bool motorAlarm,
+    required int alarmCode,
+  }) => motorAlarm ? '报警$alarmCode' : '未报警$alarmCode';
+
   /// 启动状态文案（HTTP `initstatus`，对照 D9000：≥0 正常，<0 报错）。
   static String formatInitStatus(int initStatus) =>
       RobotD9000Status.formatInline(initStatus);

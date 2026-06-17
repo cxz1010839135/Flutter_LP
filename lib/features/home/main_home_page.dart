@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
@@ -93,7 +95,7 @@ class _MainHomePageState extends State<MainHomePage> {
         final moving = RobotTelemetry.instance.isRobotMoving;
 
         return Scaffold(
-          backgroundColor: LpRobotColors.background,
+          backgroundColor: LpRobotColors.controlCanvas,
           body: Column(
             children: [
               LpRobotPoseBar(
@@ -102,8 +104,10 @@ class _MainHomePageState extends State<MainHomePage> {
                 onBackToConnect: online ? null : _backToConnect,
               ),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                child: ColoredBox(
+                  color: LpRobotColors.controlCanvas,
+                  child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -126,9 +130,13 @@ class _MainHomePageState extends State<MainHomePage> {
                               child: _RobotViewport(online: online),
                             ),
                             const SizedBox(height: 4),
-                            const Expanded(
+                            Expanded(
                               flex: 2,
-                              child: LpRobotFootBar(),
+                              child: LpRobotFootBar(
+                                canvasColor: Colors.transparent,
+                                ioSurfaceColor: Colors.transparent,
+                                compactStatus: true,
+                              ),
                             ),
                           ],
                         ),
@@ -140,6 +148,7 @@ class _MainHomePageState extends State<MainHomePage> {
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
               const LpStatusPanel(),
@@ -181,42 +190,43 @@ class _MainNavRail extends StatelessWidget {
       onTool,
     ];
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 8.0;
+        final maxSlotFromHeight = (constraints.maxHeight - gap * 3) / 4;
+        final cardSide =
+            math.min(constraints.maxWidth, maxSlotFromHeight).clamp(56.0, 120.0);
+        final totalH = cardSide * 4 + gap * 3;
+        final topPad = ((constraints.maxHeight - totalH) / 2).clamp(0.0, 48.0);
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Column(
+            children: [
+              SizedBox(height: topPad),
+              for (var i = 0; i < 4; i++) ...[
+                if (i > 0) const SizedBox(height: gap),
+                SizedBox(
+                  width: cardSide,
+                  height: cardSide,
+                  child: _NavCardButton(
+                    icon: _items[i].$1,
+                    label: _items[i].$2,
+                    onTap: actions[i],
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < 4; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                color: LpRobotColors.borderWarm.withValues(alpha: 0.35),
-              ),
-            Expanded(
-              child: _NavButton(
-                icon: _items[i].$1,
-                label: _items[i].$2,
-                onTap: actions[i],
-              ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-class _NavButton extends StatefulWidget {
-  const _NavButton({
+/// 左侧模块键：Android `controlbtn_*` 卡片贴图 + 图标文字。
+class _NavCardButton extends StatefulWidget {
+  const _NavCardButton({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -227,60 +237,68 @@ class _NavButton extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<_NavButton> createState() => _NavButtonState();
+  State<_NavCardButton> createState() => _NavCardButtonState();
 }
 
-class _NavButtonState extends State<_NavButton> {
+class _NavCardButtonState extends State<_NavCardButton> {
+  bool _pressed = false;
   bool _hovered = false;
 
-  Color get _backgroundColor {
-    if (widget.onTap == null) return Colors.transparent;
-    if (_hovered) return LpRobotColors.primary;
-    return LpRobotColors.surface;
-  }
+  bool get _enabled => widget.onTap != null;
+  bool get _highlight => _enabled && (_pressed || _hovered);
 
   Color get _foregroundColor {
-    if (widget.onTap == null) return Colors.grey;
-    if (_hovered) return Colors.white;
+    if (!_enabled) return Colors.grey;
+    if (_highlight) return Colors.white;
     return LpRobotColors.primary;
   }
 
   @override
   Widget build(BuildContext context) {
-    final on = widget.onTap != null;
-    return MouseRegion(
-      onEnter: on ? (_) => setState(() => _hovered = true) : null,
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          splashColor: LpRobotColors.primary.withValues(alpha: 0.28),
-          highlightColor: LpRobotColors.primary.withValues(alpha: 0.14),
-          hoverColor: Colors.transparent,
-          child: Container(
-            color: _backgroundColor,
-            child: SizedBox.expand(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    widget.icon,
-                    size: 32,
-                    color: _foregroundColor,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _foregroundColor,
-                    ),
-                  ),
-                ],
-              ),
+    return Material(
+      color: Colors.transparent,
+      elevation: _highlight ? 0 : 2,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: widget.onTap,
+        onHighlightChanged:
+            _enabled ? (v) => setState(() => _pressed = v) : null,
+        onHover: _enabled ? (v) => setState(() => _hovered = v) : null,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: _highlight ? LpRobotColors.primary : LpRobotColors.surface,
+            border: Border.all(
+              color: _enabled
+                  ? LpRobotColors.borderWarm.withValues(alpha: 0.35)
+                  : Colors.grey.shade300,
             ),
+            boxShadow: _highlight
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.07),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, size: 30, color: _foregroundColor),
+              const SizedBox(height: 5),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _foregroundColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -312,15 +330,7 @@ class _RobotViewport extends StatelessWidget {
         );
         final caption = RobotState.instance.displayRobotLabel;
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: LpRobotColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: LpRobotColors.borderWarm.withValues(alpha: 0.25),
-            ),
-          ),
-          child: LayoutBuilder(
+        return LayoutBuilder(
             builder: (context, constraints) {
               var imageHeight = constraints.maxHeight * _heightFactor;
               var imageWidth = imageHeight * _imageAspect;
@@ -383,8 +393,7 @@ class _RobotViewport extends StatelessWidget {
                 ],
               );
             },
-          ),
-        );
+          );
       },
     );
   }

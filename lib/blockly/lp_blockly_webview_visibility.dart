@@ -40,7 +40,9 @@ Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
       meta.setAttribute('content',
         'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
     }
-    if (window.Code && typeof Code.scheduleLayoutRefresh_ === 'function') {
+    if (window.Code && typeof Code.scheduleWorkspaceRerenderAfterLoad_ === 'function') {
+      Code.scheduleWorkspaceRerenderAfterLoad_();
+    } else if (window.Code && typeof Code.scheduleLayoutRefresh_ === 'function') {
       Code.scheduleLayoutRefresh_();
     } else {
       window.dispatchEvent(new Event('resize'));

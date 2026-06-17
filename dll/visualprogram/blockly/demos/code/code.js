@@ -353,9 +353,52 @@ Code.scheduleLayoutRefresh_ = function () {
   run();
   window.setTimeout(run, 50);
   window.setTimeout(run, 180);
+  window.setTimeout(run, 1000);
 };
 
+/**
+ * WebView 在隐藏状态下加载工程时，SVG 文字宽度会为 0，导致 M/D/T 编号槽位空白。
+ * 显示 WebView 或加载 XML 后调用，清缓存并重绘全部块与行内注释。
+ */
+Code.refreshWorkspaceAfterLoad_ = function () {
+  if (!Code.workspace) {
+    return;
+  }
+  try {
+    if (Blockly.Field && Blockly.Field.cacheWidths_) {
+      Blockly.Field.cacheWidths_ = null;
+    }
+    var blocks = Code.workspace.getAllBlocks(false);
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      if (block.comment && typeof block.comment.setText === 'function') {
+        var commentText = block.comment.text_;
+        if (commentText != null && commentText !== '') {
+          block.comment.setText(commentText);
+        }
+      }
+      if (block.rendered) {
+        block.render(false);
+      }
+    }
+    Blockly.svgResize(Code.workspace);
+    if (typeof Code.relayoutToolboxUi_ === 'function') {
+      Code.relayoutToolboxUi_();
+    }
+  } catch (e) {
+    console.warn('refreshWorkspaceAfterLoad_', e);
+  }
+};
 
+/**
+ * 加载 XML 后分阶段刷新布局与块渲染（Windows WebView2 需多次重绘）。
+ */
+Code.scheduleWorkspaceRerenderAfterLoad_ = function () {
+  Code.scheduleLayoutRefresh_();
+  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 100);
+  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 500);
+  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 1200);
+};
 
 /**
  * 桌面点击事件 根据点击坐面
@@ -796,6 +839,7 @@ Code.init = function () {
   SearchUpButton.addEventListener('click', Code.SearchDataUp, true);
   SearchDownButton.addEventListener('click', Code.SearchDataDown, true);
   SearchGrup.addEventListener('click', Code.SearchGrup_none, true);
+  SearchGrup_open.addEventListener('click', Code.SearchGrup_block, true);
   SearchInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       Code.SearchData();
@@ -805,7 +849,7 @@ Code.init = function () {
   //添加到DIV元素中
   // 挂到覆盖层上，确保在 SVG 之上且可交互
   [Searchbg, SearchInput, SaveDocDiv, NewDocDiv, BlueToothDiv, HelperDiv,
-    SearchButton, SearchGrup, SearchDownButton, SearchUpButton,
+    SearchButton, SearchGrup, SearchGrup_open, SearchDownButton, SearchUpButton,
     SearchResultsPanel].forEach(function(el) {
     if (!el) return;
     el.style.pointerEvents = 'auto';
@@ -1613,6 +1657,88 @@ Code.loadUserXmlFile = function () {
 
 
 /**
+ * 旧版 XML 将 Idx / Variable_Idx 存为 <field>，新版块定义为 input_value + math_number。
+ * 必须先收集再替换，避免遍历 live NodeList 时 replaceChild 导致跳过半数字段。
+ * @param {!Document} xmlDoc
+ */
+Code.migrateLegacyFieldXml_ = function (xmlDoc) {
+  var allFields = xmlDoc.getElementsByTagName('field');
+  var toMigrate = [];
+  for (var i = 0; i < allFields.length; i++) {
+    var field = allFields[i];
+    var fieldName = field.getAttribute('name');
+    if (fieldName === 'Idx' || fieldName === 'Variable_Idx' ||
+        fieldName === 'Variable_Value') {
+      toMigrate.push(field);
+    }
+  }
+  for (var j = 0; j < toMigrate.length; j++) {
+    var legacyField = toMigrate[j];
+    var legacyName = legacyField.getAttribute('name');
+    var fieldValue = legacyField.textContent;
+    if (fieldValue == null || String(fieldValue).trim() === '') {
+      fieldValue = '0';
+    } else {
+      fieldValue = String(fieldValue).trim();
+    }
+    var valueElement = xmlDoc.createElement('value');
+    valueElement.setAttribute('name', legacyName);
+    var shadowElement = xmlDoc.createElement('shadow');
+    shadowElement.setAttribute('type', 'math_number');
+    var numField = xmlDoc.createElement('field');
+    numField.setAttribute('name', 'NUM');
+    numField.appendChild(xmlDoc.createTextNode(fieldValue));
+    shadowElement.appendChild(numField);
+    valueElement.appendChild(shadowElement);
+    legacyField.parentNode.replaceChild(valueElement, legacyField);
+  }
+};
+
+/**
+ * @param {!string} blocksXml
+ * @return {boolean}
+ */
+Code.needsLegacyFieldMigration_ = function (blocksXml) {
+  return /<field name="(Idx|Variable_Idx|Variable_Value)">/.test(blocksXml);
+};
+
+/**
+ * 加载前修补 XML：空 NUM/Idx 默认 0，避免 M/D 等寄存器槽位显示空白。
+ * @param {!Document} xmlDoc
+ */
+Code.normalizeBlocksXml_ = function (xmlDoc) {
+  var fields = xmlDoc.getElementsByTagName('field');
+  for (var i = 0; i < fields.length; i++) {
+    var name = fields[i].getAttribute('name');
+    if (name === 'NUM' || name === 'Idx' ||
+        name === 'Variable_Idx' || name === 'Variable_Value') {
+      var text = fields[i].textContent;
+      if (text == null || String(text).trim() === '') {
+        fields[i].textContent = '0';
+      }
+    }
+  }
+  var values = xmlDoc.getElementsByTagName('value');
+  for (var j = 0; j < values.length; j++) {
+    var val = values[j];
+    var vname = val.getAttribute('name');
+    if (vname !== 'Idx' && vname !== 'Variable_Idx' &&
+        vname !== 'Variable_Value' && vname !== 'A' && vname !== 'B') {
+      continue;
+    }
+    if (val.getElementsByTagName('block').length > 0) continue;
+    if (val.getElementsByTagName('shadow').length > 0) continue;
+    var shadow = xmlDoc.createElement('shadow');
+    shadow.setAttribute('type', 'math_number');
+    var numField = xmlDoc.createElement('field');
+    numField.setAttribute('name', 'NUM');
+    numField.textContent = '0';
+    shadow.appendChild(numField);
+    val.appendChild(shadow);
+  }
+};
+
+/**
  * Parses the XML from its argument input to generate and replace the blocks
  * in the Blockly workspace.
  * @param {!string} blocksXml String of XML code for the blocks.
@@ -1626,35 +1752,17 @@ Code.replaceBlocksfromXml = function (blocksXml) {
     return false;
   }
 
-  // 仅旧版 XML（Idx 等为 field 而非 value/shadow）才走 DOM 迁移，避免大工程重复解析。
-  var needsFieldMigration = /<field name="(Idx|Variable_Idx|Variable_Value)">/.test(blocksXml);
-  if (needsFieldMigration) {
-    var parser = new DOMParser();
-    var xmlDoc = parser.parseFromString(blocksXml, 'text/xml');
-    var blocks = xmlDoc.getElementsByTagName('field');
+  var parser = new DOMParser();
+  var xmlDoc = parser.parseFromString(blocksXml, 'text/xml');
 
-    for (var i = 0; i < blocks.length; i++) {
-      var block = blocks[i];
-      var field_name = block.getAttribute('name');
-      if (field_name == 'Idx' || field_name == 'Variable_Idx' || field_name == 'Variable_Value') {
-        var textNode = block.firstChild;
-        var fieldValue = textNode.nodeType === Node.TEXT_NODE ? textNode.textContent : null;
-        var valueElement = document.createElement('value');
-        valueElement.setAttribute('name', block.getAttribute('name'));
-        var shadowElement = document.createElement('shadow');
-        shadowElement.setAttribute('type', 'math_number');
-        shadowElement.setAttribute('id', ',b^^jksa.BVQjcbm/UJu');
-        var newFieldElement = document.createElement('field');
-        newFieldElement.setAttribute('name', 'NUM');
-        newFieldElement.appendChild(document.createTextNode(fieldValue));
-        shadowElement.appendChild(newFieldElement);
-        valueElement.appendChild(shadowElement);
-        block.parentNode.replaceChild(valueElement, block);
-      }
-    }
-    var serializer = new XMLSerializer();
-    xmlDom = Blockly.Xml.textToDom(serializer.serializeToString(xmlDoc));
+  // 旧版 XML（Idx 等为 field 而非 value/shadow）需迁移后再加载。
+  if (Code.needsLegacyFieldMigration_(blocksXml)) {
+    Code.migrateLegacyFieldXml_(xmlDoc);
   }
+
+  Code.normalizeBlocksXml_(xmlDoc);
+  var serializer = new XMLSerializer();
+  xmlDom = Blockly.Xml.textToDom(serializer.serializeToString(xmlDoc));
 
   var sucess = false;
   if (xmlDom) {
@@ -1671,7 +1779,14 @@ Code.replaceBlocksfromXml = function (blocksXml) {
 Code.appendBlocksfromXml = function (blocksXml) {
   var xmlDom = null;
   try {
-    xmlDom = Blockly.Xml.textToDom(blocksXml);
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(blocksXml, 'text/xml');
+    if (Code.needsLegacyFieldMigration_(blocksXml)) {
+      Code.migrateLegacyFieldXml_(xmlDoc);
+    }
+    Code.normalizeBlocksXml_(xmlDoc);
+    var serializer = new XMLSerializer();
+    xmlDom = Blockly.Xml.textToDom(serializer.serializeToString(xmlDoc));
   } catch (e) {
     return false;
   }
@@ -1699,6 +1814,7 @@ Code.loadBlocksfromXmlDom = function (blocksXmlDom, opt_clear) {
     return false;
   }
   Code.invalidatePreview();
+  Code.scheduleWorkspaceRerenderAfterLoad_();
   return true;
 };
 
@@ -1741,15 +1857,18 @@ document.write('<script src="../../msg/js/' + Code.LANG + '.js"></script>\n');
 
 window.addEventListener('load', Code.init);
 
-//: 判断网页是否加载完成
+//: 判断网页是否加载完成（非 Flutter 宿主时由本处触发加载工程）
 document.onreadystatechange = function () {
-  if (document.readyState == "complete") {//complete
+  if (document.readyState == "complete" && typeof bound === 'undefined') {
     window.setTimeout(Code.ReLoadXML, 1000);
-    //Code.loadXML("main.xml");
-    //window.alert("safa");
   }
 };
 Code.ReLoadXML = function () {
+  if (!Code.workspace) {
+    window.setTimeout(Code.ReLoadXML, 80);
+    return;
+  }
   Code.loadXML("main");
   Code.loadComplete();
+  Code.scheduleWorkspaceRerenderAfterLoad_();
 };

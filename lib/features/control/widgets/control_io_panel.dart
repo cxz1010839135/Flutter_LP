@@ -124,7 +124,7 @@ class _IoBank extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: LpRobotColors.surfaceWarm,
+        color: LpRobotColors.controlAxisSurface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: LpRobotColors.borderWarm.withValues(alpha: 0.5)),
       ),

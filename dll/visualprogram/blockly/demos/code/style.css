@@ -509,6 +509,8 @@ button {
 
 .blocklyText{
   fill: #000;
+  font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif;
+  font-size: 11pt;
 }
 
 .blocklyFlyout{

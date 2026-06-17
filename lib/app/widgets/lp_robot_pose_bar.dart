@@ -19,6 +19,7 @@ class LpRobotPoseBar extends StatelessWidget {
     this.trailing,
     this.showPoseRows = true,
     this.titleBarOnly = false,
+    this.titleBarLeadingBack = false,
     this.showConnectionActions = false,
     this.onDisconnect,
     this.onBackToConnect,
@@ -30,6 +31,8 @@ class LpRobotPoseBar extends StatelessWidget {
   final bool showPoseRows;
   /// 仅标题 + 返回（对齐 Android ConfigFileActivity，无 Logo/坐标）。
   final bool titleBarOnly;
+  /// [titleBarOnly] 时：返回在左、标题靠右（对齐 Android DriverActivity）。
+  final bool titleBarLeadingBack;
   final bool showConnectionActions;
   final VoidCallback? onDisconnect;
   final VoidCallback? onBackToConnect;
@@ -77,6 +80,7 @@ class LpRobotPoseBar extends StatelessWidget {
             title: pageTitle ?? '',
             onBack: onBack,
             trailing: trailing,
+            leadingBack: titleBarLeadingBack,
           );
         }
 
@@ -186,16 +190,68 @@ class _PageTitleBar extends StatelessWidget {
     required this.title,
     required this.onBack,
     required this.trailing,
+    this.leadingBack = false,
   });
 
-  static const double height = 50;
+  static const double height = 48;
 
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
+  final bool leadingBack;
 
   @override
   Widget build(BuildContext context) {
+    if (leadingBack) {
+      return SizedBox(
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const DecoratedBox(
+              decoration: BoxDecoration(gradient: LpRobotColors.driverTitleGradient),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Row(
+                children: [
+                  if (onBack != null)
+                    LpImagePressButton(
+                      assetOff: LpAppAssets.backUnpressed,
+                      assetOn: LpAppAssets.backPressed,
+                      onTap: onBack!,
+                      semanticLabel: '返回',
+                      size: 36,
+                    )
+                  else
+                    const SizedBox(width: 40),
+                  const Spacer(),
+                  if (trailing != null) ...[
+                    trailing!,
+                    const SizedBox(width: 8),
+                  ],
+                  if (title.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 14),
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: LpRobotColors.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     const sideWidth = 40.0;
     return SizedBox(
       height: height,

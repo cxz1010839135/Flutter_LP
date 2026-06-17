@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/lp_robot_colors.dart';
 import '../control_assets.dart';
 import '../control_section.dart';
 import 'control_image_tile.dart';
@@ -18,32 +17,19 @@ class ControlNavRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LpRobotColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
-          children: [
-            for (var i = 0; i < ControlSection.leftNav.length; i++)
-              Expanded(
-                child: _LeftNavTile(
-                  section: ControlSection.leftNav[i],
-                  selected: selected == ControlSection.leftNav[i],
-                  onTap: () => onSelected(ControlSection.leftNav[i]),
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        children: [
+          for (var i = 0; i < ControlSection.leftNav.length; i++)
+            Expanded(
+              child: _LeftNavTile(
+                section: ControlSection.leftNav[i],
+                selected: selected == ControlSection.leftNav[i],
+                onTap: () => onSelected(ControlSection.leftNav[i]),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

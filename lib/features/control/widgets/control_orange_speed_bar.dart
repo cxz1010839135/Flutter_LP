@@ -55,7 +55,7 @@ class ControlOrangeSpeedBar extends StatelessWidget {
                     width: double.infinity,
                     height: trackHeight,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD8D9DE),
+                      color: const Color(0xFFDEDEDE),
                       borderRadius: BorderRadius.circular(trackHeight),
                     ),
                   ),

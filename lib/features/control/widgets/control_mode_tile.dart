@@ -56,7 +56,7 @@ class ControlModeTile extends StatelessWidget {
       return BoxDecoration(
         color: LpRobotColors.primary,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: _glow(0.32),
+        boxShadow: _glow(0.42, blur: 14, spread: 2),
       );
     }
 
@@ -64,19 +64,24 @@ class ControlModeTile extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
       border: Border.all(
-        color: LpRobotColors.primary.withValues(alpha: 0.75),
-        width: 1.2,
+        color: const Color(0xFFFFC995),
+        width: 1.4,
       ),
-      boxShadow: _glow(0.2),
+      boxShadow: _glow(0.28, blur: 12, spread: 1),
     );
   }
 
-  List<BoxShadow> _glow(double alpha) => [
+  List<BoxShadow> _glow(
+    double alpha, {
+    double blur = 10,
+    double spread = 0,
+  }) =>
+      [
         BoxShadow(
           color: LpRobotColors.primary.withValues(alpha: alpha),
-          blurRadius: 8,
-          spreadRadius: 0,
-          offset: const Offset(0, 1),
+          blurRadius: blur,
+          spreadRadius: spread,
+          offset: Offset.zero,
         ),
       ];
 

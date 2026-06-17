@@ -107,9 +107,13 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _ensureAiController();
         final c = _controller;
         if (c != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            notifyBlocklyWebViewResized(c);
-          });
+          for (final delayMs in [0, 400, 1000, 1800]) {
+            Future<void>.delayed(Duration(milliseconds: delayMs), () {
+              if (mounted && !_showProgressOverlay) {
+                notifyBlocklyWebViewResized(c);
+              }
+            });
+          }
         }
         await _injectUserProjectIfNeeded();
       });

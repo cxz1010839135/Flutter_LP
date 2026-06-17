@@ -209,6 +209,8 @@ abstract final class RobotCommands {
   static const driverSample = 'driverSample';
   static const robotGetLocalBusdata = 'robotGetLocalBusdata';
   static const robotSetLocalBusdata = 'robotSetLocalBusdata';
+  static const robotGetLocalDriverPara = 'robotGetLocalDriverPara';
+  static const robotSetLocalDriverPara = 'robotSetLocalDriverPara';
   static const robotGetSdo = 'robotGetSdo';
   static const robotSetSdo = 'robotSetSdo';
 

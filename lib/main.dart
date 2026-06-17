@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_win_floating/webview_win_floating.dart';
 
+import 'app/lp_robot_colors.dart';
 import 'app/lp_robot_theme.dart';
 import 'app/widgets/lp_app_navigator.dart';
 import 'app/widgets/robot_connection_guard.dart';
@@ -48,7 +49,7 @@ class _LpStartupErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        backgroundColor: const Color(0xFFE5E6EA),
+        backgroundColor: LpRobotColors.pageBackground,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
