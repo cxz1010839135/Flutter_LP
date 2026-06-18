@@ -26,23 +26,29 @@ class ControlModeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final side = constraints.maxHeight < constraints.maxWidth
-            ? constraints.maxHeight
-            : constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final labelSize = (h * 0.18).clamp(14.0, 17.0);
+        final valueSize = (h * 0.24).clamp(15.0, 20.0);
+        final continuousSize = (h * 0.22).clamp(15.0, 20.0);
+        final bracketH = (h * 0.16).clamp(10.0, 14.0);
 
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: onTap,
-                child: Ink(
-                  decoration: _decoration(),
-                  child: _isDistance ? _distanceBody() : _continuousBody(),
-                ),
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onTap,
+              child: Ink(
+                decoration: _decoration(),
+                child: _isDistance
+                    ? _distanceBody(
+                        labelSize: labelSize,
+                        valueSize: valueSize,
+                        bracketH: bracketH,
+                      )
+                    : _continuousBody(fontSize: continuousSize),
               ),
             ),
           ),
@@ -56,7 +62,6 @@ class ControlModeTile extends StatelessWidget {
       return BoxDecoration(
         color: LpRobotColors.primary,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: _glow(0.42, blur: 14, spread: 2),
       );
     }
 
@@ -67,75 +72,54 @@ class ControlModeTile extends StatelessWidget {
         color: const Color(0xFFFFC995),
         width: 1.4,
       ),
-      boxShadow: _glow(0.28, blur: 12, spread: 1),
     );
   }
 
-  List<BoxShadow> _glow(
-    double alpha, {
-    double blur = 10,
-    double spread = 0,
-  }) =>
-      [
-        BoxShadow(
-          color: LpRobotColors.primary.withValues(alpha: alpha),
-          blurRadius: blur,
-          spreadRadius: spread,
-          offset: Offset.zero,
-        ),
-      ];
-
-  Widget _continuousBody() {
+  Widget _continuousBody({required double fontSize}) {
     return Center(
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
           color: selected ? Colors.white : LpRobotColors.primary,
+          height: 1.15,
         ),
       ),
     );
   }
 
-  Widget _distanceBody() {
+  Widget _distanceBody({
+    required double labelSize,
+    required double valueSize,
+    required double bracketH,
+  }) {
     final accent = selected ? Colors.white : LpRobotColors.primary;
-    // 选中时橙底 + 白字在部分 Windows 主题下会不可见，数字改用白底橙字。
-    final valueColor = LpRobotColors.primary;
+    const valueColor = LpRobotColors.textDark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+      padding: EdgeInsets.fromLTRB(4, selected ? 8 : 6, 4, selected ? 6 : 4),
       child: Column(
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontSize: labelSize,
+              fontWeight: FontWeight.w700,
               color: accent,
               height: 1.1,
             ),
           ),
           Expanded(
-            child: Center(
-              child: selected
-                  ? Container(
-                      constraints: const BoxConstraints(minWidth: 40),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: _distanceField(valueColor),
-                    )
-                  : _distanceField(LpRobotColors.textDark),
+            child: Align(
+              alignment: Alignment.center,
+              child: _distanceField(valueColor, fontSize: valueSize),
             ),
           ),
           SizedBox(
-            height: 14,
+            height: bracketH,
             width: double.infinity,
             child: CustomPaint(
               painter: _ModeBracketPainter(
@@ -149,7 +133,7 @@ class ControlModeTile extends StatelessWidget {
     );
   }
 
-  Widget _distanceField(Color textColor) {
+  Widget _distanceField(Color textColor, {required double fontSize}) {
     return TextField(
       controller: distanceController,
       textAlign: TextAlign.center,
@@ -161,10 +145,10 @@ class ControlModeTile extends StatelessWidget {
         FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
       ],
       style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
         color: textColor,
-        height: 1.1,
+        height: 1.15,
       ),
       cursorColor: textColor,
       decoration: const InputDecoration(
@@ -192,10 +176,10 @@ class _ModeBracketPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final y = size.height * 0.45;
-    final halfW = (size.width * 0.38 * scale).clamp(10.0, size.width * 0.42);
+    final y = size.height * 0.55;
+    final halfW = (size.width * 0.36 * scale).clamp(8.0, size.width * 0.38);
     final cx = size.width / 2;
-    const horn = 5.0;
+    const horn = 4.0;
 
     final left = Offset(cx - halfW, y);
     final right = Offset(cx + halfW, y);

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 /// 领鹏 LPRobot 色系（对齐 Android res/values/colors.xml 与主界面截图）
 abstract final class LpRobotColors {
-  /// 主色 / 导航、按钮描边
+  /// 主色 / 导航、按钮描边（操控页 X/Y/Z 选中态等同此色）。
   static const Color primary = Color(0xFFFF7E1A);
+
+  /// 主页 / 操控 / 登录浅橙底（比 [primary] 更浅，对齐 Android 暖色大底）。
+  static const Color shellBackground = Color(0xFFFFF0E4);
 
   /// 主色半透明（分隔线、进度条等）
   static const Color primarySoft = Color(0xCCFF7E1A);
@@ -14,21 +17,51 @@ abstract final class LpRobotColors {
   /// 全应用统一面板暖色底（较初版 `#F7F0E8` 更淡）。
   static const Color panelBackground = Color(0xFFFCFAF6);
 
-  /// 页面背景（连接页、主页、点库等，同 [pageBackground]）。
+  /// 页面背景（点库、监控等，连接页用 [shellBackground]）。
   static const Color background = pageBackground;
 
-  /// 操控页画布（对齐 Android `color_bg` #e5e6ea / 图二浅灰底）。
-  static const Color controlCanvas = Color(0xFFE5E6EA);
+  /// 主页 / 操控画布底（浅于 X 轴选中橙）。
+  static const Color controlCanvas = shellBackground;
 
   /// 操控页 IO/轴区浅暖底（对齐 Android `color_axis_bg` #fff8f2）。
   static const Color controlAxisSurface = Color(0xFFFFF8F2);
 
-  /// 操控页画布微渐变（底略深、顶略浅，对齐 Android 截图）。
+  /// 主页 / 操控画布微渐变（底略深、顶略浅）。
   static const LinearGradient controlCanvasGradient = LinearGradient(
     begin: Alignment.bottomCenter,
     end: Alignment.topCenter,
-    colors: [controlCanvas, Color(0xFFF0F1F4)],
+    colors: [Color(0xFFFFEDE0), Color(0xFFFFF5ED)],
   );
+
+  /// 主内容区顶缘：顶栏下方淡橙过渡。
+  static const List<Color> shellEdgeFadeTop = [
+    Color(0x2EFF7E1A),
+    Color(0x00FF7E1A),
+  ];
+
+  /// 主内容区底缘：底栏上方淡橙过渡。
+  static const List<Color> shellEdgeFadeBottom = [
+    Color(0x00FF7E1A),
+    Color(0x1AFF7E1A),
+  ];
+
+  /// 主页导航键、运行侧栏、状态气泡（暖白，避免纯白块突兀）。
+  static const Color navCardBackground = Color(0xFFFFF6EE);
+
+  /// 导航/侧栏卡片描边（浅橙，贴合 [shellBackground]）。
+  static Color get navCardBorder => primary.withValues(alpha: 0.22);
+
+  /// 导航/侧栏轻阴影色。
+  static Color get navCardShadow => primary.withValues(alpha: 0.10);
+
+  /// 底栏状态面板（折叠摘要 / 连接·消息·输出）。
+  static const Color statusPanelBackground = Color(0xFFFFF6EE);
+
+  /// 底栏面板顶栏（略深暖橙，与主画布区分）。
+  static const Color statusPanelHeader = Color(0xFFFFEDE0);
+
+  /// 底栏面板顶部分隔线。
+  static Color get statusPanelDivider => primary.withValues(alpha: 0.28);
 
   /// 面板、侧栏白底
   static const Color surface = Color(0xFFFFFFFF);

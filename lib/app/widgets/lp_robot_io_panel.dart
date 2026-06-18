@@ -6,6 +6,7 @@ import '../../core/robot_io_state.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
 import '../lp_robot_colors.dart';
+import '../lp_ui_scale.dart';
 
 abstract final class _IoPanelLayout {
   static const double labelColWidth = 52;
@@ -100,20 +101,23 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
 
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            final gridW =
-                w - _IoPanelLayout.labelColWidth - _IoPanelLayout.pickerWidth - 8;
+            final uiScale = LpUiScale.clampFactor(h / 68);
+            final labelColW = _IoPanelLayout.labelColWidth * uiScale;
+            final pickerW = _IoPanelLayout.pickerWidth * uiScale;
+            final headerH = _IoPanelLayout.headerHeight * uiScale;
+            final rowGap = _IoPanelLayout.rowGap * uiScale;
+            final gridW = w - labelColW - pickerW - 8 * uiScale;
             final groupW = gridW / 4;
-            final cellW = (groupW - 10) / 4;
-            final rowH =
-                (h - _IoPanelLayout.headerHeight - _IoPanelLayout.rowGap) / 2;
+            final cellW = (groupW - 10 * uiScale) / 4;
+            final rowH = (h - headerH - rowGap) / 2;
             final cellSize = cellW < rowH ? cellW : rowH;
-            final led = cellSize.clamp(6.0, 18.0);
+            final led = cellSize.clamp(8.0, rowH * 0.88);
 
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _FootIoModulePicker(
-                  width: _IoPanelLayout.pickerWidth,
+                  width: pickerW,
                   moduleCount: moduleCount,
                   selectedIndex: module,
                   controller: _pickerController,
@@ -125,19 +129,19 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
                     }
                   },
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4 * uiScale),
                 SizedBox(
-                  width: _IoPanelLayout.labelColWidth,
+                  width: labelColW,
                   child: Column(
                     children: [
-                      SizedBox(height: _IoPanelLayout.headerHeight),
+                      SizedBox(height: headerH),
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'INPUT',
                             style: TextStyle(
-                              fontSize: (led * 0.55).clamp(7.0, 10.0),
+                              fontSize: (led * 0.55).clamp(8.0, 14.0),
                               fontWeight: FontWeight.w600,
                               color: LpRobotColors.label,
                               letterSpacing: 0.2,
@@ -145,14 +149,14 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
                           ),
                         ),
                       ),
-                      SizedBox(height: _IoPanelLayout.rowGap),
+                      SizedBox(height: rowGap),
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'OUTPUT',
                             style: TextStyle(
-                              fontSize: (led * 0.55).clamp(7.0, 10.0),
+                              fontSize: (led * 0.55).clamp(8.0, 14.0),
                               fontWeight: FontWeight.w600,
                               color: LpRobotColors.label,
                               letterSpacing: 0.2,
@@ -163,11 +167,12 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4 * uiScale),
                 Expanded(
                   child: _IoModulePage(
                     moduleIndex: module,
                     ledSize: led,
+                    headerHeight: headerH,
                     online: online,
                     telemetry: t,
                   ),
@@ -326,7 +331,7 @@ class _IoHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = (ledSize * 0.42).clamp(11.0, 14.0);
+    final fontSize = (ledSize * 0.55).clamp(12.0, 18.0);
     return Row(
       children: [
         SizedBox(width: labelWidth),
@@ -386,15 +391,14 @@ class _FootIoModulePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final outline = _outlineBorder(surfaceColor);
     return SizedBox(
       width: width,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: surfaceColor,
+          color: surfaceColor.a == 0 ? null : surfaceColor,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: LpRobotColors.borderWarm.withValues(alpha: 0.45),
-          ),
+          border: outline,
         ),
         child: moduleCount <= 1
             ? Center(
@@ -478,6 +482,15 @@ class _FootIoModulePicker extends StatelessWidget {
       ),
     );
   }
+
+  /// 透明底时不画外框，避免左侧多出一条竖线；有底色时保留完整描边。
+  static BoxBorder? _outlineBorder(Color surfaceColor) {
+    final side = BorderSide(
+      color: LpRobotColors.borderWarm.withValues(alpha: 0.45),
+    );
+    if (surfaceColor.a == 0) return null;
+    return Border.fromBorderSide(side);
+  }
 }
 
 class _FootIoPickerScrollBehavior extends ScrollBehavior {
@@ -498,12 +511,14 @@ class _IoModulePage extends StatelessWidget {
     required this.ledSize,
     required this.online,
     required this.telemetry,
+    this.headerHeight,
   });
 
   final int moduleIndex;
   final double ledSize;
   final bool online;
   final RobotTelemetry telemetry;
+  final double? headerHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -516,6 +531,7 @@ class _IoModulePage extends StatelessWidget {
               groupIndex: group,
               moduleIndex: moduleIndex,
               ledSize: ledSize,
+              headerHeight: headerHeight,
               online: online,
               telemetry: telemetry,
             ),
@@ -532,6 +548,7 @@ class _IoGroup extends StatelessWidget {
     required this.ledSize,
     required this.online,
     required this.telemetry,
+    this.headerHeight,
   });
 
   final int groupIndex;
@@ -539,27 +556,41 @@ class _IoGroup extends StatelessWidget {
   final double ledSize;
   final bool online;
   final RobotTelemetry telemetry;
+  final double? headerHeight;
 
   @override
   Widget build(BuildContext context) {
     final label = RobotIoState.columnGroupLabels[groupIndex];
     final base = moduleIndex * RobotApiConstants.ioBase;
+    final headerH = headerHeight ?? _IoPanelLayout.headerHeight;
+    final labelSize = (ledSize * 0.62).clamp(12.0, 18.0);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: _IoPanelLayout.headerHeight,
-          child: Center(
-            child: Text(
-              '$label',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: LpRobotColors.primary,
-                fontFamily: 'Consolas',
+          height: headerH,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: ledSize,
+                child: Center(
+                  child: Text(
+                    '$label',
+                    style: TextStyle(
+                      fontSize: labelSize,
+                      fontWeight: FontWeight.w700,
+                      color: LpRobotColors.primary,
+                      fontFamily: 'Consolas',
+                      height: 1.0,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              for (var i = 1; i < 4; i++) SizedBox(width: ledSize),
+            ],
           ),
         ),
         Expanded(

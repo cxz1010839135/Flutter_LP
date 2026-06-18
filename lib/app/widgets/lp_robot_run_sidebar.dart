@@ -27,94 +27,116 @@ class LpRobotRunSidebar extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             const gap = 6.0;
-            const padV = 8.0;
-            final maxSlotFromHeight =
-                (constraints.maxHeight - padV - gap * 3) / 4;
-            final slotH =
-                math.min(constraints.maxWidth, maxSlotFromHeight).clamp(48.0, 120.0);
-            final panelW = slotH;
-            final totalH = slotH * 4 + gap * 3 + padV;
+            const outerPadV = 6.0;
+            final maxH = constraints.maxHeight;
+            final panelW = constraints.maxWidth * 0.96;
+
+            double contentHeight(double side) =>
+                side * 4.1 + gap * 3 + outerPadV;
+
+            var slotSide = math.min(
+              panelW,
+              (maxH - outerPadV - gap * 3) / 4.1,
+            );
+            slotSide = slotSide.clamp(48.0, maxH);
+            while (contentHeight(slotSide) > maxH && slotSide > 48) {
+              slotSide -= 0.5;
+            }
+
+            final totalH = contentHeight(slotSide);
             final topPad =
-                ((constraints.maxHeight - totalH) / 2).clamp(0.0, 48.0);
+                ((maxH - totalH) / 2).clamp(0.0, maxH * 0.08);
+            final labelSize = slotSide * 0.14;
+
+            final panel = Material(
+              color: LpRobotColors.navCardBackground,
+              elevation: 1,
+              shadowColor: LpRobotColors.navCardShadow,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(slotSide * 0.12),
+                side: BorderSide(color: LpRobotColors.navCardBorder),
+              ),
+              child: SizedBox(
+                width: slotSide,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: slotSide * 0.05,
+                    vertical: slotSide * 0.05,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < 4; i++) ...[
+                        if (i > 0) SizedBox(height: gap),
+                        SizedBox(
+                          height: slotSide,
+                          child: switch (i) {
+                            0 => _RunLabeledSlot(
+                                label: '启动',
+                                labelActive: online && !moving,
+                                labelSize: labelSize,
+                                asset: moving
+                                    ? HomeAssets.startPressed
+                                    : HomeAssets.startUnpressed,
+                                onTap: online && !moving
+                                    ? () => HomeRunActions.startAutoRun(
+                                          context,
+                                        )
+                                    : null,
+                              ),
+                            1 => _RunLabeledSlot(
+                                label: '停止',
+                                labelActive: online && moving,
+                                labelSize: labelSize,
+                                asset: moving
+                                    ? HomeAssets.stopUnpressed
+                                    : HomeAssets.stopPressed,
+                                onTap: online
+                                    ? () => HomeRunActions.stopAutoRun(
+                                          context,
+                                        )
+                                    : null,
+                              ),
+                            2 => _RunSlot(
+                                child: (size) => _SpeedRing(
+                                  percent: t.speedPercentValue,
+                                  size: size,
+                                  enabled: online,
+                                  onTap: () => _speedDialog(
+                                    context,
+                                    t.speedPercentValue,
+                                  ),
+                                ),
+                              ),
+                            _ => _RunSlot(
+                                child: (size) => _RoundBtn(
+                                  icon: Icons.restart_alt_rounded,
+                                  size: size,
+                                  enabled: online && !moving,
+                                  onPressed: online && !moving
+                                      ? () => HomeRunActions.resetRobot(
+                                            context,
+                                          )
+                                      : null,
+                                ),
+                              ),
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
 
             return Align(
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: EdgeInsets.only(top: topPad),
-                child: Material(
-                  color: LpRobotColors.surface,
-                  elevation: 2,
-                  shadowColor: Colors.black26,
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(
-                    width: panelW,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 4,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < 4; i++) ...[
-                            if (i > 0) const SizedBox(height: gap),
-                            SizedBox(
-                              height: slotH,
-                              child: switch (i) {
-                                0 => _RunLabeledSlot(
-                                    label: '启动',
-                                    labelActive: online && !moving,
-                                    asset: moving
-                                        ? HomeAssets.startPressed
-                                        : HomeAssets.startUnpressed,
-                                    onTap: online && !moving
-                                        ? () => HomeRunActions.startAutoRun(
-                                              context,
-                                            )
-                                        : null,
-                                  ),
-                                1 => _RunLabeledSlot(
-                                    label: '停止',
-                                    labelActive: online && moving,
-                                    asset: moving
-                                        ? HomeAssets.stopUnpressed
-                                        : HomeAssets.stopPressed,
-                                    onTap: online
-                                        ? () => HomeRunActions.stopAutoRun(
-                                              context,
-                                            )
-                                        : null,
-                                  ),
-                                2 => _RunSlot(
-                                    child: (size) => _SpeedRing(
-                                      percent: t.speedPercentValue,
-                                      size: size,
-                                      enabled: online,
-                                      onTap: () => _speedDialog(
-                                        context,
-                                        t.speedPercentValue,
-                                      ),
-                                    ),
-                                  ),
-                                _ => _RunSlot(
-                                    child: (size) => _RoundBtn(
-                                      icon: Icons.restart_alt_rounded,
-                                      size: size,
-                                      enabled: online && !moving,
-                                      onPressed: online && !moving
-                                          ? () => HomeRunActions.resetRobot(
-                                                context,
-                                              )
-                                          : null,
-                                    ),
-                                  ),
-                              },
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topCenter,
+                  child: panel,
                 ),
               ),
             );
@@ -173,12 +195,14 @@ class _RunLabeledSlot extends StatelessWidget {
   const _RunLabeledSlot({
     required this.label,
     required this.labelActive,
+    required this.labelSize,
     required this.asset,
     required this.onTap,
   });
 
   final String label;
   final bool labelActive;
+  final double labelSize;
   final String asset;
   final VoidCallback? onTap;
 
@@ -193,35 +217,43 @@ class _RunLabeledSlot extends StatelessWidget {
             final side = constraints.maxWidth < constraints.maxHeight
                 ? constraints.maxWidth
                 : constraints.maxHeight;
-            final btn = (side * 0.5).clamp(34.0, 48.0);
+            final btn = (side * 0.52).clamp(34.0, side * 0.58);
 
             return SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: btn,
-                    height: btn,
-                    child: Image.asset(
-                      asset,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
-                    ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: btn,
+                        height: btn,
+                        child: Image.asset(
+                          asset,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: labelSize.clamp(11.0, 18.0),
+                          fontWeight: FontWeight.w600,
+                          color: labelActive
+                              ? LpRobotColors.primary
+                              : LpRobotColors.label,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: labelActive
-                          ? LpRobotColors.primary
-                          : LpRobotColors.label,
-                    ),
-                  ),
-                ],
+                ),
               ),
             );
           },
@@ -243,7 +275,7 @@ class _RunSlot extends StatelessWidget {
         final side = constraints.maxWidth < constraints.maxHeight
             ? constraints.maxWidth
             : constraints.maxHeight;
-        final size = (side * 0.62).clamp(38.0, 54.0);
+        final size = (side * 0.64).clamp(38.0, side * 0.72);
 
         return Center(child: child(size));
       },
@@ -282,7 +314,7 @@ class _RoundBtn extends StatelessWidget {
                     colors: [Color(0xFFFF9A4D), LpRobotColors.primary],
                   )
                 : null,
-            color: active ? null : Colors.grey.shade200,
+            color: active ? null : const Color(0xFFFFEDE0),
             boxShadow: active
                 ? [
                     BoxShadow(
@@ -360,7 +392,7 @@ class _RingPainter extends CustomPainter {
       c,
       r,
       Paint()
-        ..color = Colors.grey.shade200
+        ..color = const Color(0xFFFFEDE0)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4,
     );

@@ -17,10 +17,10 @@ class RobotPathLayout {
   /// 连接页/顶栏默认 Logo（与 Android `home_top_logo` 一致）
   static const String brandLogoFile = 'home_top_logo.png';
 
-  /// 应用图标 / 方形 Logo（`logo_color`、图二素材）
-  static const String brandLogoColorFile = 'logo_color.png';
+  /// 应用图标 / 方形 Logo（与 Android `ic_launcher` 一致）
+  static const String brandLogoColorFile = 'ic_launcher.png';
 
-  static const String brandAppIconFile = 'app_icon.png';
+  static const String brandAppIconFile = 'ic_launcher.png';
 
   /// 控制器侧程序配置：`config/server/{name}.xml`、`.rp4`
   static const String serverDir = 'config/server';

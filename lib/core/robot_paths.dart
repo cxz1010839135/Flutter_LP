@@ -115,8 +115,8 @@ class RobotPaths {
   }) async {
     final names = candidates ??
         const [
-          RobotPathLayout.brandAppIconFile,
           RobotPathLayout.brandLogoColorFile,
+          RobotPathLayout.brandAppIconFile,
           RobotPathLayout.brandLogoFile,
         ];
     final dir = await imgsDir();

@@ -6,16 +6,15 @@ import '../../core/robot_path_layout.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
 import '../lp_robot_colors.dart';
+import 'lp_shell_edge.dart';
 
 /// Cursor 风格可折叠底部面板：标签导航 + 连接 / 消息 / 输出。
 class LpStatusPanel extends StatelessWidget {
   const LpStatusPanel({super.key});
 
-  static const _panelBg = Color(0xFF1E1E1E);
-  static const _headerBg = Color(0xFF252526);
-  static const _border = Color(0xFF3C3C3C);
-  static const _muted = Color(0xFF858585);
-  static const _text = Color(0xFFCCCCCC);
+  static const _panelBg = LpRobotColors.statusPanelBackground;
+  static const _muted = LpRobotColors.label;
+  static const _text = LpRobotColors.textDark;
   static const _headerHeight = 32.0;
   static const _dividerHeight = 1.0;
   static const _bodyHeight = 135.0;
@@ -38,37 +37,51 @@ class LpStatusPanel extends StatelessWidget {
 
         return Material(
           color: _panelBg,
+          elevation: 0,
           child: SafeArea(
             top: false,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              height: expanded ? _expandedHeight : _collapsedHeight,
-              color: _panelBg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const ColoredBox(
-                    color: _border,
-                    child: SizedBox(height: _dividerHeight),
-                  ),
-                  _PanelHeader(
-                    expanded: expanded,
-                    selectedTab: log.selectedTab,
-                    onSelectTab: log.selectTab,
-                    onToggle: log.togglePanel,
-                    onClose: log.closePanel,
-                  ),
-                  if (expanded)
-                    Expanded(
-                      child: _PanelBody(
-                        tab: log.selectedTab,
-                        robot: robot,
-                        log: log,
-                      ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                DecoratedBox(
+                  decoration: const BoxDecoration(color: _panelBg),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    height: expanded ? _expandedHeight : _collapsedHeight,
+                    color: _panelBg,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _PanelHeader(
+                          expanded: expanded,
+                          selectedTab: log.selectedTab,
+                          onSelectTab: log.selectTab,
+                          onToggle: log.togglePanel,
+                          onClose: log.closePanel,
+                        ),
+                        if (expanded)
+                          Expanded(
+                            child: _PanelBody(
+                              tab: log.selectedTab,
+                              robot: robot,
+                              log: log,
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LpShellEdgeFade(
+                    height: 8,
+                    edge: LpShellEdge.top,
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -94,9 +107,19 @@ class _PanelHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            LpRobotColors.statusPanelHeader,
+            LpRobotColors.statusPanelBackground,
+          ],
+        ),
+      ),
+      child: Container(
       height: LpStatusPanel._headerHeight,
-      color: LpStatusPanel._headerBg,
       padding: const EdgeInsets.only(left: 8, right: 4),
       child: Row(
         children: [
@@ -129,6 +152,7 @@ class _PanelHeader extends StatelessWidget {
               onPressed: onClose,
             ),
         ],
+      ),
       ),
     );
   }
@@ -169,7 +193,7 @@ class _TabChip extends StatelessWidget {
               fontSize: 11.5,
               height: 1.0,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? LpStatusPanel._text : LpStatusPanel._muted,
+              color: selected ? LpRobotColors.primary : LpRobotColors.label,
               letterSpacing: 0.2,
             ),
           ),
@@ -199,7 +223,7 @@ class _HeaderIconButton extends StatelessWidget {
         child: SizedBox(
           width: 28,
           height: LpStatusPanel._headerHeight,
-          child: Icon(icon, size: 16, color: LpStatusPanel._muted),
+          child: Icon(icon, size: 16, color: LpRobotColors.label),
         ),
       ),
     );
@@ -217,6 +241,13 @@ class _CollapsedSummary extends StatelessWidget {
     var text = robot.isConnected
         ? '● 已连接 ${robot.serverBaseUrl}'
         : '○ 未连接 · 离线模式';
+
+    if (robot.isConnected) {
+      final name = robot.displayRobotLabel.trim();
+      if (name.isNotEmpty && name != '离线') {
+        text = '$name  ·  $text';
+      }
+    }
 
     if (robot.isConnected && telemetry.pose.hasData) {
       final p = telemetry.pose;

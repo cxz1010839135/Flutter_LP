@@ -43,8 +43,8 @@ class LpRobotPoseBar extends StatelessWidget {
   /// 顶栏品牌区 : 坐标区 宽度比（对齐 Android TopView 约 5:12）。
   static const int _brandFlex = 5;
   static const int _poseFlex = 12;
-  /// Logo 相对顶栏内高的占比（Android 约 68%～72%，勿贴满）。
-  static const double _logoHeightFactor = 0.70;
+  /// Logo 相对顶栏内高的占比（略小于满高，避免左上角过于抢眼）。
+  static const double _logoHeightFactor = 0.62;
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +415,10 @@ class _BrandColumn extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final logoHeight = (constraints.maxHeight * LpRobotPoseBar._logoHeightFactor)
-            .clamp(42.0, 56.0);
+            .clamp(38.0, 48.0);
+        final showLinkRow = connected &&
+            linkKind != RobotLinkKind.ethernet &&
+            linkKind != RobotLinkKind.unknown;
         return Align(
           alignment: Alignment.centerLeft,
           child: Column(
@@ -439,15 +442,17 @@ class _BrandColumn extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 2),
-              SizedBox(
-                width: constraints.maxWidth,
-                child: _ConnectionLinkRow(
-                  linkKind: linkKind,
-                  subtitle: subtitle,
-                  connected: connected,
+              if (showLinkRow) ...[
+                const SizedBox(height: 2),
+                SizedBox(
+                  width: constraints.maxWidth,
+                  child: _ConnectionLinkRow(
+                    linkKind: linkKind,
+                    subtitle: subtitle,
+                    connected: connected,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         );
@@ -479,27 +484,6 @@ class _ConnectionLinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (connected && linkKind == RobotLinkKind.ethernet) {
-      return Row(
-        children: [
-          Icon(
-            Icons.settings_ethernet,
-            size: _iconSize,
-            color: Colors.white.withValues(alpha: 0.95),
-          ),
-          const SizedBox(width: 4),
-          const Expanded(
-            child: Text(
-              '以太网',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _textStyle,
-            ),
-          ),
-        ],
-      );
-    }
-
     return Row(
       children: [
         Image.asset(

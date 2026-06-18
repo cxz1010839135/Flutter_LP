@@ -10,6 +10,7 @@ import '../../../core/robot_telemetry.dart';
 import '../../../network/http_manager.dart';
 import '../control_assets.dart';
 import '../control_section.dart';
+import 'control_function_frame.dart';
 import 'control_move_layout.dart';
 import 'control_orange_speed_bar.dart';
 
@@ -29,6 +30,12 @@ class ControlMovePanel extends StatefulWidget {
 }
 
 class _ControlMovePanelState extends State<ControlMovePanel> {
+  static const double _labelWidth = 72;
+  static const double _frameWidthRatio = 0.94;
+  static const double _frameMinWidth = 320;
+  static const double _frameMaxWidth = 620;
+  static const double _frameHeightRatio = 0.90;
+
   RobotPoint? _selectedPoint;
   late TextEditingController _avoidHeightController;
   bool _moving = false;
@@ -160,201 +167,224 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
         final points = RobotPointLibrary.instance.points;
         final selected = _effectiveSelection(points);
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final formWidth = (constraints.maxWidth *
-                    ControlMoveLayout.formMaxWidthRatio)
-                .clamp(
-                  ControlMoveLayout.formMinWidth,
-                  ControlMoveLayout.formMaxWidthCap,
-                );
-            final labelWidth =
-                formWidth * ControlMoveLayout.labelWidthRatio;
-            final fieldWidth = formWidth -
-                labelWidth -
-                ControlMoveLayout.labelFieldGap;
-            final gap = ControlMoveLayout.rowGap;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final frameWidth = (constraints.maxWidth * _frameWidthRatio)
+                  .clamp(_frameMinWidth, _frameMaxWidth);
+              final frameHeight = constraints.maxHeight * _frameHeightRatio;
 
-            return Center(
-              child: SizedBox(
-                width: formWidth,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _MoveLabelFieldRow(
-                      labelWidth: labelWidth,
-                      fieldWidth: fieldWidth,
-                      label: '目标点',
-                      child: _PointDropdown(
-                        points: points,
-                        value: selected,
-                        onChanged: (p) =>
-                            setState(() => _selectedPoint = p),
-                      ),
-                    ),
-                    if (widget.isGantry) ...[
-                      SizedBox(height: gap),
-                      _MoveLabelFieldRow(
-                        labelWidth: labelWidth,
-                        fieldWidth: fieldWidth,
-                        label: '避障高度',
-                        child: _AvoidHeightField(
-                          controller: _avoidHeightController,
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: gap),
-                    _MoveSpeedRow(
-                      labelWidth: labelWidth,
-                      fieldWidth: fieldWidth,
-                      speed: speed,
-                      onChanged:
-                          RobotTelemetry.instance.setSpeedPercentValue,
-                      onChangeEnd: _applySpeedPercent,
-                    ),
-                    SizedBox(height: ControlMoveLayout.confirmTopGap),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width:
-                              labelWidth + ControlMoveLayout.labelFieldGap,
-                        ),
-                        SizedBox(
-                          width: fieldWidth,
-                          height: ControlMoveLayout.confirmHeight,
-                          child: _ConfirmButton(
-                            loading: _moving,
-                            onPressed: _onConfirm,
+              return Center(
+                child: SizedBox(
+                  width: frameWidth,
+                  height: frameHeight,
+                  child: ControlFunctionFrame(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _frameRow(
+                              label: '目标点',
+                              fieldWidthRatio:
+                                  ControlMoveLayout.groupedFieldWidthRatio,
+                              groupCentered: true,
+                              builder: (fieldH) => _PointDropdown(
+                                points: points,
+                                value: selected,
+                                onChanged: (p) =>
+                                    setState(() => _selectedPoint = p),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          if (widget.isGantry)
+                            Expanded(
+                              child: _frameRow(
+                                label: '避障高度',
+                                fieldWidthRatio:
+                                    ControlMoveLayout.groupedFieldWidthRatio,
+                                groupCentered: true,
+                                builder: (fieldH) => _AvoidHeightField(
+                                  controller: _avoidHeightController,
+                                  fieldHeight: fieldH,
+                                ),
+                              ),
+                            ),
+                          Expanded(
+                            child: _frameRow(
+                              label: '速度设定',
+                              builder: (fieldH) => _MoveSpeedField(
+                                speed: speed,
+                                fieldHeight: fieldH,
+                                onChanged: RobotTelemetry.instance
+                                    .setSpeedPercentValue,
+                                onChangeEnd: _applySpeedPercent,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final btnH = _rowControlHeight(
+                                  constraints.maxHeight,
+                                  min: ControlMoveLayout.confirmHeightMin,
+                                  max: ControlMoveLayout.confirmHeightMax,
+                                );
+
+                                return Center(
+                                  child: SizedBox(
+                                    height: btnH,
+                                    width: constraints.maxWidth - _labelWidth,
+                                    child: _ConfirmButton(
+                                      loading: _moving,
+                                      onPressed: _onConfirm,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  double _rowControlHeight(
+    double rowHeight, {
+    required double min,
+    required double max,
+  }) {
+    return (rowHeight * ControlMoveLayout.rowControlHeightRatio).clamp(min, max);
+  }
+
+  Widget _frameRow({
+    required String label,
+    required Widget Function(double fieldHeight) builder,
+    double fieldWidthRatio = 1.0,
+    bool groupCentered = false,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fieldH = _rowControlHeight(
+          constraints.maxHeight,
+          min: ControlMoveLayout.fieldHeightMin,
+          max: ControlMoveLayout.fieldHeightMax,
+        );
+        final fieldW = (constraints.maxWidth -
+                ControlMoveLayout.groupedLabelWidth -
+                ControlMoveLayout.groupedLabelFieldGap) *
+            fieldWidthRatio;
+
+        final labelStyle = const TextStyle(
+          fontSize: ControlMoveLayout.labelFontSize,
+          fontWeight: FontWeight.w600,
+          color: LpRobotColors.textDark,
+          height: 1.2,
+        );
+
+        if (groupCentered) {
+          return Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: ControlMoveLayout.groupedLabelWidth,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(label, style: labelStyle),
+                  ),
+                ),
+                SizedBox(width: ControlMoveLayout.groupedLabelFieldGap),
+                SizedBox(
+                  height: fieldH,
+                  width: fieldW,
+                  child: builder(fieldH),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final legacyFieldW =
+            (constraints.maxWidth - _labelWidth) * fieldWidthRatio;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: _labelWidth,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(label, style: labelStyle),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: SizedBox(
+                  height: fieldH,
+                  width: legacyFieldW,
+                  child: builder(fieldH),
                 ),
               ),
-            );
-          },
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class _MoveLabelFieldRow extends StatelessWidget {
-  const _MoveLabelFieldRow({
-    required this.labelWidth,
-    required this.fieldWidth,
-    required this.label,
-    required this.child,
-  });
-
-  final double labelWidth;
-  final double fieldWidth;
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: labelWidth,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              label,
-              textAlign: TextAlign.left,
-              maxLines: 1,
-              style: const TextStyle(
-                fontSize: ControlMoveLayout.labelFontSize,
-                fontWeight: FontWeight.w500,
-                color: LpRobotColors.textDark,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: ControlMoveLayout.labelFieldGap),
-        SizedBox(
-          width: fieldWidth,
-          height: ControlMoveLayout.fieldHeight,
-          child: child,
-        ),
-      ],
-    );
-  }
-}
-
-class _MoveSpeedRow extends StatelessWidget {
-  const _MoveSpeedRow({
-    required this.labelWidth,
-    required this.fieldWidth,
+class _MoveSpeedField extends StatelessWidget {
+  const _MoveSpeedField({
     required this.speed,
+    required this.fieldHeight,
     required this.onChanged,
     required this.onChangeEnd,
   });
 
-  final double labelWidth;
-  final double fieldWidth;
   final int speed;
+  final double fieldHeight;
   final ValueChanged<int> onChanged;
   final ValueChanged<int> onChangeEnd;
 
   @override
   Widget build(BuildContext context) {
-    final sliderWidth = fieldWidth - ControlMoveLayout.speedPercentWidth - 8;
+    final trackH = (fieldHeight * 0.72).clamp(34.0, 42.0);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: labelWidth,
-          child: const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '速度设定',
-              textAlign: TextAlign.left,
-              maxLines: 1,
-              style: TextStyle(
-                fontSize: ControlMoveLayout.labelFontSize,
-                fontWeight: FontWeight.w500,
-                color: LpRobotColors.textDark,
-              ),
-            ),
+        Expanded(
+          child: ControlOrangeSpeedBar(
+            value: speed,
+            height: fieldHeight,
+            trackHeight: trackH,
+            onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
           ),
         ),
-        const SizedBox(width: ControlMoveLayout.labelFieldGap),
+        const SizedBox(width: 8),
         SizedBox(
-          width: fieldWidth,
-          height: ControlMoveLayout.fieldHeight,
-          child: Row(
-            children: [
-              SizedBox(
-                width: sliderWidth,
-                child: ControlOrangeSpeedBar(
-                  value: speed,
-                  height: ControlMoveLayout.fieldHeight,
-                  trackHeight: 32,
-                  onChanged: onChanged,
-                  onChangeEnd: onChangeEnd,
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: ControlMoveLayout.speedPercentWidth - 8,
-                child: Text(
-                  '$speed%',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: ControlMoveLayout.fieldFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: LpRobotColors.primary,
-                  ),
-                ),
-              ),
-            ],
+          width: ControlMoveLayout.speedPercentWidth,
+          child: Text(
+            '$speed%',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: ControlMoveLayout.fieldFontSize,
+              fontWeight: FontWeight.w600,
+              color: LpRobotColors.primary,
+            ),
           ),
         ),
       ],
@@ -369,15 +399,15 @@ class _MoveInputBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(ControlAssets.fieldRadius),
-        image: const DecorationImage(
-          image: AssetImage(ControlAssets.inputBackground),
-          fit: BoxFit.fill,
+        border: Border.all(
+          color: const Color(0xFFFFC995),
+          width: 1.2,
         ),
       ),
-      clipBehavior: Clip.antiAlias,
       child: child,
     );
   }
@@ -396,35 +426,52 @@ class _PointDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final itemStyle = const TextStyle(
+      fontSize: ControlMoveLayout.fieldFontSize,
+      color: LpRobotColors.textDark,
+    );
+
     return _MoveInputBox(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<RobotPoint>(
             isExpanded: true,
+            alignment: Alignment.center,
             value: value,
             icon: const Icon(
               Icons.keyboard_arrow_down_rounded,
               color: LpRobotColors.primary,
               size: 28,
             ),
-            hint: const Text(
-              '请选择',
-              style: TextStyle(
-                color: LpRobotColors.label,
-                fontSize: ControlMoveLayout.fieldFontSize,
+            hint: const Center(
+              child: Text(
+                '请选择',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: LpRobotColors.label,
+                  fontSize: ControlMoveLayout.fieldFontSize,
+                ),
               ),
             ),
+            selectedItemBuilder: (context) => [
+              for (final p in points)
+                Center(
+                  child: Text(
+                    p.displayLabel,
+                    textAlign: TextAlign.center,
+                    style: itemStyle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
             items: [
               for (final p in points)
                 DropdownMenuItem(
                   value: p,
                   child: Text(
                     p.displayLabel,
-                    style: const TextStyle(
-                      fontSize: ControlMoveLayout.fieldFontSize,
-                      color: LpRobotColors.textDark,
-                    ),
+                    style: itemStyle,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -438,25 +485,47 @@ class _PointDropdown extends StatelessWidget {
 }
 
 class _AvoidHeightField extends StatelessWidget {
-  const _AvoidHeightField({required this.controller});
+  const _AvoidHeightField({
+    required this.controller,
+    required this.fieldHeight,
+  });
 
   final TextEditingController controller;
+  final double fieldHeight;
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = ControlMoveLayout.fieldValueFontSize(fieldHeight) * 0.8;
+
     return _MoveInputBox(
-      child: TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        textAlignVertical: TextAlignVertical.center,
-        style: const TextStyle(
-          fontSize: ControlMoveLayout.fieldFontSize,
-          fontWeight: FontWeight.w600,
-          color: LpRobotColors.primary,
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      child: SizedBox.expand(
+        child: Center(
+          child: TextField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              color: LpRobotColors.primary,
+              height: 1.0,
+            ),
+            cursorColor: LpRobotColors.primary,
+            decoration: const InputDecoration(
+              isDense: true,
+              isCollapsed: true,
+              filled: false,
+              fillColor: Colors.transparent,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+            ),
+          ),
         ),
       ),
     );
@@ -474,19 +543,12 @@ class _ConfirmButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: loading ? null : onPressed,
-        borderRadius: BorderRadius.circular(ControlAssets.fieldRadius),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(ControlAssets.fieldRadius),
-            image: const DecorationImage(
-              image: AssetImage(ControlAssets.inputBackground),
-              fit: BoxFit.fill,
-            ),
-          ),
+    return _MoveInputBox(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: loading ? null : onPressed,
+          borderRadius: BorderRadius.circular(ControlAssets.fieldRadius),
           child: Center(
             child: loading
                 ? const SizedBox(

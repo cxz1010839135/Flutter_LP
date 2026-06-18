@@ -11,4 +11,7 @@ abstract final class LpAppAssets {
   static const homeTopLogo = '$_homeTop/home_top_logo.png';
   static const homeTopNameBg = '$_homeTop/home_top_name_bg.png';
   static const iconWifi = '$_homeTop/icon_wifi.png';
+
+  /// 连接页 / 应用图标（与 Android ic_launcher 一致）
+  static const brandAppIcon = 'assets/branding/ic_launcher.png';
 }

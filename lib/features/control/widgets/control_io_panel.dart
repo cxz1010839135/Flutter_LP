@@ -6,6 +6,7 @@ import '../../../core/robot_io_state.dart';
 import '../../../core/robot_state.dart';
 import '../../../core/robot_telemetry.dart';
 import '../../../network/http_manager.dart';
+import '../control_assets.dart';
 import 'control_io_module_picker.dart';
 
 /// 操控页 IO 模式：左侧滚轮选扩展块，右侧仅一页 IN/OUT（对齐 Android `ll_control_io`）。
@@ -65,32 +66,33 @@ class _ControlIoPanelState extends State<ControlIoPanel> {
               builder: (context, _) {
                 final online = RobotState.instance.isConnected;
                 final t = RobotTelemetry.instance;
-                return Column(
-                  key: ValueKey<int>(module),
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _IoBank(
-                        title: 'IN',
-                        isOutput: false,
-                        moduleIndex: module,
-                        online: online,
-                        telemetry: t,
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    key: ValueKey<int>(module),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _IoBank(
+                          isOutput: false,
+                          moduleIndex: module,
+                          online: online,
+                          telemetry: t,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: _IoBank(
-                        title: 'OUT',
-                        isOutput: true,
-                        moduleIndex: module,
-                        online: online,
-                        telemetry: t,
-                        onOutputTap: _toggleOutput,
-                        busy: _busy,
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: _IoBank(
+                          isOutput: true,
+                          moduleIndex: module,
+                          online: online,
+                          telemetry: t,
+                          onOutputTap: _toggleOutput,
+                          busy: _busy,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -103,7 +105,6 @@ class _ControlIoPanelState extends State<ControlIoPanel> {
 
 class _IoBank extends StatelessWidget {
   const _IoBank({
-    required this.title,
     required this.isOutput,
     required this.moduleIndex,
     required this.online,
@@ -112,7 +113,6 @@ class _IoBank extends StatelessWidget {
     this.busy = false,
   });
 
-  final String title;
   final bool isOutput;
   final int moduleIndex;
   final bool online;
@@ -129,21 +129,21 @@ class _IoBank extends StatelessWidget {
         border: Border.all(color: LpRobotColors.borderWarm.withValues(alpha: 0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(6, 6, 8, 6),
+        padding: const EdgeInsets.fromLTRB(6, 8, 8, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              width: 28,
+              width: 40,
               child: Align(
                 alignment: Alignment.topLeft,
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: LpRobotColors.primary,
-                  ),
+                child: Image.asset(
+                  isOutput
+                      ? ControlAssets.ioOutputLabel
+                      : ControlAssets.ioInputLabel,
+                  height: 22,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
                 ),
               ),
             ),
@@ -151,42 +151,54 @@ class _IoBank extends StatelessWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   const cols = RobotIoState.controlRowWidth;
-                  final rowH = (constraints.maxHeight - 4) / 2;
+                  const rowGap = 2.0;
+                  const bankPadV = 4.0;
+                  final gridH =
+                      constraints.maxHeight - bankPadV * 2 - rowGap;
+                  final rowH = gridH / 2;
                   final slotW = constraints.maxWidth / cols;
-                  final size = slotW.clamp(12.0, rowH).clamp(12.0, 36.0);
+                  final cellW = slotW * 0.96;
+                  final cellH = rowH * 0.94;
 
-                  return Column(
-                    children: [
-                      SizedBox(
-                        height: rowH,
-                        child: _IoLaneRow(
-                          row: 0,
-                          size: size,
-                          slotW: slotW,
-                          isOutput: isOutput,
-                          moduleIndex: moduleIndex,
-                          online: online,
-                          telemetry: telemetry,
-                          onOutputTap: onOutputTap,
-                          busy: busy,
+                  return Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: bankPadV),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          height: rowH,
+                          child: _IoLaneRow(
+                            row: 0,
+                            cellW: cellW,
+                            cellH: cellH,
+                            slotW: slotW,
+                            isOutput: isOutput,
+                            moduleIndex: moduleIndex,
+                            online: online,
+                            telemetry: telemetry,
+                            onOutputTap: onOutputTap,
+                            busy: busy,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      SizedBox(
-                        height: rowH,
-                        child: _IoLaneRow(
-                          row: 1,
-                          size: size,
-                          slotW: slotW,
-                          isOutput: isOutput,
-                          moduleIndex: moduleIndex,
-                          online: online,
-                          telemetry: telemetry,
-                          onOutputTap: onOutputTap,
-                          busy: busy,
+                        const SizedBox(height: rowGap),
+                        SizedBox(
+                          height: rowH,
+                          child: _IoLaneRow(
+                            row: 1,
+                            cellW: cellW,
+                            cellH: cellH,
+                            slotW: slotW,
+                            isOutput: isOutput,
+                            moduleIndex: moduleIndex,
+                            online: online,
+                            telemetry: telemetry,
+                            onOutputTap: onOutputTap,
+                            busy: busy,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 },
               ),
@@ -201,7 +213,8 @@ class _IoBank extends StatelessWidget {
 class _IoLaneRow extends StatelessWidget {
   const _IoLaneRow({
     required this.row,
-    required this.size,
+    required this.cellW,
+    required this.cellH,
     required this.slotW,
     required this.isOutput,
     required this.moduleIndex,
@@ -212,7 +225,8 @@ class _IoLaneRow extends StatelessWidget {
   });
 
   final int row;
-  final double size;
+  final double cellW;
+  final double cellH;
   final double slotW;
   final bool isOutput;
   final int moduleIndex;
@@ -232,7 +246,8 @@ class _IoLaneRow extends StatelessWidget {
             child: Center(
               child: _IoCell(
                 lane: row * cols + col,
-                size: size,
+                cellW: cellW,
+                cellH: cellH,
                 isOutput: isOutput,
                 moduleIndex: moduleIndex,
                 online: online,
@@ -250,7 +265,8 @@ class _IoLaneRow extends StatelessWidget {
 class _IoCell extends StatelessWidget {
   const _IoCell({
     required this.lane,
-    required this.size,
+    required this.cellW,
+    required this.cellH,
     required this.isOutput,
     required this.moduleIndex,
     required this.online,
@@ -260,7 +276,8 @@ class _IoCell extends StatelessWidget {
   });
 
   final int lane;
-  final double size;
+  final double cellW;
+  final double cellH;
   final bool isOutput;
   final int moduleIndex;
   final bool online;
@@ -271,47 +288,33 @@ class _IoCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!RobotIoState.isControlLaneVisible(lane, isOutput: isOutput)) {
-      return SizedBox(width: size, height: size);
+      return SizedBox(width: cellW, height: cellH);
     }
 
     final address = RobotIoState.ioAddress(moduleIndex, lane);
     final active = online &&
         (isOutput ? telemetry.outputAt(address) : telemetry.inputAt(address));
     final canTap = isOutput && onTap != null && online && !busy;
+    final asset = ControlAssets.ioCellAsset(lane, active: active);
 
-    final led = SizedBox(
-      width: size,
-      height: size,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          color: active ? LpRobotColors.ioChecked : LpRobotColors.surface,
-          border: Border.all(
-            color: active ? LpRobotColors.ioChecked : LpRobotColors.ioUnchecked,
-            width: active ? 1.2 : 1.5,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            '$lane',
-            style: TextStyle(
-              fontSize: (size * 0.38).clamp(7.0, 11.0),
-              fontWeight: FontWeight.w700,
-              color: active ? Colors.white : LpRobotColors.label,
-            ),
-          ),
-        ),
+    final cell = SizedBox(
+      width: cellW,
+      height: cellH,
+      child: Image.asset(
+        asset,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
       ),
     );
 
-    if (!canTap) return led;
+    if (!canTap) return cell;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => onTap!(address),
         borderRadius: BorderRadius.circular(4),
-        child: led,
+        child: cell,
       ),
     );
   }

@@ -25,6 +25,16 @@ abstract final class ControlAssets {
   static const pickerBackground = '$_base/bg_io_picker.png';
   static const inputBackground = '$_base/bg_input.png';
 
+  static const ioInputLabel = '$_base/io_input.png';
+  static const ioOutputLabel = '$_base/io_output.png';
+
+  /// 操控页 IO 格贴图（对齐 Android [ControlIOs]：`io_g_*` 亮 / `io_o_*` 灭）。
+  static String ioCellAsset(int lane, {required bool active}) {
+    final suffix = lane == 15 ? '15_e' : '$lane';
+    final prefix = active ? 'io_g_' : 'io_o_';
+    return '$_base/$prefix$suffix.png';
+  }
+
   /// 圆角与 Android `bg_input` / `bg_button` 一致。
   static const double fieldRadius = 10;
 

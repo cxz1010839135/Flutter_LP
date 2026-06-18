@@ -161,7 +161,7 @@ class _ConnectPageState extends State<ConnectPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LpRobotColors.background,
+      backgroundColor: LpRobotColors.shellBackground,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -171,7 +171,7 @@ class _ConnectPageState extends State<ConnectPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const LpBrandLogo(height: 80, maxWidth: 360),
+                  const LpBrandLogo(height: 80, maxWidth: 360, bundledOnly: true),
                   const SizedBox(height: 16),
                   Text(
                     AppInfo.displayTitle,

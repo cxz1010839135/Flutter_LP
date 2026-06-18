@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
+import '../../app/lp_ui_scale.dart';
+import '../../app/widgets/lp_scaled_workspace.dart';
+import '../../app/widgets/lp_shell_edge.dart';
 import '../../app/widgets/lp_robot_foot_bar.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_robot_io_panel.dart';
@@ -55,70 +58,71 @@ class _ControlPageState extends State<ControlPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: LpRobotColors.controlCanvas,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          LpRobotPoseBar(
-            pageTitle: '操控',
-            onBack: () => Navigator.of(context).pop(),
-          ),
-          Expanded(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LpRobotColors.controlCanvasGradient,
-              ),
-              child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: ControlNavRail(
-                      selected:
-                          _section.isLeftNav ? _section : _lastLeftSection,
-                      onSelected: _selectSection,
+      body: LpScaledWorkspace(
+        designWidth: LpUiScale.designWidth,
+        designHeight: LpUiScale.designHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LpRobotPoseBar(
+              pageTitle: '操控',
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: LpShellContentFrame(
+                padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: ControlNavRail(
+                        selected: _section.isLeftNav
+                            ? _section
+                            : _lastLeftSection,
+                        onSelected: _selectSection,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 53,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: ControlCenterPanel(section: _section),
-                        ),
-                        const SizedBox(height: 4),
-                        const SizedBox(
-                          height: 58,
-                          child: LpRobotFootBar(
-                            canvasColor: LpRobotColors.controlCanvas,
-                            ioLayout: IoPanelLayout.horizontalSplit,
-                            showStatus: false,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 53,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ControlCenterPanel(
+                              section: _section,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          const SizedBox(
+                            height: 58,
+                            child: LpRobotFootBar(
+                              canvasColor: LpRobotColors.controlCanvas,
+                              ioLayout: IoPanelLayout.horizontalSplit,
+                              showStatus: false,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 6,
-                    child: ControlActionRail(
-                      selected: _section.isRightNav ? _section : null,
-                      onSectionSelected: _selectSection,
-                      onPointEdit: _onPointEdit,
-                      onClearUi: _onClearUi,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 6,
+                      child: ControlActionRail(
+                        selected: _section.isRightNav ? _section : null,
+                        onSectionSelected: _selectSection,
+                        onPointEdit: _onPointEdit,
+                        onClearUi: _onClearUi,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            ),
-          ),
-          const LpStatusPanel(),
-        ],
+            const LpStatusPanel(),
+          ],
+        ),
       ),
     );
   }
-
 }
