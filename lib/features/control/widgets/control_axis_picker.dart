@@ -35,8 +35,17 @@ class ControlAxisPicker extends StatefulWidget {
 }
 
 class _ControlAxisPickerState extends State<ControlAxisPicker> {
-  static const int _visibleItemCount = 3;
+  /// 四轴及以下：全部项可见并均分高度铺满；更多轴时保持 3 项滚轮。
+  static const int _wheelVisibleCap = 4;
+  static const int _wheelVisibleMax = 3;
   static const double _minHeight = 132;
+
+  int get _visibleItemCount {
+    if (widget.axisCount <= _wheelVisibleCap) {
+      return widget.axisCount;
+    }
+    return _wheelVisibleMax;
+  }
 
   late FixedExtentScrollController _controller;
 
@@ -133,7 +142,8 @@ class _ControlAxisPickerState extends State<ControlAxisPicker> {
               constraints.maxHeight.isFinite && constraints.maxHeight > 0
                   ? constraints.maxHeight
                   : _minHeight;
-          final itemExtent = height / _visibleItemCount;
+          final visibleCount = _visibleItemCount;
+          final itemExtent = height / visibleCount;
 
           return _PickerFrame(
             height: height,

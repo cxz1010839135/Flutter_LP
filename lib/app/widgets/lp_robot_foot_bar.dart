@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/robot_alarm_info.dart';
@@ -67,7 +65,7 @@ class LpRobotFootBar extends StatelessWidget {
           builder: (context, constraints) {
             final narrow = constraints.maxWidth < 520;
             final statusScale =
-                LpUiScale.clampFactor(constraints.maxHeight / 68);
+                LpUiScale.clampFactor(constraints.maxHeight / 52);
 
             final flat = canvasColor != null;
             final ioPanel = LpRobotIoPanel(
@@ -77,10 +75,10 @@ class LpRobotFootBar extends StatelessWidget {
 
             final Widget ioArea = Padding(
               padding: EdgeInsets.fromLTRB(
-                flat ? 2 : 6,
-                2,
-                6,
-                showStatus ? 0 : 2,
+                flat ? 0 : 2,
+                0,
+                flat ? 0 : 2,
+                showStatus ? 0 : 1,
               ),
               child: ioPanel,
             );
@@ -110,26 +108,38 @@ class LpRobotFootBar extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          flex: 14,
-                          child: ioArea,
-                        ),
-                        Expanded(
-                          flex: 10,
+                          flex: 12,
                           child: LayoutBuilder(
-                            builder: (context, statusConstraints) {
-                              return Center(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.center,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: statusConstraints.maxWidth - 8,
-                                      maxHeight: statusConstraints.maxHeight - 4,
+                            builder: (context, ioBox) {
+                              return Align(
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width: ioBox.maxWidth * 0.94,
+                                  height: ioBox.maxHeight,
+                                  child: ioArea,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(width: compactStatus ? 28 : 16),
+                        Expanded(
+                          flex: 8,
+                          child: LayoutBuilder(
+                            builder: (context, statusBox) {
+                              return Align(
+                                alignment: Alignment.centerRight,
+                                child: SizedBox(
+                                  width: statusBox.maxWidth * 0.94,
+                                  height: statusBox.maxHeight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
                                     ),
                                     child: _StatusBubble(
                                       compact: compactStatus,
                                       scale: statusScale,
-                                      maxWidth: statusConstraints.maxWidth - 8,
+                                      expanded: compactStatus,
                                       online: online,
                                       initText: initText,
                                       initOk: initOk,
@@ -185,7 +195,7 @@ class _StatusBubble extends StatelessWidget {
     required this.initOk,
     required this.alarmText,
     required this.motorAlarm,
-    this.maxWidth,
+    this.expanded = false,
   });
 
   final bool compact;
@@ -195,22 +205,33 @@ class _StatusBubble extends StatelessWidget {
   final bool initOk;
   final String alarmText;
   final bool motorAlarm;
-  final double? maxWidth;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
-    final bubbleMaxW = maxWidth == null
-        ? 520 * scale
-        : math.min(520 * scale, maxWidth!);
+    final bubbleMaxW = 520 * scale;
+    final radius = expanded ? 12.0 * scale : 999.0;
+
+    final content = _StatusRow(
+      compact: compact,
+      scale: scale,
+      online: online,
+      initText: initText,
+      initOk: initOk,
+      alarmText: alarmText,
+      motorAlarm: motorAlarm,
+    );
 
     return Container(
+      width: expanded ? double.infinity : null,
+      height: expanded ? double.infinity : null,
       constraints: BoxConstraints(maxWidth: bubbleMaxW),
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 20 * scale : 18 * scale,
-        vertical: compact ? 8 * scale : 6 * scale,
+        horizontal: compact ? 16 * scale : 18 * scale,
+        vertical: expanded ? 0 : (compact ? 8 * scale : 6 * scale),
       ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(radius),
         color: LpRobotColors.navCardBackground,
         border: Border.all(
           color: LpRobotColors.navCardBorder,
@@ -223,19 +244,13 @@ class _StatusBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.center,
-        child: _StatusRow(
-          compact: compact,
-          scale: scale,
-          online: online,
-          initText: initText,
-          initOk: initOk,
-          alarmText: alarmText,
-          motorAlarm: motorAlarm,
-        ),
-      ),
+      child: expanded
+          ? Center(child: content)
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: content,
+            ),
     );
   }
 }
@@ -345,7 +360,6 @@ class _FootStatus extends StatelessWidget {
             fontSize: valueSize,
             fontWeight: FontWeight.w700,
             color: valueColor,
-            fontFamily: 'Consolas',
           ),
         ),
       ],

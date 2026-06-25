@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'lp_app_fonts.dart';
 import 'lp_robot_colors.dart';
 import 'widgets/lp_gradient_header.dart';
 
@@ -16,9 +17,22 @@ ThemeData lpRobotTheme() {
     brightness: Brightness.light,
   );
 
-  return ThemeData(
+  final base = ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
+    fontFamily: LpAppFonts.roboto,
+    fontFamilyFallback: LpAppFonts.cjkFallback,
+  );
+
+  return base.copyWith(
+    textTheme: LpAppFonts.applyTo(
+      base.textTheme,
+      bodyColor: LpRobotColors.textDark,
+    ),
+    primaryTextTheme: LpAppFonts.applyTo(
+      base.primaryTextTheme,
+      bodyColor: Colors.white,
+    ),
     scaffoldBackgroundColor: LpRobotColors.background,
     appBarTheme: const AppBarTheme(
       elevation: 0,
@@ -68,7 +82,7 @@ ThemeData lpRobotTheme() {
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: primary, width: 2),
       ),
-      labelStyle: const TextStyle(color: LpRobotColors.label),
+      labelStyle: LpAppFonts.style(color: LpRobotColors.label),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
     snackBarTheme: SnackBarThemeData(
@@ -119,7 +133,7 @@ class LpRobotAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       leading: leading,
       title: DefaultTextStyle(
-        style: const TextStyle(
+        style: LpAppFonts.style(
           color: Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w600,

@@ -606,7 +606,6 @@ class _WatchRow extends StatelessWidget {
                     entry.displayAddress,
                     style: const TextStyle(
                       fontSize: 10,
-                      fontFamily: 'Consolas',
                       color: LpRobotColors.label,
                     ),
                   ),
@@ -618,7 +617,6 @@ class _WatchRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'Consolas',
                 color: entry.error
                     ? LpRobotColors.alarm
                     : entry.changed

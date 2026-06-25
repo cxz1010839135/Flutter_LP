@@ -22,6 +22,16 @@ class RobotPathLayout {
 
   static const String brandAppIconFile = 'ic_launcher.png';
 
+  /// 主页左侧四键（`config/imgs/control_*` 等，含图标与文案）。
+  static const String mainNavControlOff = 'control_unpressed.png';
+  static const String mainNavControlOn = 'control_pressed.png';
+  static const String mainNavProgramOff = 'program_unpressed.png';
+  static const String mainNavProgramOn = 'program_pressed.png';
+  static const String mainNavMonitorOff = 'monitor_unpressed.png';
+  static const String mainNavMonitorOn = 'monitor_pressed.png';
+  static const String mainNavToolOff = 'tool_unpressed.png';
+  static const String mainNavToolOn = 'tool_pressed.png';
+
   /// 控制器侧程序配置：`config/server/{name}.xml`、`.rp4`
   static const String serverDir = 'config/server';
 
@@ -61,6 +71,8 @@ class RobotPathLayout {
   /// 安装目录不可写时，用户数据根：%LOCALAPPDATA%\Lingpeng\LPRobot
   static const String windowsWritableDataParent = 'Lingpeng';
   static const String windowsWritableDataLeaf = 'LPRobot';
+
+  static const String dllDir = 'dll';
 
   /// 安装包内 Blockly 加密包：`dll/visualprogram.lpk`（不含明文 JS 目录）
   static const String blocklyPackRelative = 'dll/visualprogram.lpk';

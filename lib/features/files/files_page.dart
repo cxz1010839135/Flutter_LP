@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
+import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
@@ -494,7 +495,7 @@ class _FilesPageState extends State<FilesPage> {
             child: SingleChildScrollView(
               child: SelectableText(
                 content.isEmpty ? '（空文件）' : content,
-                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                style: LpAppFonts.style(fontSize: 12),
               ),
             ),
           ),

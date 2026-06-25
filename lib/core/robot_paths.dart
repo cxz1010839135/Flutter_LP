@@ -56,6 +56,7 @@ class RobotPaths {
     await platform.funLibDir();
     await platform.downloadsDir();
     await platform.programDir();
+    await platform.dllDir();
 
     await _migrateLegacyPaths();
     _layoutReady = true;
@@ -124,6 +125,13 @@ class RobotPaths {
       final file = File(p.join(dir, name));
       if (await file.exists()) return file;
     }
+    return null;
+  }
+
+  /// 主页左侧导航贴图：优先 `config/imgs/`，不存在时返回 null（走内置 assets）。
+  static Future<File?> findMainNavImageFile(String fileName) async {
+    final file = File(p.join(await imgsDir(), fileName));
+    if (await file.exists()) return file;
     return null;
   }
 

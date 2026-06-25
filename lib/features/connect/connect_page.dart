@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -24,14 +25,117 @@ class _ConnectPageState extends State<ConnectPage> {
   static const _defaultIp = LocalAppSettings.defaultIp;
 
   final _ipController = TextEditingController();
+  final _ipFocus = FocusNode();
   bool _connecting = false;
   String? _connectStatus;
 
   @override
   void initState() {
     super.initState();
+    _ipFocus.addListener(_onIpFocusChanged);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      _ipFocus.onKeyEvent = _onAndroidHardwareKey;
+    }
     _loadSavedIp();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showPendingMessage());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPendingMessage();
+      if (mounted) _ipFocus.requestFocus();
+    });
+  }
+
+  /// Android：隐藏软键盘，保留输入连接；逍遥/MEmu 等模拟器走 [onKeyEvent] 接收 PC 键盘。
+  void _onIpFocusChanged() {
+    if (!_ipFocus.hasFocus || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    });
+  }
+
+  KeyEventResult _onAndroidHardwareKey(FocusNode node, KeyEvent event) {
+    if (_connecting || event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      _onConnect();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.backspace) {
+      _deleteIpSelectionOrBackspace();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.delete) {
+      _deleteIpForward();
+      return KeyEventResult.handled;
+    }
+
+    final char = event.character;
+    if (char != null && char.isNotEmpty) {
+      var handled = false;
+      for (final unit in char.runes) {
+        final s = String.fromCharCode(unit);
+        if (RegExp(r'[0-9.]').hasMatch(s)) {
+          _insertIpText(s);
+          handled = true;
+        }
+      }
+      if (handled) return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _insertIpText(String text) {
+    final value = _ipController.value;
+    final sel = value.selection;
+    final start = sel.start >= 0 ? sel.start : value.text.length;
+    final end = sel.end >= 0 ? sel.end : value.text.length;
+    final next = value.text.replaceRange(start, end, text);
+    _ipController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+
+  void _deleteIpSelectionOrBackspace() {
+    final value = _ipController.value;
+    final text = value.text;
+    final sel = value.selection;
+    if (!sel.isCollapsed) {
+      _ipController.value = TextEditingValue(
+        text: text.replaceRange(sel.start, sel.end, ''),
+        selection: TextSelection.collapsed(offset: sel.start),
+      );
+      return;
+    }
+    final pos = sel.start >= 0 ? sel.start : text.length;
+    if (pos == 0) return;
+    _ipController.value = TextEditingValue(
+      text: text.replaceRange(pos - 1, pos, ''),
+      selection: TextSelection.collapsed(offset: pos - 1),
+    );
+  }
+
+  void _deleteIpForward() {
+    final value = _ipController.value;
+    final text = value.text;
+    final sel = value.selection;
+    if (!sel.isCollapsed) {
+      _ipController.value = TextEditingValue(
+        text: text.replaceRange(sel.start, sel.end, ''),
+        selection: TextSelection.collapsed(offset: sel.start),
+      );
+      return;
+    }
+    final pos = sel.start >= 0 ? sel.start : text.length;
+    if (pos >= text.length) return;
+    _ipController.value = TextEditingValue(
+      text: text.replaceRange(pos, pos + 1, ''),
+      selection: TextSelection.collapsed(offset: pos),
+    );
   }
 
   void _showPendingMessage() {
@@ -49,6 +153,8 @@ class _ConnectPageState extends State<ConnectPage> {
 
   @override
   void dispose() {
+    _ipFocus.removeListener(_onIpFocusChanged);
+    _ipFocus.dispose();
     _ipController.dispose();
     super.dispose();
   }
@@ -160,33 +266,54 @@ class _ConnectPageState extends State<ConnectPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: LpRobotColors.shellBackground,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 420,
+                minHeight: MediaQuery.sizeOf(context).height -
+                    MediaQuery.paddingOf(context).vertical -
+                    bottomInset -
+                    48,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const LpBrandLogo(height: 80, maxWidth: 360, bundledOnly: true),
-                  const SizedBox(height: 16),
+                  const LpBrandLogo(height: 96, maxWidth: 380, bundledOnly: true),
+                  const SizedBox(height: 14),
                   Text(
                     AppInfo.displayTitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
                           color: LpRobotColors.label,
                         ),
                   ),
                   const SizedBox(height: 40),
                   TextField(
                     controller: _ipController,
+                    focusNode: _ipFocus,
+                    autofocus: true,
                     decoration: const InputDecoration(
                       labelText: '控制器 IP',
                       hintText: _defaultIp,
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],

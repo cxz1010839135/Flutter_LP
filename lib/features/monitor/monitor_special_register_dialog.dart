@@ -124,7 +124,6 @@ class _RegisterRefTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Consolas',
                     color: LpRobotColors.primary,
                   ),
                 ),
@@ -180,7 +179,6 @@ class _AccessChip extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: LpRobotColors.primary,
-          fontFamily: 'Consolas',
         ),
       ),
     );

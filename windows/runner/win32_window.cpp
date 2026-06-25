@@ -53,6 +53,9 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
   FreeLibrary(user32_module);
 }
 
+constexpr int kMinWindowWidth = 960;
+constexpr int kMinWindowHeight = 540;
+
 }  // namespace
 
 // Manages the Win32Window's window class registration.
@@ -204,6 +207,13 @@ Win32Window::MessageHandler(HWND hwnd,
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, TRUE);
       }
+      return 0;
+    }
+
+    case WM_GETMINMAXINFO: {
+      auto* mmi = reinterpret_cast<MINMAXINFO*>(lparam);
+      mmi->ptMinTrackSize.x = kMinWindowWidth;
+      mmi->ptMinTrackSize.y = kMinWindowHeight;
       return 0;
     }
 

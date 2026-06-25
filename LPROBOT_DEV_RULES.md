@@ -205,6 +205,18 @@ lib/
 - 修改 exe 名、安装 UI 或目录逻辑时，同步更新本章与 `README.md`
 - 打包前 `windows.ps1` / `windows.cmd` 会**整目录覆盖** Release 中的 `config/`、`dll/`；改 Blockly 资源后勿仅用 `-SkipFlutterBuild` 除非已确认 Release 已同步
 
+### 8.2 Android 打包与运行时约定
+
+| 项 | 约定 |
+|----|------|
+| **包名** | 开发/测试：`com.example.flutter_application_1`（可与原版 `com.lstech.lprobot` 并存安装）；**正式替换原版**须先卸载旧 APK 且使用相同签名后改回 `com.lstech.lprobot` |
+| **横屏** | `AndroidManifest` `sensorLandscape` + `MainActivity` / `SystemChrome` 双保险 |
+| **权限** | `INTERNET`、网络/WiFi 状态、`WAKE_LOCK`（联机常亮）；旧版外置目录 `READ/WRITE_EXTERNAL_STORAGE`（`maxSdkVersion` 限制） |
+| **明文 HTTP** | `usesCleartextTraffic` + `network_security_config.xml`（Blockly 本地 shelf + 控制器内网） |
+| **Blockly 资源** | 构建：`sync_blockly_assets.dart` → `package_blockly_lpk.dart` → `assets/blockly/visualprogram.lpk`；运行时首次进编程页解压到 `installRoot/dll/visualprogram/`，并落盘 `dll/visualprogram.lpk` |
+| **数据目录** | 优先可写的 `/storage/emulated/0/LPRobot/`；不可写时回退 `Android/data/.../files/LPRobot` |
+| **打包** | `打包Android安装包.bat` → `dist/LPRobot-<版本>.apk` |
+
 ---
 
 ## 9. 迁移路线与进度（详见独立文档）

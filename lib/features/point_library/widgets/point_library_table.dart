@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -36,8 +34,11 @@ class PointLibraryTable extends StatefulWidget {
   static const double indexColWidth = 72;
   static const double labelColWidth = 110;
   static const double axisColWidth = 88;
-  static const double rowHeight = 32;
-  static const double headerHeight = 36;
+  static const double rowHeight = 36;
+  static const double headerHeight = 40;
+  static const double cellHPadding = 8;
+  static const double headerFontSize = 15;
+  static const double cellFontSize = 14;
 
   @override
   State<PointLibraryTable> createState() => _PointLibraryTableState();
@@ -80,10 +81,36 @@ class _PointLibraryTableState extends State<PointLibraryTable> {
     super.dispose();
   }
 
-  double get _tableWidth =>
+  double get _minTableWidth =>
       PointLibraryTable.indexColWidth +
       PointLibraryTable.labelColWidth +
       widget.axisCount * PointLibraryTable.axisColWidth;
+
+  _TableColumnLayout _columnLayout(double maxWidth) {
+    final minWidth = _minTableWidth;
+    if (minWidth > maxWidth + 1) {
+      return _TableColumnLayout(
+        indexWidth: PointLibraryTable.indexColWidth,
+        labelWidth: PointLibraryTable.labelColWidth,
+        axisWidth: PointLibraryTable.axisColWidth,
+        tableWidth: minWidth,
+        expandAxisColumns: false,
+      );
+    }
+
+    final axisWidth = (maxWidth -
+            PointLibraryTable.indexColWidth -
+            PointLibraryTable.labelColWidth) /
+        widget.axisCount;
+
+    return _TableColumnLayout(
+      indexWidth: PointLibraryTable.indexColWidth,
+      labelWidth: PointLibraryTable.labelColWidth,
+      axisWidth: axisWidth,
+      tableWidth: maxWidth,
+      expandAxisColumns: true,
+    );
+  }
 
   String _formatJoint(double value) {
     if (value == value.roundToDouble()) {
@@ -106,60 +133,73 @@ class _PointLibraryTableState extends State<PointLibraryTable> {
         borderRadius: BorderRadius.circular(10),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final tableWidth = math.max(_tableWidth, constraints.maxWidth);
+            final layout = _columnLayout(constraints.maxWidth);
+            final needHScroll = !layout.expandAxisColumns;
+
+            final table = SizedBox(
+              width: layout.tableWidth,
+              height: constraints.maxHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(layout),
+                  Expanded(
+                    child: widget.points.isEmpty
+                        ? const Center(
+                            child: Text(
+                              '暂无点位，请点击右侧 + 添加',
+                              style: TextStyle(
+                                color: LpRobotColors.label,
+                                fontSize: 14,
+                              ),
+                            ),
+                          )
+                        : ScrollConfiguration(
+                            behavior: ScrollConfiguration.of(context).copyWith(
+                              scrollbars: false,
+                            ),
+                            child: ListView.builder(
+                              itemCount: widget.points.length,
+                              itemExtent: PointLibraryTable.rowHeight,
+                              addAutomaticKeepAlives: false,
+                              addRepaintBoundaries: true,
+                              itemBuilder: (context, index) {
+                                final point = widget.points[index];
+                                return _PointTableRow(
+                                  point: point,
+                                  rowIndex: index,
+                                  axisCount: widget.axisCount,
+                                  layout: layout,
+                                  selected: _selectedIndex == point.index,
+                                  onSelect: () => _select(point.index),
+                                  onRename: widget.onRename == null
+                                      ? null
+                                      : () => widget.onRename!(point),
+                                  formatJoint: _formatJoint,
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            );
+
+            if (!needHScroll) {
+              return table;
+            }
 
             return ScrollConfiguration(
               behavior: _PointTableScrollBehavior(),
               child: Scrollbar(
                 controller: _hScroll,
-                thumbVisibility: tableWidth > constraints.maxWidth + 1,
+                thumbVisibility: true,
                 notificationPredicate: (notification) =>
                     notification.metrics.axis == Axis.horizontal,
                 child: SingleChildScrollView(
                   controller: _hScroll,
                   scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: tableWidth,
-                    height: constraints.maxHeight,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildHeader(),
-                        Expanded(
-                          child: widget.points.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    '暂无点位，请点击右侧 + 添加',
-                                    style: TextStyle(
-                                      color: LpRobotColors.label,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  itemCount: widget.points.length,
-                                  itemExtent: PointLibraryTable.rowHeight,
-                                  addAutomaticKeepAlives: false,
-                                  addRepaintBoundaries: true,
-                                  itemBuilder: (context, index) {
-                                    final point = widget.points[index];
-                                    return _PointTableRow(
-                                      point: point,
-                                      rowIndex: index,
-                                      axisCount: widget.axisCount,
-                                      selected: _selectedIndex == point.index,
-                                      onSelect: () => _select(point.index),
-                                      onRename: widget.onRename == null
-                                          ? null
-                                          : () => widget.onRename!(point),
-                                      formatJoint: _formatJoint,
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: table,
                 ),
               ),
             );
@@ -169,32 +209,46 @@ class _PointLibraryTableState extends State<PointLibraryTable> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(_TableColumnLayout layout) {
     return Container(
       height: PointLibraryTable.headerHeight,
       color: LpRobotColors.primary,
       child: Row(
         children: [
-          _headerCell('点编号', PointLibraryTable.indexColWidth),
-          _headerCell('名称', PointLibraryTable.labelColWidth),
+          _headerCell('点编号', layout.indexWidth),
+          _headerCell('名称', layout.labelWidth, alignStart: true),
           for (var i = 0; i < widget.axisCount; i++)
-            _headerCell('${i + 1}轴', PointLibraryTable.axisColWidth),
+            _headerCell('${i + 1}轴', layout.axisWidth),
         ],
       ),
     );
   }
 
-  Widget _headerCell(String text, double width) {
+  Widget _headerCell(
+    String text,
+    double width, {
+    bool alignStart = false,
+  }) {
     return SizedBox(
       width: width,
-      child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: PointLibraryTable.cellHPadding,
+        ),
+        child: Align(
+          alignment:
+              alignStart ? Alignment.centerLeft : Alignment.center,
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignStart ? TextAlign.left : TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: PointLibraryTable.headerFontSize,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
           ),
         ),
       ),
@@ -202,11 +256,28 @@ class _PointLibraryTableState extends State<PointLibraryTable> {
   }
 }
 
+class _TableColumnLayout {
+  const _TableColumnLayout({
+    required this.indexWidth,
+    required this.labelWidth,
+    required this.axisWidth,
+    required this.tableWidth,
+    required this.expandAxisColumns,
+  });
+
+  final double indexWidth;
+  final double labelWidth;
+  final double axisWidth;
+  final double tableWidth;
+  final bool expandAxisColumns;
+}
+
 class _PointTableRow extends StatelessWidget {
   const _PointTableRow({
     required this.point,
     required this.rowIndex,
     required this.axisCount,
+    required this.layout,
     required this.selected,
     required this.onSelect,
     required this.formatJoint,
@@ -216,6 +287,7 @@ class _PointTableRow extends StatelessWidget {
   final RobotPoint point;
   final int rowIndex;
   final int axisCount;
+  final _TableColumnLayout layout;
   final bool selected;
   final VoidCallback onSelect;
   final VoidCallback? onRename;
@@ -250,19 +322,18 @@ class _PointTableRow extends StatelessWidget {
             height: PointLibraryTable.rowHeight,
             child: Row(
               children: [
-                _cell('${point.index}', PointLibraryTable.indexColWidth, fg),
+                _cell('${point.index}', layout.indexWidth, fg),
                 _cell(
                   point.label,
-                  PointLibraryTable.labelColWidth,
+                  layout.labelWidth,
                   fg,
                   alignStart: true,
                 ),
                 for (var i = 0; i < axisCount; i++)
                   _cell(
                     formatJoint(point.jointAt(i)),
-                    PointLibraryTable.axisColWidth,
+                    layout.axisWidth,
                     fg,
-                    alignStart: true,
                   ),
               ],
             ),
@@ -280,15 +351,32 @@ class _PointTableRow extends StatelessWidget {
   }) {
     return SizedBox(
       width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Align(
-          alignment: alignStart ? Alignment.centerLeft : Alignment.center,
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: color, fontSize: 13),
+      child: _cellContent(text, color, alignStart: alignStart),
+    );
+  }
+
+  Widget _cellContent(
+    String text,
+    Color color, {
+    bool alignStart = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: PointLibraryTable.cellHPadding,
+      ),
+      child: Align(
+        alignment:
+            alignStart ? Alignment.centerLeft : Alignment.center,
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignStart ? TextAlign.left : TextAlign.center,
+          style: TextStyle(
+            color: color,
+            fontSize: PointLibraryTable.cellFontSize,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
           ),
         ),
       ),

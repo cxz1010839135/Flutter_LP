@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
-import '../../app/lp_ui_scale.dart';
-import '../../app/widgets/lp_scaled_workspace.dart';
 import '../../app/widgets/lp_shell_edge.dart';
 import '../../app/widgets/lp_robot_foot_bar.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
@@ -58,10 +56,7 @@ class _ControlPageState extends State<ControlPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: LpRobotColors.controlCanvas,
-      body: LpScaledWorkspace(
-        designWidth: LpUiScale.designWidth,
-        designHeight: LpUiScale.designHeight,
-        child: Column(
+      body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             LpRobotPoseBar(
@@ -122,7 +117,6 @@ class _ControlPageState extends State<ControlPage> {
             const LpStatusPanel(),
           ],
         ),
-      ),
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../core/robot_pose.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
 import '../lp_app_assets.dart';
+import '../lp_app_fonts.dart';
 import '../lp_robot_colors.dart';
 import 'lp_image_press_button.dart';
 
@@ -666,16 +667,15 @@ class _PoseInlineCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final valueColor =
         live ? LpRobotColors.liveValue : LpRobotColors.label;
-    final labelStyle = TextStyle(
+    final labelStyle = LpAppFonts.style(
       fontSize: fontSize,
       fontWeight: FontWeight.w700,
       color: LpRobotColors.textDark,
       height: 1.05,
     );
-    final valueStyle = TextStyle(
+    final valueStyle = LpAppFonts.numeric(
       fontSize: fontSize,
       fontWeight: FontWeight.w700,
-      fontFamily: 'Consolas',
       color: valueColor,
       height: 1.05,
     );

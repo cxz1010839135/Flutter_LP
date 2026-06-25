@@ -24,123 +24,97 @@ class LpRobotRunSidebar extends StatelessWidget {
         final t = RobotTelemetry.instance;
         final moving = t.isRobotMoving;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            const gap = 6.0;
-            const outerPadV = 6.0;
-            final maxH = constraints.maxHeight;
-            final panelW = constraints.maxWidth * 0.96;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 6.0;
+              final panelW = constraints.maxWidth;
+              final slotH =
+                  (constraints.maxHeight - gap * 3 - panelW * 0.1) / 4;
+              final labelSize = slotH * 0.14;
 
-            double contentHeight(double side) =>
-                side * 4.1 + gap * 3 + outerPadV;
-
-            var slotSide = math.min(
-              panelW,
-              (maxH - outerPadV - gap * 3) / 4.1,
-            );
-            slotSide = slotSide.clamp(48.0, maxH);
-            while (contentHeight(slotSide) > maxH && slotSide > 48) {
-              slotSide -= 0.5;
-            }
-
-            final totalH = contentHeight(slotSide);
-            final topPad =
-                ((maxH - totalH) / 2).clamp(0.0, maxH * 0.08);
-            final labelSize = slotSide * 0.14;
-
-            final panel = Material(
-              color: LpRobotColors.navCardBackground,
-              elevation: 1,
-              shadowColor: LpRobotColors.navCardShadow,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(slotSide * 0.12),
-                side: BorderSide(color: LpRobotColors.navCardBorder),
-              ),
-              child: SizedBox(
-                width: slotSide,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: slotSide * 0.05,
-                    vertical: slotSide * 0.05,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < 4; i++) ...[
-                        if (i > 0) SizedBox(height: gap),
-                        SizedBox(
-                          height: slotSide,
-                          child: switch (i) {
-                            0 => _RunLabeledSlot(
-                                label: '启动',
-                                labelActive: online && !moving,
-                                labelSize: labelSize,
-                                asset: moving
-                                    ? HomeAssets.startPressed
-                                    : HomeAssets.startUnpressed,
-                                onTap: online && !moving
-                                    ? () => HomeRunActions.startAutoRun(
-                                          context,
-                                        )
-                                    : null,
-                              ),
-                            1 => _RunLabeledSlot(
-                                label: '停止',
-                                labelActive: online && moving,
-                                labelSize: labelSize,
-                                asset: moving
-                                    ? HomeAssets.stopUnpressed
-                                    : HomeAssets.stopPressed,
-                                onTap: online
-                                    ? () => HomeRunActions.stopAutoRun(
-                                          context,
-                                        )
-                                    : null,
-                              ),
-                            2 => _RunSlot(
-                                child: (size) => _SpeedRing(
-                                  percent: t.speedPercentValue,
-                                  size: size,
-                                  enabled: online,
-                                  onTap: () => _speedDialog(
-                                    context,
-                                    t.speedPercentValue,
-                                  ),
-                                ),
-                              ),
-                            _ => _RunSlot(
-                                child: (size) => _RoundBtn(
-                                  icon: Icons.restart_alt_rounded,
-                                  size: size,
-                                  enabled: online && !moving,
-                                  onPressed: online && !moving
-                                      ? () => HomeRunActions.resetRobot(
+              return Material(
+                color: LpRobotColors.navCardBackground,
+                elevation: 1,
+                shadowColor: LpRobotColors.navCardShadow,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(panelW * 0.12),
+                  side: BorderSide(color: LpRobotColors.navCardBorder),
+                ),
+                child: SizedBox(
+                  width: panelW,
+                  height: constraints.maxHeight,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: panelW * 0.05,
+                      vertical: panelW * 0.05,
+                    ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < 4; i++) ...[
+                          if (i > 0) const SizedBox(height: gap),
+                          Expanded(
+                            child: switch (i) {
+                              0 => _RunLabeledSlot(
+                                  label: '启动',
+                                  labelActive: online && !moving,
+                                  labelSize: labelSize,
+                                  asset: moving
+                                      ? HomeAssets.startPressed
+                                      : HomeAssets.startUnpressed,
+                                  onTap: online && !moving
+                                      ? () => HomeRunActions.startAutoRun(
                                             context,
                                           )
                                       : null,
                                 ),
-                              ),
-                          },
-                        ),
+                              1 => _RunLabeledSlot(
+                                  label: '停止',
+                                  labelActive: online && moving,
+                                  labelSize: labelSize,
+                                  asset: moving
+                                      ? HomeAssets.stopUnpressed
+                                      : HomeAssets.stopPressed,
+                                  onTap: online
+                                      ? () => HomeRunActions.stopAutoRun(
+                                            context,
+                                          )
+                                      : null,
+                                ),
+                              2 => _RunSlot(
+                                  child: (size) => _SpeedRing(
+                                    percent: t.speedPercentValue,
+                                    size: size,
+                                    enabled: online,
+                                    onTap: () => _speedDialog(
+                                      context,
+                                      t.speedPercentValue,
+                                    ),
+                                  ),
+                                ),
+                              _ => _RunSlot(
+                                  child: (size) => _RoundBtn(
+                                    icon: Icons.restart_alt_rounded,
+                                    size: size,
+                                    enabled: online && !moving,
+                                    onPressed: online && !moving
+                                        ? () => HomeRunActions.resetRobot(
+                                              context,
+                                            )
+                                        : null,
+                                  ),
+                                ),
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-
-            return Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.only(top: topPad),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.topCenter,
-                  child: panel,
-                ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );

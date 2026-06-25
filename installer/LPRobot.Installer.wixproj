@@ -7,6 +7,7 @@
     <OutputName>LPRobot</OutputName>
     <EmbedCab>true</EmbedCab>
     <Cultures>zh-CN</Cultures>
+    <NuGetAudit>false</NuGetAudit>
     <ReleaseDir Condition="'$(ReleaseDir)' == ''">$(MSBuildThisFileDirectory)..\build\windows\x64\runner\Release</ReleaseDir>
     <ProductVersion Condition="'$(ProductVersion)' == ''">1.4.7.0</ProductVersion>
     <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>

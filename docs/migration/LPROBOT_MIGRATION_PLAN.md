@@ -108,8 +108,8 @@ flowchart LR
 | 编号 | 任务 | 说明 | 状态 |
 |------|------|------|------|
 | 6.1 | `RobotPathsAndroid` 实路径 | 外置 `LPRobot/` 或应用目录回退 | ✅ |
-| 6.2 | 权限 + 横屏 Manifest | 对照原 Manifest | ⏳ 未做 |
-| 6.3 | Blockly assets 策略 | 解压或内置服务 | ⏳ 未做 |
+| 6.2 | 权限 + 横屏 Manifest | 网络/存储/常亮；`sensorLandscape`；测试包名 `com.example.flutter_application_1` | ✅ |
+| 6.3 | Blockly assets 策略 | APK 内嵌 `.lpk` → 解压到 `installRoot/dll/visualprogram/` | ✅ |
 | 6.4 | `flutter build apk` 冒烟 | — | ✅ 本地构建通过；真机联调待做 |
 
 ---
@@ -161,7 +161,7 @@ flowchart LR
 | 3 | 控制与监控 | **~55%** | Monitor 打印窗等 |
 | 4 | 工具/文件/参数 | **~5%** | 点库 MVP |
 | 5 | 扩展功能 | **~15%** | 5.3 界面清零 ✅ |
-| 6 | Android 实装 | **~30%** | 6.2 权限/Manifest；真机联调 |
+| 6 | Android 实装 | **~60%** | 真机联调（连接→主页→Blockly→操控） |
 
 **整体**：约 **52%**（以 Android 1.4.7 全功能为 100% 估算）。
 
@@ -176,7 +176,7 @@ flowchart LR
 | 主界面（MainActivity UI） | **~75%** | 布局/轮询/IO/运行控制；缺 3D 机型图 |
 | 控制 / 监控 | **~55%** | 点动/IO/清零/点库；Monitor MVP |
 | 工具 | **0%** | 阶段 4 |
-| **Android APK** | **~40%** | 可构建安装；Blockly/真机待验 |
+| **Android APK** | **~60%** | Manifest/横屏/LPK 已完善；真机联调待验 |
 
 **Windows 现场可交付（估算）**：约 **80%**（能连控制器 → 主页看位姿/IO/报警 → 启停程序 → Blockly/监控/操控页完整入口）。
 

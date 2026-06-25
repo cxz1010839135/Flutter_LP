@@ -64,8 +64,9 @@ class RobotTelemetry extends ChangeNotifier {
   /// 点库表「1轴…N轴」列数（对齐 Android `TotalAxisNum`）。
   int get pointTableAxisCount => controllerAxisCount;
 
-  /// 关节页 `np_control_axis_index` 项数（对齐 Android [Num_EtherCat_Axis]）。
-  int get jogAxisPickerCount => etherCatAxisNum.clamp(1, 20);
+  /// 关节页 `np_control_axis_index` 项数（与 [controllerAxisCount] 一致，四轴只显示 4 项）。
+  int get jogAxisPickerCount =>
+      controllerAxisCount.clamp(1, RobotApiConstants.maxControllerAxes);
 
   /// 本体 IO 路数（主页 IN/OUT 面板 4×4）。
   int get bodyIoCount => RobotIoState.mainPanelCount;

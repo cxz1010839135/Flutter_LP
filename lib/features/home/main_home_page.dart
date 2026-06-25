@@ -19,8 +19,11 @@ import '../../core/robot_telemetry.dart';
 import '../connect/connect_page.dart';
 import '../control/control_page.dart';
 import '../monitor/monitor_page.dart';
+import '../../core/robot_path_layout.dart';
 import '../config_file/config_file_page.dart';
+import 'home_assets.dart';
 import 'home_robot_assets.dart';
+import 'widgets/home_nav_button.dart';
 
 /// 主界面（对齐 Android MainActivity 权重：左 6 / 中 51 / 右 6，中间上 11 / 下 1）。
 class MainHomePage extends StatefulWidget {
@@ -126,12 +129,12 @@ class _MainHomePageState extends State<MainHomePage> {
                         child: Column(
                           children: [
                             Expanded(
-                              flex: 10,
+                              flex: 11,
                               child: _RobotViewport(online: online),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Expanded(
-                              flex: 2,
+                              flex: 1,
                               child: LpRobotFootBar(
                                 canvasColor: Colors.transparent,
                                 ioSurfaceColor: Colors.transparent,
@@ -174,11 +177,34 @@ class _MainNavRail extends StatelessWidget {
   final VoidCallback? onTool;
 
   static const _items = [
-    (Icons.gamepad_outlined, '操控'),
-    (Icons.extension_outlined, '编程'),
-    (Icons.manage_search_outlined, '监控'),
-    (Icons.handyman_outlined, '维护'),
+    (
+      RobotPathLayout.mainNavControlOff,
+      RobotPathLayout.mainNavControlOn,
+      HomeAssets.mainNavControlOff,
+      HomeAssets.mainNavControlOn,
+    ),
+    (
+      RobotPathLayout.mainNavProgramOff,
+      RobotPathLayout.mainNavProgramOn,
+      HomeAssets.mainNavProgramOff,
+      HomeAssets.mainNavProgramOn,
+    ),
+    (
+      RobotPathLayout.mainNavMonitorOff,
+      RobotPathLayout.mainNavMonitorOn,
+      HomeAssets.mainNavMonitorOff,
+      HomeAssets.mainNavMonitorOn,
+    ),
+    (
+      RobotPathLayout.mainNavToolOff,
+      RobotPathLayout.mainNavToolOn,
+      HomeAssets.mainNavToolOff,
+      HomeAssets.mainNavToolOn,
+    ),
   ];
+
+  /// `config/imgs/control_unpressed.png` 原始比例 488×622。
+  static const _navGap = 4.0;
 
   @override
   Widget build(BuildContext context) {
@@ -189,141 +215,32 @@ class _MainNavRail extends StatelessWidget {
       onTool,
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 8.0;
-        final slotH = (constraints.maxHeight - gap * 3) / 4;
-        final cardSide = math
-            .min(constraints.maxWidth * 0.96, slotH)
-            .clamp(52.0, slotH);
-        final iconSize = cardSide * 0.28;
-        final labelSize = cardSide * 0.115;
-        final radius = cardSide * 0.12;
-        final totalH = cardSide * 4 + gap * 3;
-        final topPad =
-            ((constraints.maxHeight - totalH) / 2).clamp(0.0, constraints.maxHeight * 0.08);
-
-        return Align(
-          alignment: Alignment.topCenter,
-          child: Column(
-            children: [
-              SizedBox(height: topPad),
-              for (var i = 0; i < 4; i++) ...[
-                if (i > 0) SizedBox(height: gap),
-                SizedBox(
-                  width: cardSide,
-                  height: cardSide,
-                  child: _NavCardButton(
-                    icon: _items[i].$1,
-                    label: _items[i].$2,
-                    onTap: actions[i],
-                    iconSize: iconSize,
-                    labelSize: labelSize,
-                    borderRadius: radius,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 左侧模块键：Android `controlbtn_*` 卡片贴图 + 图标文字。
-class _NavCardButton extends StatefulWidget {
-  const _NavCardButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.iconSize = 30,
-    this.labelSize = 13,
-    this.borderRadius = 14,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final double iconSize;
-  final double labelSize;
-  final double borderRadius;
-
-  @override
-  State<_NavCardButton> createState() => _NavCardButtonState();
-}
-
-class _NavCardButtonState extends State<_NavCardButton> {
-  bool _pressed = false;
-  bool _hovered = false;
-
-  bool get _enabled => widget.onTap != null;
-  bool get _highlight => _enabled && (_pressed || _hovered);
-
-  Color get _foregroundColor {
-    if (!_enabled) return Colors.grey;
-    if (_highlight) return Colors.white;
-    return LpRobotColors.primary;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      elevation: _highlight ? 0 : 1,
-      shadowColor: LpRobotColors.navCardShadow,
-      borderRadius: BorderRadius.circular(widget.borderRadius),
-      child: InkWell(
-        onTap: widget.onTap,
-        onHighlightChanged:
-            _enabled ? (v) => setState(() => _pressed = v) : null,
-        onHover: _enabled ? (v) => setState(() => _hovered = v) : null,
-        borderRadius: BorderRadius.circular(widget.borderRadius),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            color: _highlight
-                ? LpRobotColors.primary
-                : LpRobotColors.navCardBackground,
-            border: Border.all(
-              color: _enabled
-                  ? (_highlight
-                      ? LpRobotColors.primary
-                      : LpRobotColors.navCardBorder)
-                  : Colors.grey.shade300,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < 4; i++) ...[
+          if (i > 0) const SizedBox(height: _navGap),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, slot) {
+                return HomeNavButton(
+                  configOffName: _items[i].$1,
+                  configOnName: _items[i].$2,
+                  assetOff: _items[i].$3,
+                  assetOn: _items[i].$4,
+                  onTap: actions[i],
+                  borderRadius: slot.maxHeight * 0.06,
+                );
+              },
             ),
-            boxShadow: _highlight
-                ? null
-                : [
-                    BoxShadow(
-                      color: LpRobotColors.navCardShadow,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(widget.icon, size: widget.iconSize, color: _foregroundColor),
-              SizedBox(height: widget.labelSize * 0.4),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: widget.labelSize,
-                  fontWeight: FontWeight.w600,
-                  color: _foregroundColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }
 
-/// 中央视口（机型示意图，对齐 Android `iv_main_robot` / `fl_main_robot`）。
+/// 中央视口（对齐 Android `iv_main_robot` / `fl_main_robot`）。
 class _RobotViewport extends StatelessWidget {
   const _RobotViewport({required this.online});
 

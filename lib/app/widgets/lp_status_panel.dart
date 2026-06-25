@@ -275,7 +275,6 @@ class _CollapsedSummary extends StatelessWidget {
               color: telemetry.motorAlarm && robot.isConnected
                   ? LpRobotColors.alarm
                   : LpStatusPanel._text,
-              fontFamily: 'Consolas',
             ),
           ),
         ),
@@ -443,7 +442,6 @@ class _ConnectionTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: valueColor,
-                fontFamily: 'Consolas',
               ),
             ),
           ],
@@ -463,7 +461,6 @@ class _ConnectionTab extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11.5,
                 color: LpStatusPanel._muted,
-                fontFamily: 'Consolas',
               ),
             ),
             TextSpan(
@@ -471,7 +468,6 @@ class _ConnectionTab extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11.5,
                 color: LpStatusPanel._text,
-                fontFamily: 'Consolas',
               ),
             ),
           ],
@@ -518,7 +514,6 @@ class _LogListTab extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11,
                     color: LpStatusPanel._muted,
-                    fontFamily: 'Consolas',
                   ),
                 ),
               ),
@@ -583,7 +578,6 @@ class _LogLine extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11,
                 color: LpStatusPanel._muted,
-                fontFamily: 'Consolas',
               ),
             ),
             TextSpan(
@@ -591,7 +585,6 @@ class _LogLine extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 color: _levelColor,
-                fontFamily: 'Consolas',
                 height: 1.35,
               ),
             ),

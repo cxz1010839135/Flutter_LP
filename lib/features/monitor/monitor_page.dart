@@ -484,7 +484,6 @@ class _ProgramPanel extends StatelessWidget {
                           color: active
                               ? LpRobotColors.primary
                               : LpRobotColors.label,
-                          fontFamily: 'Consolas',
                         ),
                       ),
                     ),
@@ -495,7 +494,6 @@ class _ProgramPanel extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: fontSize,
-                          fontFamily: 'Consolas',
                           color: active
                               ? LpRobotColors.textDark
                               : LpRobotColors.label,
@@ -586,7 +584,6 @@ class _PrintPanel extends StatelessWidget {
                         line,
                         style: TextStyle(
                           fontSize: 13,
-                          fontFamily: 'Consolas',
                           color: color,
                         ),
                       ),

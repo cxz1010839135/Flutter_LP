@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_win_floating/webview_win_floating.dart';
 
 import 'app/lp_robot_colors.dart';
@@ -13,6 +14,12 @@ import 'features/connect/connect_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
   Object? startupError;
   StackTrace? startupStack;
   try {

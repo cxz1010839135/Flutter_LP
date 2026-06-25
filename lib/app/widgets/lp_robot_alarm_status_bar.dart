@@ -130,7 +130,6 @@ class _StatusTile extends StatelessWidget {
               fontSize: compact ? 13 : 16,
               fontWeight: FontWeight.w700,
               color: valueColor,
-              fontFamily: 'Consolas',
             ),
           ),
         ),
