@@ -95,6 +95,19 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     }
   }
 
+  /// AI 侧栏开合后：等 Row 布局完成，触发 Blockly 折叠/展开式重算。
+  void _scheduleBlocklyRelayoutAfterAiPanel() {
+    final controller = _controller;
+    if (controller == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_showProgressOverlay) {
+          notifyBlocklyWorkspaceRelayout(controller);
+        }
+      });
+    });
+  }
+
   void _onLoadRequestProgress(int percent, String message) {
     if (!_loading) return;
     _setProgress(percent, message);
@@ -125,7 +138,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     if (controller == null) return;
     if (_aiController != null) return;
     _aiController = LpBlocklyAiController(webViewController: controller)
-      ..loadConfig();
+      ..loadPersisted();
     if (mounted) setState(() {});
   }
 
@@ -175,7 +188,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       return;
     }
     setState(() => _aiPanelOpen = !_aiPanelOpen);
-    _scheduleWebViewVisibilitySync();
+    _scheduleBlocklyRelayoutAfterAiPanel();
   }
 
   Future<void> _injectUserProjectIfNeeded() async {
@@ -651,9 +664,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
               if (showAiPanel)
                 LpBlocklyAiPanel(
                   controller: _aiController!,
+                  webViewController: _controller,
                   onClose: () {
                     setState(() => _aiPanelOpen = false);
-                    _scheduleWebViewVisibilitySync();
+                    _scheduleBlocklyRelayoutAfterAiPanel();
                   },
                 ),
             ],

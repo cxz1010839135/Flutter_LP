@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/robot_alarm_info.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
+import '../files/robot_file_transfer.dart';
 import 'driver_address_debug_page.dart';
 import 'driver_params_model.dart';
 import 'driver_params_service.dart';
@@ -26,6 +28,7 @@ class DriverPage extends StatefulWidget {
 
 class _DriverPageState extends State<DriverPage>
     with SingleTickerProviderStateMixin {
+  static const Duration _findPhaseTimeout = Duration(seconds: 30);
   final _service = DriverParamsService();
   final _model = DriverParamsModel();
   final _live = DriverAxisLiveStatus();
@@ -232,13 +235,134 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _findPhase() async {
+    final isRunning = _live.findPhaseFlag == 1;
+    if (!isRunning) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('提示'),
+          content: Text('${_curAxis + 1}轴电机将进行寻相'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
     await _runBusy(() async {
-      if (_live.findPhaseFlag == 1) {
-        await _service.stopPhase(_curAxis);
-      } else {
-        await _service.findPhase(_curAxis);
+      if (!isRunning && _live.servoState != 0) {
+        final desc = RobotAlarmInfo.describeCode(_live.servoState);
+        throw Exception(
+          desc.isEmpty
+              ? '${_curAxis + 1}轴存在报警代码：${_live.servoState}'
+              : '${_curAxis + 1}轴存在报警代码：${_live.servoState}（$desc）',
+        );
       }
-    }, okMsg: '电机寻相指令已发送');
+      if (isRunning) {
+        await _service.stopPhase(_curAxis);
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        _showFindPhaseTip(-2);
+        return;
+      }
+      await _service.findPhase(_curAxis);
+      final flag = await _waitFindPhaseResult();
+      await _service.readParams(_curAxis, _model);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      _showFindPhaseTip(flag);
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _showFindPhaseTip(int flag) {
+    final tip = switch (flag) {
+      0 => '寻相完成,零相角度为${_modelField('zero_phase')}',
+      -1 => '寻相超时,寻相失败',
+      -2 => '已停止寻相',
+      -3 => '电机报警，寻相失败',
+      _ => '未知错误',
+    };
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('提示'),
+        content: Text(tip),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<int> _waitFindPhaseResult() async {
+    final deadline = DateTime.now().add(_findPhaseTimeout);
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    while (DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final status = await _service.pollAxisStatus(_curAxis);
+      if (!mounted) return -2;
+      setState(() => _live
+        ..checkCount = status.checkCount
+        ..busVoltage = status.busVoltage
+        ..epwmTime = status.epwmTime
+        ..posErr = status.posErr
+        ..currentRef = status.currentRef
+        ..currentFdb = status.currentFdb
+        ..speedRef = status.speedRef
+        ..speedFdb = status.speedFdb
+        ..speedWatch = status.speedWatch
+        ..servoState = status.servoState
+        ..posFdb = status.posFdb
+        ..posRef = status.posRef
+        ..encSingle = status.encSingle
+        ..encMulti = status.encMulti
+        ..findPhaseFlag = status.findPhaseFlag);
+      if (status.findPhaseFlag != 1) {
+        if (status.servoState != 0) {
+          return -3;
+        }
+        return status.findPhaseFlag;
+      }
+    }
+    try {
+      await _service.stopPhase(_curAxis);
+    } catch (_) {}
+    return -1;
+  }
+
+  Future<List<RemoteFileEntry>> _listSingleAxisDir(String dirKey) {
+    return _service.listRemoteDir(dirKey);
+  }
+
+  void _clearSelectedRowServo() {
+    for (final row in _axisRows) {
+      row.servoOn = false;
+      row.motionOn = false;
+    }
+  }
+
+  Future<void> _loadSingleAxisFile(String filePath) async {
+    await _runBusy(() async {
+      await _service.loadSingleAxisParams(_curAxis, filePath, _model);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      _clearSelectedRowServo();
+      if (mounted) setState(() {});
+    }, okMsg: '单轴参数已加载');
+  }
+
+  Future<void> _saveSingleAxisFile(String filePath) async {
+    await _runBusy(() async {
+      await _service.saveSingleAxisParams(_curAxis, filePath);
+    }, okMsg: '单轴参数已保存');
   }
 
   Future<void> _posRef() async {
@@ -409,7 +533,6 @@ class _DriverPageState extends State<DriverPage>
                     padding: const EdgeInsets.all(6),
                     child: DriverParamsPanel(
                       model: _model,
-                      service: _service,
                       curAxis: _curAxis,
                       axisCount: _service.totalAxisNum,
                       axisRows: _axisRows,
@@ -449,8 +572,12 @@ class _DriverPageState extends State<DriverPage>
                       onWriteFile: _writeFile,
                       onPosRef: _posRef,
                       onSample: _sampleWaveform,
+                      findPhaseButtonLabel: _live.findPhaseFlag == 1 ? '电机寻相中' : '电机寻相',
                       onFindPhase: _findPhase,
                       onSoftReset: _softReset,
+                      onListSingleAxisDir: _listSingleAxisDir,
+                      onLoadSingleAxisFile: _loadSingleAxisFile,
+                      onSaveSingleAxisFile: _saveSingleAxisFile,
                     ),
                   ),
                   DriverWaveformPanel(

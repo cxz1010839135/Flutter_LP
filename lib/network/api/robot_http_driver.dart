@@ -53,21 +53,21 @@ mixin RobotHttpDriverMixin on RobotHttpApiMixin {
 
   Future<RobotApiResponse> robotReadSingleAxisPara({
     required int axis,
-    required String filePath,
+    required String path,
   }) {
     return robotCmd(
       RobotCommands.robotReadSingleAxisPara,
-      data: {'axis': axis, 'filePath': filePath},
+      data: {'axis': axis, 'path': path},
     );
   }
 
   Future<RobotApiResponse> robotWriteSingleAxisPara({
     required int axis,
-    required String filename,
+    required String name,
   }) {
     return robotCmd(
       RobotCommands.robotWriteSingleAxisPara,
-      data: {'axis': axis, 'filename': filename},
+      data: {'axis': axis, 'name': name},
     );
   }
 

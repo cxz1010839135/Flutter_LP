@@ -60,6 +60,27 @@ Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
   }
 }
 
+/// AI 侧栏开合后：模拟折叠/展开，强制 Blockly 重算块连接与拖拽坐标。
+Future<void> notifyBlocklyWorkspaceRelayout(WebViewController controller) async {
+  try {
+    await controller.runJavaScript('''
+(function() {
+  try {
+    if (window.Code && typeof Code.recomputeWorkspaceBlockLayout_ === 'function') {
+      Code.recomputeWorkspaceBlockLayout_();
+    } else if (window.Code && typeof Code.scheduleLayoutRefresh_ === 'function') {
+      Code.scheduleLayoutRefresh_();
+    }
+  } catch (e) {
+    console.warn('notifyBlocklyWorkspaceRelayout', e);
+  }
+})();
+''');
+  } catch (e, st) {
+    debugPrint('notifyBlocklyWorkspaceRelayout failed: $e\n$st');
+  }
+}
+
 /// 离开编程页前销毁原生 WebView，避免 Windows 浮层残留到主页。
 Future<void> teardownBlocklyWebView(WebViewController? controller) async {
   if (controller == null) return;

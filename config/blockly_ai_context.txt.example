@@ -1,0 +1,14 @@
+# 领鹏 Blockly AI 长期上下文（复制为 blockly_ai_context.txt 后编辑）
+# 此处内容会在每次 AI 生成时注入 system prompt，也可在 AI 面板「长期上下文」中编辑。
+
+# 复合条件（与电梯/配送工程一致）：
+# logic_operation_m_vertical，2条件：items=1，OP=AND，A=条件1，ADD0=条件2
+# 3条件：items=2，OP=AND，OP1=AND，A+ADD0+ADD1
+# 门型运动 motionParams: { point, heightAvoid, maxSpeed, endSpeed, offset }
+# - 使用 logic_operation_m_vertical，mutation.items=2
+# - ADD0: logic_compare(X1=1) 用 thread_get_bitX Idx=1
+# - ADD1: logic_compare(Y1000=1) 用 thread_get_bitY Idx=1000
+# - 动作：motion_moveptp_point DoorFree，mutation.para=2，P1 + 速度3000
+# - D400：工位运行状态（0=停止，1=运行，4=待料）
+# - D401：报警代码
+# - 默认在现有程序上追加块，不要删除已有逻辑

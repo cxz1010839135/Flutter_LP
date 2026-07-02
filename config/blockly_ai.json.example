@@ -5,5 +5,12 @@
   "onlineModel": "deepseek-chat",
   "localBaseUrl": "http://127.0.0.1:11434",
   "localModel": "qwen2.5:7b",
-  "applyMode": "append"
+  "applyMode": "append",
+  "maxRetries": 2,
+  "includeFullWorkspaceXml": false,
+  "generationMode": "structured",
+  "maxHistoryTurns": 6,
+  "useDynamicTodos": true,
+  "useToolLoop": true,
+  "persistSession": true
 }

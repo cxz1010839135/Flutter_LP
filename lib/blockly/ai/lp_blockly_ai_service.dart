@@ -4,12 +4,21 @@ import 'dart:io';
 import 'lp_blockly_ai_config.dart';
 import 'lp_blockly_ai_mode.dart';
 
-/// AI 生成 Blockly XML 的抽象服务。
+/// 多轮对话中的一条消息。
+class LpBlocklyAiChatTurn {
+  const LpBlocklyAiChatTurn({required this.role, required this.content});
+
+  final String role;
+  final String content;
+}
+
+/// AI 生成 Blockly 的抽象服务。
 abstract class LpBlocklyAiService {
   Future<String> complete({
     required LpBlocklyAiConfig config,
     required String systemPrompt,
     required String userMessage,
+    List<LpBlocklyAiChatTurn> history = const [],
   });
 
   factory LpBlocklyAiService.forMode(LpBlocklyAiMode mode) {
@@ -22,6 +31,22 @@ abstract class LpBlocklyAiService {
   }
 }
 
+List<Map<String, String>> _buildMessages({
+  required String systemPrompt,
+  required List<LpBlocklyAiChatTurn> history,
+  required String userMessage,
+}) {
+  final messages = <Map<String, String>>[
+    {'role': 'system', 'content': systemPrompt},
+  ];
+  for (final turn in history) {
+    if (turn.content.trim().isEmpty) continue;
+    messages.add({'role': turn.role, 'content': turn.content});
+  }
+  messages.add({'role': 'user', 'content': userMessage});
+  return messages;
+}
+
 /// 联网：OpenAI 兼容 Chat Completions。
 class LpBlocklyAiOnlineService implements LpBlocklyAiService {
   @override
@@ -29,6 +54,7 @@ class LpBlocklyAiOnlineService implements LpBlocklyAiService {
     required LpBlocklyAiConfig config,
     required String systemPrompt,
     required String userMessage,
+    List<LpBlocklyAiChatTurn> history = const [],
   }) async {
     final apiKey = config.onlineApiKey.trim();
     if (apiKey.isEmpty) {
@@ -40,10 +66,11 @@ class LpBlocklyAiOnlineService implements LpBlocklyAiService {
     final body = jsonEncode({
       'model': config.onlineModel,
       'temperature': 0.2,
-      'messages': [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userMessage},
-      ],
+      'messages': _buildMessages(
+        systemPrompt: systemPrompt,
+        history: history,
+        userMessage: userMessage,
+      ),
     });
 
     final client = HttpClient();
@@ -97,6 +124,7 @@ class LpBlocklyAiLocalService implements LpBlocklyAiService {
     required LpBlocklyAiConfig config,
     required String systemPrompt,
     required String userMessage,
+    List<LpBlocklyAiChatTurn> history = const [],
   }) async {
     final base = config.localBaseUrl.trim().replaceAll(RegExp(r'/+$'), '');
     if (base.isEmpty) {
@@ -107,10 +135,11 @@ class LpBlocklyAiLocalService implements LpBlocklyAiService {
       'model': config.localModel,
       'stream': false,
       'options': {'temperature': 0.2},
-      'messages': [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userMessage},
-      ],
+      'messages': _buildMessages(
+        systemPrompt: systemPrompt,
+        history: history,
+        userMessage: userMessage,
+      ),
     });
 
     final client = HttpClient();

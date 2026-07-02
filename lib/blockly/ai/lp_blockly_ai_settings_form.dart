@@ -16,6 +16,11 @@ class LpBlocklyAiSettingsFields extends StatefulWidget {
 
 class LpBlocklyAiSettingsFieldsState extends State<LpBlocklyAiSettingsFields> {
   late LpBlocklyAiMode _mode;
+  late LpBlocklyAiGenerationMode _generationMode;
+  late bool _useDynamicTodos;
+  late bool _useToolLoop;
+  late bool _persistSession;
+  late bool _replacePreviousIfOnAppend;
   late final TextEditingController _onlineKey;
   late final TextEditingController _onlineBase;
   late final TextEditingController _onlineModel;
@@ -26,6 +31,11 @@ class LpBlocklyAiSettingsFieldsState extends State<LpBlocklyAiSettingsFields> {
   void initState() {
     super.initState();
     _mode = widget.initial.mode;
+    _generationMode = widget.initial.generationMode;
+    _useDynamicTodos = widget.initial.useDynamicTodos;
+    _useToolLoop = widget.initial.useToolLoop;
+    _persistSession = widget.initial.persistSession;
+    _replacePreviousIfOnAppend = widget.initial.replacePreviousIfOnAppend;
     _onlineKey = TextEditingController(text: widget.initial.onlineApiKey);
     _onlineBase = TextEditingController(text: widget.initial.onlineBaseUrl);
     _onlineModel = TextEditingController(text: widget.initial.onlineModel);
@@ -51,6 +61,11 @@ class LpBlocklyAiSettingsFieldsState extends State<LpBlocklyAiSettingsFields> {
       onlineModel: _onlineModel.text.trim(),
       localBaseUrl: _localBase.text.trim(),
       localModel: _localModel.text.trim(),
+      generationMode: _generationMode,
+      useDynamicTodos: _useDynamicTodos,
+      useToolLoop: _useToolLoop,
+      persistSession: _persistSession,
+      replacePreviousIfOnAppend: _replacePreviousIfOnAppend,
     );
   }
 
@@ -140,11 +155,72 @@ class LpBlocklyAiSettingsFieldsState extends State<LpBlocklyAiSettingsFields> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             '请在本机执行：ollama serve，并 ollama pull <模型名>',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: TextStyle(fontSize: 12),
           ),
         ],
+        const SizedBox(height: 16),
+        const Text(
+          '生成格式',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<LpBlocklyAiGenerationMode>(
+          segments: const [
+            ButtonSegment(
+              value: LpBlocklyAiGenerationMode.structured,
+              label: Text('JSON'),
+              icon: Icon(Icons.data_object, size: 16),
+            ),
+            ButtonSegment(
+              value: LpBlocklyAiGenerationMode.xml,
+              label: Text('XML'),
+              icon: Icon(Icons.code, size: 16),
+            ),
+          ],
+          selected: {_generationMode},
+          onSelectionChanged: (value) {
+            setState(() => _generationMode = value.first);
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'JSON 模式更稳定（推荐）；XML 为兼容模式。',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 16),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('动态 Todo 规划', style: TextStyle(fontSize: 13)),
+          subtitle: const Text('由 LLM 根据需求生成任务列表', style: TextStyle(fontSize: 11)),
+          value: _useDynamicTodos,
+          onChanged: (v) => setState(() => _useDynamicTodos = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Tool Loop 逐步创建', style: TextStyle(fontSize: 13)),
+          subtitle: const Text('JSON 模式下逐块创建并显示 tool 步骤', style: TextStyle(fontSize: 11)),
+          value: _useToolLoop,
+          onChanged: (v) => setState(() => _useToolLoop = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('追加时智能修正', style: TextStyle(fontSize: 13)),
+          subtitle: const Text(
+            '多轮对话或说「改/错了」时，替换上一轮 AI 块而非重复叠加',
+            style: TextStyle(fontSize: 11),
+          ),
+          value: _replacePreviousIfOnAppend,
+          onChanged: (v) => setState(() => _replacePreviousIfOnAppend = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('本地保存对话', style: TextStyle(fontSize: 13)),
+          subtitle: const Text('写入 blockly_ai_session.json，下次打开恢复', style: TextStyle(fontSize: 11)),
+          value: _persistSession,
+          onChanged: (v) => setState(() => _persistSession = v),
+        ),
       ],
     );
   }

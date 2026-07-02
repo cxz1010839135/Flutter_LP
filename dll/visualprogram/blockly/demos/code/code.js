@@ -391,6 +391,98 @@ Code.refreshWorkspaceAfterLoad_ = function () {
 };
 
 /**
+ * 对单个块栈折叠再展开，强制重算内部连接与 SVG 布局。
+ * @param {!Blockly.BlockSvg} block
+ */
+Code.stabilizeBlockStack_ = function (block) {
+  if (!block || !block.rendered || block.isInFlyout) {
+    return;
+  }
+  if (typeof block.setCollapsed === 'function') {
+    var collapsed = block.isCollapsed();
+    block.setCollapsed(!collapsed);
+    block.setCollapsed(collapsed);
+  } else if (typeof block.render === 'function') {
+    block.render();
+  }
+};
+
+/**
+ * 模拟顶层块折叠再展开，强制重算连接与拖拽坐标（等同用户手动折叠/展开）。
+ * AI 侧栏开合导致 WebView 尺寸变化后调用。
+ */
+Code.recomputeWorkspaceBlockLayout_ = function () {
+  if (!Code.workspace) {
+    return;
+  }
+  try {
+    if (typeof Code.scheduleLayoutRefresh_ === 'function') {
+      Code.scheduleLayoutRefresh_();
+    }
+    Blockly.Events.disable();
+    var tops = Code.workspace.getTopBlocks(false);
+    for (var i = 0; i < tops.length; i++) {
+      Code.stabilizeBlockStack_(tops[i]);
+    }
+    Blockly.svgResize(Code.workspace);
+    if (Code.workspace.updateScreenCalculations_) {
+      Code.workspace.updateScreenCalculations_();
+    }
+  } catch (e) {
+    console.warn('recomputeWorkspaceBlockLayout_', e);
+  } finally {
+    Blockly.Events.enable();
+  }
+};
+
+/**
+ * AI 侧栏改变 WebView 宽度后，拖拽松手时块栈可能散架。
+ * 在拖拽开始刷新 startXY_，松手后稳定根块栈（等同手动折叠/展开）。
+ */
+Code._dragRelayoutFixInstalled_ = false;
+
+Code.installDragRelayoutFix_ = function () {
+  if (Code._dragRelayoutFixInstalled_ || !Blockly.BlockDragger) {
+    return;
+  }
+  Code._dragRelayoutFixInstalled_ = true;
+
+  var origStart = Blockly.BlockDragger.prototype.startBlockDrag;
+  Blockly.BlockDragger.prototype.startBlockDrag = function (currentDragDeltaXY) {
+    if (this.workspace_ && this.workspace_.updateScreenCalculations_) {
+      this.workspace_.updateScreenCalculations_();
+    }
+    this.startXY_ = this.draggingBlock_.getRelativeToSurfaceXY();
+    origStart.call(this, currentDragDeltaXY);
+  };
+
+  var origEnd = Blockly.BlockDragger.prototype.endBlockDrag;
+  Blockly.BlockDragger.prototype.endBlockDrag = function (e, currentDragDeltaXY) {
+    var root = this.draggingBlock_ ?
+        this.draggingBlock_.getRootBlock() : null;
+    origEnd.call(this, e, currentDragDeltaXY);
+    if (!root || !root.workspace || root.disposed) {
+      return;
+    }
+    try {
+      if (root.workspace.updateScreenCalculations_) {
+        root.workspace.updateScreenCalculations_();
+      }
+      Code.stabilizeBlockStack_(root);
+      var bumpDelay = (typeof Blockly.BUMP_DELAY === 'number') ?
+          Blockly.BUMP_DELAY + 40 : 290;
+      window.setTimeout(function () {
+        if (root.workspace && !root.disposed) {
+          Code.stabilizeBlockStack_(root);
+        }
+      }, bumpDelay);
+    } catch (err) {
+      console.warn('drag relayout fix', err);
+    }
+  };
+};
+
+/**
  * 加载 XML 后分阶段刷新布局与块渲染（Windows WebView2 需多次重绘）。
  */
 Code.scheduleWorkspaceRerenderAfterLoad_ = function () {
@@ -631,6 +723,7 @@ Code.init = function () {
     });
 
   Code.workspace.addChangeListener(Code.onWorkspaceChange_);
+  Code.installDragRelayoutFix_();
 
   // Add to reserved word list: Local variables in execution environment (runJS)
   // and the infinite loop detection function.
@@ -1830,7 +1923,156 @@ Code.PREV_ARDUINO_CODE_ = 'void setup() {\n\n}\n\n\nvoid loop() {\n\n}';
  * the blocks.
  */
 
-/** @return {!string} Generated Arduino code from the Blockly workspace. */
+/**
+ * AI Agent：工作区概览（顶层块 id/type/文本摘要）。
+ * @return {string} JSON 字符串
+ */
+Code.getWorkspaceOverviewForAi = function () {
+  try {
+    var ws = Code.workspace;
+    if (!ws) {
+      return JSON.stringify({ ok: false, message: 'workspace 未就绪' });
+    }
+    var all = ws.getAllBlocks(false);
+    var topBlocks = ws.getTopBlocks(false);
+    var tops = [];
+    for (var i = 0; i < topBlocks.length; i++) {
+      var b = topBlocks[i];
+      var label = '';
+      try {
+        label = goog.string.trim(String(b.toString(64)));
+      } catch (e) {
+        label = b.type || '';
+      }
+      tops.push({
+        id: b.id,
+        type: b.type,
+        x: b.getRelativeToSurfaceXY ? b.getRelativeToSurfaceXY().x : 0,
+        y: b.getRelativeToSurfaceXY ? b.getRelativeToSurfaceXY().y : 0,
+        text: label
+      });
+    }
+    return JSON.stringify({
+      ok: true,
+      blockCount: all.length,
+      topBlockCount: topBlocks.length,
+      topBlocks: tops
+    });
+  } catch (e) {
+    return JSON.stringify({ ok: false, message: String(e) });
+  }
+};
+
+/**
+ * AI Agent：扫描 toolbox 中可用块类型。
+ * @return {string} JSON
+ */
+Code.aiGetToolboxBlockTypes = function () {
+  try {
+    var toolbox = document.getElementById('toolbox');
+    if (!toolbox) {
+      return JSON.stringify({ ok: false, message: 'toolbox 未找到' });
+    }
+    var entries = [];
+    var seen = {};
+    var blockNodes = toolbox.getElementsByTagName('block');
+    for (var i = 0; i < blockNodes.length; i++) {
+      var node = blockNodes[i];
+      var type = node.getAttribute('type');
+      if (!type || seen[type]) continue;
+      seen[type] = true;
+      var category = '其他';
+      var parent = node.parentElement;
+      while (parent) {
+        if (parent.tagName && parent.tagName.toLowerCase() === 'category') {
+          category = parent.getAttribute('name') || category;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      entries.push({ type: type, category: category });
+    }
+    return JSON.stringify({ ok: true, types: entries, count: entries.length });
+  } catch (e) {
+    return JSON.stringify({ ok: false, message: String(e) });
+  }
+};
+
+/**
+ * AI Agent：清空工作区（replace 模式前置步骤）。
+ * @return {string} JSON
+ */
+Code.aiClearWorkspace = function () {
+  try {
+    if (!Code.workspace) {
+      return JSON.stringify({ ok: false, message: 'workspace 未就绪' });
+    }
+    Code.workspace.clear();
+    Code.invalidatePreview();
+    return JSON.stringify({ ok: true });
+  } catch (e) {
+    return JSON.stringify({ ok: false, message: String(e) });
+  }
+};
+
+/**
+ * AI Agent：按 block id 移除块（仅替换上一轮 AI 写入的块）。
+ * @param {!Array<string>} ids
+ * @return {string} JSON
+ */
+Code.aiRemoveBlocksByIds = function (ids) {
+  try {
+    if (!Code.workspace) {
+      return JSON.stringify({ ok: false, message: 'workspace 未就绪' });
+    }
+    var removed = 0;
+    if (ids && ids.length) {
+      for (var i = 0; i < ids.length; i++) {
+        var block = Code.workspace.getBlockById(ids[i]);
+        // 旧版 Blockly Block 无 isDisposed()，用 workspace 是否存在判断。
+        if (block && block.workspace) {
+          block.dispose(false);
+          removed++;
+        }
+      }
+    }
+    if (removed > 0) {
+      Code.invalidatePreview();
+    }
+    return JSON.stringify({ ok: true, removed: removed });
+  } catch (e) {
+    return JSON.stringify({ ok: false, message: String(e) });
+  }
+};
+
+/**
+ * AI Agent：移除所有顶层 id 以 ai_ 开头的块（修正模式兜底）。
+ * @return {string} JSON
+ */
+Code.aiRemoveTopAiBlocks = function () {
+  try {
+    if (!Code.workspace) {
+      return JSON.stringify({ ok: false, message: 'workspace 未就绪' });
+    }
+    var topBlocks = Code.workspace.getTopBlocks(false);
+    var removed = 0;
+    for (var i = topBlocks.length - 1; i >= 0; i--) {
+      var block = topBlocks[i];
+      if (block && block.workspace && block.id && block.id.indexOf('ai_') === 0) {
+        block.dispose(false);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      Code.invalidatePreview();
+    }
+    return JSON.stringify({ ok: true, removed: removed });
+  } catch (e) {
+    return JSON.stringify({ ok: false, message: String(e) });
+  }
+};
+
+/** @return {!string} Generated GCode from the Blockly workspace. */
 Code.generateGCode = function () {
   Blockly.CustomConfig.CSharpProgramCurrentLineIndex = 0;//程序行号初始化
   Blockly.CustomConfig.CSharpProgramDefinitionsLineIndex = 0;

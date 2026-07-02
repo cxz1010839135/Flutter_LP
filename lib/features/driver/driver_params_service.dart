@@ -1,4 +1,5 @@
 import '../../core/robot_telemetry.dart';
+import '../files/robot_file_transfer.dart';
 import '../../network/http_manager.dart';
 import 'driver_params_model.dart';
 
@@ -94,6 +95,39 @@ class DriverParamsService {
 
   Future<void> stopPhase(int axis) async {
     final res = await HttpManager.instance.robotTechStopPhase(axis: axis);
+    res.ensureOk();
+  }
+
+  Future<List<RemoteFileEntry>> listSingleAxisParamFiles() {
+    return RobotFileTransfer.listRemote('/home/llmachine/pid_ini_file/');
+  }
+
+  Future<List<RemoteFileEntry>> listRemoteDir(String dirKey) {
+    return RobotFileTransfer.listRemote(dirKey);
+  }
+
+  Future<void> loadSingleAxisParams(int axis, String filePath, DriverParamsModel model) async {
+    final res = await HttpManager.instance.robotReadSingleAxisPara(
+      axis: axis,
+      path: filePath,
+    );
+    res.ensureOk();
+    final value = res.root['value'];
+    if (value is List) {
+      final paras = value.map((e) => DriverParamsModel.parseInt(e.toString())).toList();
+      model.applyFromEshParas(paras);
+    }
+  }
+
+  Future<void> saveSingleAxisParams(int axis, String filePath) async {
+    final rawName = filePath.split('/').last;
+    final name = rawName.toLowerCase().endsWith('.txt')
+        ? rawName.substring(0, rawName.length - 4)
+        : rawName;
+    final res = await HttpManager.instance.robotWriteSingleAxisPara(
+      axis: axis,
+      name: name,
+    );
     res.ensureOk();
   }
 

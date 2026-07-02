@@ -15,3 +15,12 @@ enum LpBlocklyAiApplyMode {
   /// 保留现有块，追加 AI XML。
   append,
 }
+
+/// AI 生成输出格式。
+enum LpBlocklyAiGenerationMode {
+  /// 结构化 JSON 计划（推荐，参考 aily-blockly Tool 输出）。
+  structured,
+
+  /// 直接生成 Blockly XML。
+  xml,
+}
