@@ -21,6 +21,17 @@ class LpBlocklyAiQuickExample {
 /// 常用 Blockly / IO 映射指令，便于在 Agent 面板快速复制或填入。
 abstract final class LpBlocklyAiQuickExamples {
   static const List<LpBlocklyAiQuickExample> items = [
+    // --- IO 表 Excel ---
+    LpBlocklyAiQuickExample(
+      label: '导入IO表',
+      prompt: '导入IO表',
+      hint: '选择 DM注释_*.xlsx，自动分配并写入流程变量',
+    ),
+    LpBlocklyAiQuickExample(
+      label: '从IO表生成',
+      prompt: '从IO表生成',
+      hint: '按已导入分配结果生成输入/输出 IO 映射到画布',
+    ),
     // --- IO 映射（三合一）---
     LpBlocklyAiQuickExample(
       label: '生成本体IO',

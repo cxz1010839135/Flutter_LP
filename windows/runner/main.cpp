@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 
 #include "flutter_window.h"
@@ -64,6 +65,11 @@ Win32Window::Point CenterWindowOrigin(const RECT& work_area, HMONITOR monitor,
   return Win32Window::Point(logical_x, logical_y);
 }
 
+void ShowStartupFailure(const wchar_t* message) {
+  ::MessageBoxW(nullptr, message, L"\u9886\u9e4f\u667a\u80fd - \u542f\u52a8\u5931\u8d25",
+                MB_OK | MB_ICONERROR);
+}
+
 }  // namespace
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
@@ -73,11 +79,30 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     CreateAndAttachConsole();
   }
 
+  const std::wstring exe_dir = GetExecutableDirectory();
+  if (!exe_dir.empty()) {
+    // Pin CWD to the install folder (shortcuts may start elsewhere).
+    ::SetCurrentDirectoryW(exe_dir.c_str());
+  }
+
+  const std::filesystem::path data_dir =
+      exe_dir.empty() ? std::filesystem::path(L"data")
+                      : std::filesystem::path(exe_dir) / L"data";
+  if (!std::filesystem::exists(data_dir / L"icudtl.dat") ||
+      !std::filesystem::exists(data_dir / L"flutter_assets" /
+                               L"AssetManifest.bin")) {
+    ShowStartupFailure(
+        L"\u672a\u627e\u5230\u7a0b\u5e8f\u8d44\u6e90\u76ee\u5f55 data\\\u3002\n"
+        L"\u8bf7\u91cd\u65b0\u5b89\u88c5\uff0c\u6216\u786e\u8ba4\u5b89\u88c5\u76ee\u5f55\u4e0b\u5b58\u5728 "
+        L"data\\flutter_assets \u76ee\u5f55\u3002");
+    return EXIT_FAILURE;
+  }
+
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
-  flutter::DartProject project(L"data");
+  flutter::DartProject project(data_dir.wstring());
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
@@ -97,6 +122,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   size = FitWindowSize(work_area, monitor, size.width, size.height);
   Win32Window::Point origin = CenterWindowOrigin(work_area, monitor, size);
   if (!window.Create(BuildWindowTitle().c_str(), origin, size)) {
+    ShowStartupFailure(
+        L"\u7a97\u53e3\u6216\u56fe\u5f62\u5f15\u64ce\u521d\u59cb\u5316\u5931\u8d25\u3002\n"
+        L"\u8bf7\u66f4\u65b0\u663e\u5361\u9a71\u52a8\uff0c\u6216\u5b89\u88c5 Microsoft WebView2 "
+        L"\u8fd0\u884c\u65f6\u540e\u91cd\u8bd5\u3002");
     return EXIT_FAILURE;
   }
   window.Show();

@@ -1,5 +1,7 @@
 import 'lp_blockly_ai_append_strategy.dart';
+import 'lp_blockly_ai_flow_vars.dart';
 import 'lp_blockly_ai_habits_loader.dart';
+import 'lp_blockly_ai_io_table.dart';
 import 'lp_blockly_ai_config.dart';
 import 'lp_blockly_ai_intent_builder.dart';
 import 'lp_blockly_ai_io_mapping_generator.dart';
@@ -67,6 +69,8 @@ class LpBlocklyAiPipeline {
     List<String> replaceBlockIdsOnAppend = const [],
     LpBlocklyAiAppendIntent appendIntent = LpBlocklyAiAppendIntent.addNew,
     Map<String, dynamic>? previousPlan,
+    LpBlocklyFlowVarsState? flowVars,
+    LpBlocklyIoTableResult? ioTable,
   }) async {
     final prompt = userPrompt.trim();
     if (prompt.isEmpty) {
@@ -185,11 +189,30 @@ class LpBlocklyAiPipeline {
           appendIntent != LpBlocklyAiAppendIntent.modifyPrevious ||
               LpBlocklyAiIntentBuilder.parseFlowIntent(prompt) != null;
       if (allowCanonical) {
-        deterministicPlan = LpBlocklyAiIntentBuilder.tryBuildCanonicalPlan(prompt);
+        deterministicPlan = LpBlocklyAiIntentBuilder.tryBuildCanonicalPlan(
+          prompt,
+          flowVars: flowVars,
+          ioTable: ioTable,
+        );
         if (deterministicPlan != null) {
-          deterministicLabel = '标准模板';
+          deterministicLabel =
+              LpBlocklyAiIntentBuilder.isVacuumFlowPrompt(prompt)
+                  ? '真空取放步序'
+                  : '标准模板';
         }
       }
+    }
+
+    if (deterministicPlan == null &&
+        LpBlocklyAiIntentBuilder.isVacuumFlowPrompt(prompt)) {
+      return LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.validate,
+        message:
+            '无法生成真空取放流程：请先在对话中登记并「确认」流程变量'
+            '（步序 S10、自动使能 M16、运动完成 D9000），'
+            '建议先「导入IO表」→「从IO表生成」再写流程。',
+      );
     }
 
     if (deterministicPlan != null) {
@@ -199,7 +222,8 @@ class LpBlocklyAiPipeline {
       );
       var normalized =
           LpBlocklyAiStructureParser.normalizePlan(deterministicPlan);
-      if (deterministicLabel != '细节修正') {
+      if (deterministicLabel != '细节修正' &&
+          !LpBlocklyAiIntentBuilder.isVacuumFlowPrompt(prompt)) {
         LpBlocklyAiIntentBuilder.enrichPlanFromPrompt(prompt, normalized);
       }
       normalized = LpBlocklyAiStructureParser.normalizePlan(normalized);
@@ -539,6 +563,19 @@ class LpBlocklyAiPipeline {
       message: '已按细节修正更新画布门型块',
       extractedXml: wrapped,
       parsedPlan: patchedPlan,
+    );
+  }
+
+  /// 公开：按给定 IO 映射规则追加到画布（供 IO 表导入后生成）。
+  Future<LpBlocklyAiPipelineResult> runWithIoMappingRules({
+    required String prompt,
+    required LpBlocklyAiConfig config,
+    required List<LpBlocklyAiIoMappingRule> ioRules,
+  }) {
+    return _applyIoMappingRules(
+      prompt: prompt,
+      config: config,
+      ioRules: ioRules,
     );
   }
 

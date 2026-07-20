@@ -3,18 +3,41 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_win_floating/webview_win_floating.dart';
 
+import '../core/robot_path_layout.dart';
+
+/// WebView2 用户数据目录（可写；安装到 Program Files 时必需）。
+Future<String?> resolveBlocklyWebViewUserDataFolder() async {
+  if (!Platform.isWindows) return null;
+
+  final localAppData = Platform.environment['LOCALAPPDATA'];
+  final root = p.normalize(
+    p.join(
+      localAppData ?? '',
+      RobotPathLayout.windowsWritableDataParent,
+      RobotPathLayout.windowsWritableDataLeaf,
+      RobotPathLayout.webView2UserDataDir,
+    ),
+  );
+  await Directory(root).create(recursive: true);
+  return root;
+}
+
 /// 创建 Blockly 用 WebViewController（Android 使用 Virtual Display，避免缩到左上角）。
-WebViewController createBlocklyWebViewController() {
+Future<WebViewController> createBlocklyWebViewController() async {
   late final PlatformWebViewControllerCreationParams params;
   if (WebViewPlatform.instance is AndroidWebViewPlatform) {
     params = AndroidWebViewControllerCreationParams();
   } else if (Platform.isWindows || Platform.isLinux) {
-    params = const WindowsWebViewControllerCreationParams(
-      suspendDuringDeactive: true,
+    final userDataFolder = await resolveBlocklyWebViewUserDataFolder();
+    params = WindowsWebViewControllerCreationParams(
+      userDataFolder: userDataFolder,
+      // 加载遮罩期间会 deactivate 子树；suspend 可能导致 WebView2 初始化挂起。
+      suspendDuringDeactive: false,
     );
   } else {
     params = const PlatformWebViewControllerCreationParams();

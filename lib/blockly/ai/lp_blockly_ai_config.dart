@@ -16,7 +16,7 @@ class LpBlocklyAiConfig {
     this.localBaseUrl = 'http://127.0.0.1:11434',
     this.localModel = 'qwen2.5:7b',
     this.applyMode = LpBlocklyAiApplyMode.append,
-    this.replacePreviousIfOnAppend = true,
+    this.replacePreviousIfOnAppend = false,
     this.maxRetries = 2,
     this.includeFullWorkspaceXml = false,
     this.generationMode = LpBlocklyAiGenerationMode.structured,
@@ -126,7 +126,7 @@ class LpBlocklyAiConfig {
         LpBlocklyAiApplyMode.append,
       ),
       replacePreviousIfOnAppend:
-          json['replacePreviousIfOnAppend'] as bool? ?? true,
+          json['replacePreviousIfOnAppend'] as bool? ?? false,
       maxRetries: (json['maxRetries'] as num?)?.toInt() ?? 2,
       includeFullWorkspaceXml:
           json['includeFullWorkspaceXml'] as bool? ?? false,

@@ -2,7 +2,7 @@
 # 用法：powershell -NoProfile -ExecutionPolicy Bypass -File .\tool\generate_copyright_source.ps1
 
 param(
-    [string]$Version = "1.7.9",
+    [string]$Version = "1.8.7",
     [string]$SoftwareName = "领鹏智能机器人上位机软件",
     [int]$Pages = 30,
     [int]$LinesPerPage = 50
@@ -17,7 +17,9 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 $utf8 = New-Object System.Text.UTF8Encoding $false
 
-$files = Get-ChildItem -Path (Join-Path $root "lib") -Recurse -Filter *.dart | Sort-Object FullName
+$files = Get-ChildItem -Path (Join-Path $root "lib") -Recurse -Filter *.dart |
+    Where-Object { $_.FullName -notmatch '[\\/]blockly[\\/]ai[\\/]' } |
+    Sort-Object FullName
 $allLines = New-Object System.Collections.Generic.List[string]
 
 foreach ($f in $files) {

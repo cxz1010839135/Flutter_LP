@@ -96,16 +96,19 @@ class MonitorPlcWatchConfig {
     this.entries = const [],
     this.autoRefresh = true,
     this.intervalMs = 400,
+    this.maxEntries = MonitorPlcWatchStorage.defaultMaxEntries,
   });
 
   final List<MonitorPlcWatchEntry> entries;
   final bool autoRefresh;
   final int intervalMs;
+  final int maxEntries;
 
   Map<String, dynamic> toJson() => {
         'entries': entries.map((e) => e.toJson()).toList(),
         'autoRefresh': autoRefresh,
         'intervalMs': intervalMs,
+        'maxEntries': maxEntries,
       };
 
   factory MonitorPlcWatchConfig.fromJson(Map<String, dynamic> json) {
@@ -126,6 +129,23 @@ class MonitorPlcWatchConfig {
       intervalMs: json['intervalMs'] is int
           ? (json['intervalMs'] as int).clamp(200, 2000)
           : 400,
+      maxEntries: MonitorPlcWatchStorage.clampMaxEntries(
+        json['maxEntries'] is int ? json['maxEntries'] as int : null,
+      ),
+    );
+  }
+
+  MonitorPlcWatchConfig copyWith({
+    List<MonitorPlcWatchEntry>? entries,
+    bool? autoRefresh,
+    int? intervalMs,
+    int? maxEntries,
+  }) {
+    return MonitorPlcWatchConfig(
+      entries: entries ?? this.entries,
+      autoRefresh: autoRefresh ?? this.autoRefresh,
+      intervalMs: intervalMs ?? this.intervalMs,
+      maxEntries: maxEntries ?? this.maxEntries,
     );
   }
 }
@@ -134,7 +154,17 @@ class MonitorPlcWatchConfig {
 class MonitorPlcWatchStorage {
   MonitorPlcWatchStorage._();
 
-  static const maxEntries = 30;
+  static const defaultMaxEntries = 30;
+  static const minMaxEntries = 5;
+  static const absoluteMaxEntries = 200;
+
+  static int clampMaxEntries(int? value) {
+    return (value ?? defaultMaxEntries).clamp(minMaxEntries, absoluteMaxEntries);
+  }
+
+  /// 兼容旧代码：默认上限。
+  static int get maxEntries => defaultMaxEntries;
+
   static const _fileName = 'monitor_plc_watch.json';
   static const _legacyFileName = 'monitor_d_watch.json';
 
@@ -172,7 +202,8 @@ class MonitorPlcWatchStorage {
   }
 
   static Future<void> save(MonitorPlcWatchConfig config) async {
-    final entries = config.entries.take(maxEntries).toList();
+    final limit = clampMaxEntries(config.maxEntries);
+    final entries = config.entries.take(limit).toList();
     final file = await _writeFile();
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(
@@ -180,6 +211,7 @@ class MonitorPlcWatchStorage {
           entries: entries,
           autoRefresh: config.autoRefresh,
           intervalMs: config.intervalMs,
+          maxEntries: limit,
         ).toJson(),
       ),
       flush: true,

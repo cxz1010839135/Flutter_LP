@@ -60,7 +60,11 @@ class LpBlocklyLoadTracker {
     _idleTimer?.cancel();
     _maxTimer?.cancel();
     _maxTimer = Timer(maxLoadDuration, () {
-      if (_active) complete();
+      if (_active) {
+        // 超时不能伪装成“加载完成”，否则会隐藏遮罩并留下白屏。
+        // 最终失败由 WebView 页面就绪检测负责给出明确错误。
+        onProgress(98, 'Blockly 加载时间较长，正在继续检测…');
+      }
     });
   }
 
@@ -87,6 +91,15 @@ class LpBlocklyLoadTracker {
   void handleRequest(BlocklyServerRequestEvent event) {
     if (!_active) return;
     if (event.method.toUpperCase() != 'GET') return;
+    final status = event.statusCode;
+    final successful = (status >= 200 && status < 300) || status == 304;
+    if (!successful) {
+      onProgress(
+        _progressPercent.clamp(85, 98),
+        'Blockly 资源加载失败（HTTP $status）：${event.path}',
+      );
+      return;
+    }
 
     _getCount++;
     if (_getCount + 8 >= _estimatedTotal) {
@@ -116,9 +129,10 @@ class LpBlocklyLoadTracker {
         : idleDuration;
     _idleTimer = Timer(delay, () {
       if (!_active) return;
-      final canFinish = _getCount >= 6 ||
-          (_jsShellReady && _reloadMode) ||
-          (_jsShellReady && _getCount >= 1);
+      // HTTP 请求数量只能反映文件被访问，不能证明 Blockly 已初始化。
+      // 必须收到 JS loadComplete / 工作区健康检查的明确就绪信号。
+      final canFinish =
+          _jsShellReady && (_reloadMode || _getCount >= 1);
       if (!canFinish) return;
       complete();
     });

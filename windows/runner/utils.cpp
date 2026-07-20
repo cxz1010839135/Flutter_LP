@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <windows.h>
 
+#include <filesystem>
 #include <iostream>
 
 void CreateAndAttachConsole() {
@@ -19,6 +20,16 @@ void CreateAndAttachConsole() {
     std::ios::sync_with_stdio();
     FlutterDesktopResyncOutputStreams();
   }
+}
+
+std::wstring GetExecutableDirectory() {
+  wchar_t buffer[MAX_PATH];
+  const DWORD length = ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+  if (length == 0 || length == MAX_PATH) {
+    return L"";
+  }
+  std::filesystem::path exe_path(buffer);
+  return exe_path.parent_path().wstring();
 }
 
 std::vector<std::string> GetCommandLineArguments() {

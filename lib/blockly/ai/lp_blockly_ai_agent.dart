@@ -3,12 +3,17 @@ import 'dart:convert';
 import 'lp_blockly_ai_append_strategy.dart';
 import 'lp_blockly_ai_block_catalog.dart';
 import 'lp_blockly_ai_config.dart';
+import 'lp_blockly_ai_habits_loader.dart';
 import 'lp_blockly_ai_intent_builder.dart';
 import 'lp_blockly_ai_io_mapping_generator.dart';
+import 'lp_blockly_ai_io_table.dart';
 import 'lp_blockly_ai_manual_io_generator.dart';
 import 'lp_blockly_ai_message.dart';
 import 'lp_blockly_ai_mode.dart';
 import 'lp_blockly_ai_pipeline.dart';
+import 'lp_blockly_ai_prompt.dart';
+import 'lp_blockly_ai_flow_vars.dart';
+import 'lp_blockly_ai_request_router.dart';
 import 'lp_blockly_ai_service.dart';
 import 'lp_blockly_ai_structure_parser.dart';
 import 'lp_blockly_ai_todo_planner.dart';
@@ -105,7 +110,11 @@ class LpBlocklyAiAgent {
     required LpBlocklyAiService service,
     List<LpBlocklyAiChatTurn> conversationHistory = const [],
     String persistentContext = '',
+    LpBlocklyFlowVarsState? flowVars,
+    Future<void> Function(LpBlocklyFlowVarsState next)? onFlowVarsChanged,
+    LpBlocklyIoTableResult? ioTable,
     List<String> replaceBlockIdsOnAppend = const [],
+    List<String> lastAiTopBlockIds = const [],
     LpBlocklyAiAppendIntent appendIntent = LpBlocklyAiAppendIntent.addNew,
     Map<String, dynamic>? previousPlan,
     bool Function()? shouldCancel,
@@ -121,6 +130,27 @@ class LpBlocklyAiAgent {
 
     _seq = 0;
     _runEpoch = DateTime.now().microsecondsSinceEpoch;
+
+    var varsState = flowVars ?? const LpBlocklyFlowVarsState();
+    final varsSection = varsState.toPromptSection();
+    final effectiveContext = [
+      if (persistentContext.trim().isNotEmpty) persistentContext.trim(),
+      varsSection.trim(),
+      if (ioTable != null && !ioTable.isEmpty)
+        '## 已导入 IO 表摘要\n${ioTable.toSummary(maxLines: 20)}',
+    ].where((e) => e.isNotEmpty).join('\n\n');
+
+    // 从已缓存 IO 表分配结果生成映射。
+    if (RegExp(r'从\s*IO\s*表\s*生成|按\s*IO\s*表\s*生成|生成IO表映射',
+            caseSensitive: false)
+        .hasMatch(prompt)) {
+      return _runIoTableGeneratePath(
+        prompt: prompt,
+        config: config,
+        ioTable: ioTable ?? const LpBlocklyIoTableResult(),
+        shouldCancel: shouldCancel,
+      );
+    }
 
     String? workspaceXml;
     if (LpBlocklyAiIoMappingGenerator.mightNeedWorkspaceIndex(prompt) ||
@@ -179,6 +209,57 @@ class LpBlocklyAiAgent {
       );
     }
 
+    final requestKind = LpBlocklyAiRequestRouter.classify(
+      prompt: prompt,
+      appendIntent: appendIntent,
+      previousPlan: previousPlan,
+      history: conversationHistory,
+    );
+    if (requestKind == LpBlocklyAiRequestKind.flowVars) {
+      return _runFlowVarsPath(
+        prompt: prompt,
+        state: varsState,
+        onFlowVarsChanged: onFlowVarsChanged,
+        shouldCancel: shouldCancel,
+      );
+    }
+    if (requestKind == LpBlocklyAiRequestKind.chat) {
+      return _runChatOnlyPath(
+        prompt: prompt,
+        config: config,
+        service: service,
+        conversationHistory: conversationHistory,
+        persistentContext: effectiveContext,
+        shouldCancel: shouldCancel,
+      );
+    }
+
+    if (LpBlocklyFlowVarsParser.shouldGateGenerate(
+      prompt: prompt,
+      state: varsState,
+    )) {
+      return _runFlowVarsGatePath(state: varsState);
+    }
+
+    // 真空取放：话术匹配时走动态步序模板（多点/启动信号），跳过 LLM。
+    if (LpBlocklyAiIntentBuilder.isVacuumFlowPrompt(prompt)) {
+      final vacuumPlan = LpBlocklyAiIntentBuilder.tryBuildCanonicalPlan(
+        prompt,
+        flowVars: varsState,
+        ioTable: ioTable,
+      );
+      if (vacuumPlan != null) {
+        return _runCanonicalVacuumFastPath(
+          prompt: prompt,
+          config: config,
+          plan: vacuumPlan,
+          replaceBlockIdsOnAppend: replaceBlockIdsOnAppend,
+          appendIntent: appendIntent,
+          shouldCancel: shouldCancel,
+        );
+      }
+    }
+
     // --- 动态 Todo 规划 ---
     final planActionId = _nextId('plan');
     _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
@@ -192,6 +273,7 @@ class LpBlocklyAiAgent {
       config: config,
       service: service,
       history: conversationHistory,
+      requestKind: requestKind,
     );
     _emit(LpBlocklyAiAgentEvent.todos(_todos));
     _patchAction(
@@ -343,7 +425,7 @@ class LpBlocklyAiAgent {
       effectiveReplaceIds = LpBlocklyAiAppendStrategy.idsToReplace(
         config: config,
         intent: appendIntent,
-        lastAiTopBlockIds: const [],
+        lastAiTopBlockIds: lastAiTopBlockIds,
         workspaceTopBlocks: workspaceOverview.topBlocks,
       );
     }
@@ -405,10 +487,12 @@ class LpBlocklyAiAgent {
       workspaceOverviewJson: workspaceOverviewJson,
       conversationHistory: conversationHistory,
       applyToWorkspace: !useToolLoop,
-      persistentContext: persistentContext,
+      persistentContext: effectiveContext,
       replaceBlockIdsOnAppend: effectiveReplaceIds,
       appendIntent: appendIntent,
       previousPlan: previousPlan,
+      flowVars: varsState,
+      ioTable: ioTable,
     );
 
     final cancelledAfterGen = _cancelIfRequested(shouldCancel);
@@ -434,12 +518,23 @@ class LpBlocklyAiAgent {
           LpBlocklyAiIntentBuilder.enrichPlanFromPrompt(prompt, planToApply);
           planToApply = LpBlocklyAiStructureParser.normalizePlan(planToApply);
         }
+      } else if (config.applyMode == LpBlocklyAiApplyMode.append) {
+        final overview = await _xmlBridge.getWorkspaceOverview();
+        if (overview.ok) {
+          LpBlocklyAiStructureParser.prepareAppendPlacement(
+            planToApply,
+            existingTopBlocks: overview.topBlocks,
+          );
+        }
       }
       String? currentToolActionId;
       final toolResult = await _toolExecutor.applyPlanWithSteps(
         plan: planToApply,
         applyMode: config.applyMode,
-        replaceBlockIdsOnAppend: effectiveReplaceIds,
+        replaceBlockIdsOnAppend:
+            appendIntent == LpBlocklyAiAppendIntent.addNew
+                ? const []
+                : effectiveReplaceIds,
         modifyPrevious:
             appendIntent == LpBlocklyAiAppendIntent.modifyPrevious,
         userPrompt: prompt,
@@ -539,6 +634,486 @@ class LpBlocklyAiAgent {
     }
 
     return result;
+  }
+
+  /// 按 IO 表分配结果生成本体+扩展输入/输出映射。
+  Future<LpBlocklyAiPipelineResult> _runCanonicalVacuumFastPath({
+    required String prompt,
+    required LpBlocklyAiConfig config,
+    required Map<String, dynamic> plan,
+    required List<String> replaceBlockIdsOnAppend,
+    required LpBlocklyAiAppendIntent appendIntent,
+    bool Function()? shouldCancel,
+  }) async {
+    _todos = const [
+      LpBlocklyAiTodo(
+        id: 'generate',
+        title: '真空取放步序模板',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+      LpBlocklyAiTodo(
+        id: 'verify',
+        title: '编译并验证 GCode',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+    ];
+    _emit(LpBlocklyAiAgentEvent.todos(_todos));
+    _emitThink(
+      '按话术动态生成真空取放步序（跳过 LLM）\n'
+      '点位按顺序展开；启动信号优先用话术中的 M；门型默认避障10 / 速度2500',
+    );
+
+    final cancelled = _cancelIfRequested(shouldCancel);
+    if (cancelled != null) return cancelled;
+
+    await _beginPhase('generate');
+    final genActionId = _nextId('gen_vacuum');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: genActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在按真空取放步序模板生成…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+
+    var normalized = LpBlocklyAiStructureParser.normalizePlan(plan);
+    final planError = LpBlocklyAiStructureParser.validatePlan(normalized);
+    if (planError != null) {
+      _patchAction(genActionId, planError, LpBlocklyAiActionStatus.failed);
+      await _failPhase('generate');
+      _emitAssistant('模板校验失败：$planError');
+      return LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.validate,
+        message: planError,
+        parsedPlan: normalized,
+      );
+    }
+
+    final toolReplaceIds =
+        appendIntent == LpBlocklyAiAppendIntent.addNew
+            ? const <String>[]
+            : replaceBlockIdsOnAppend;
+
+    // 纯追加：错开坐标 + 避免与已有「至 xxx」同名覆盖
+    if (config.applyMode == LpBlocklyAiApplyMode.append &&
+        appendIntent == LpBlocklyAiAppendIntent.addNew) {
+      final overview = await _xmlBridge.getWorkspaceOverview();
+      if (overview.ok) {
+        LpBlocklyAiStructureParser.prepareAppendPlacement(
+          normalized,
+          existingTopBlocks: overview.topBlocks,
+        );
+      }
+    }
+
+    final toolResult = await _toolExecutor.applyPlanWithSteps(
+      plan: normalized,
+      applyMode: config.applyMode,
+      replaceBlockIdsOnAppend: toolReplaceIds,
+      modifyPrevious: appendIntent == LpBlocklyAiAppendIntent.modifyPrevious,
+      userPrompt: prompt,
+      onStep: (_, {bool done = false, bool failed = false}) {},
+    );
+
+    if (!toolResult.success) {
+      _patchAction(genActionId, toolResult.message, LpBlocklyAiActionStatus.failed);
+      await _failPhase('generate');
+      _emitAssistant('载入失败：${toolResult.message}');
+      return LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.apply,
+        message: toolResult.message,
+        parsedPlan: normalized,
+      );
+    }
+
+    final xml = LpBlocklyAiStructureParser.toXml(normalized);
+    _patchAction(
+      genActionId,
+      '已按话术动态步序载入（点位按顺序展开）',
+      LpBlocklyAiActionStatus.done,
+    );
+    await _finishPhase('generate');
+
+    final cancelledBeforeVerify = _cancelIfRequested(shouldCancel);
+    if (cancelledBeforeVerify != null) return cancelledBeforeVerify;
+
+    await _beginPhase('verify');
+    final verifyActionId = _nextId('verify_vacuum');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: verifyActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在编译并验证 GCode…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+    final verify = await _xmlBridge.verifyGCode();
+    if (!verify.ok) {
+      _patchAction(
+        verifyActionId,
+        verify.message ?? '编译失败',
+        LpBlocklyAiActionStatus.failed,
+      );
+      await _failPhase('verify');
+      _emitAssistant('已生成流程，但 GCode 校验未通过：${verify.message ?? ''}');
+      return LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.validate,
+        message: verify.message ?? 'GCode 校验失败',
+        extractedXml: xml,
+        parsedPlan: normalized,
+      );
+    }
+
+    _patchAction(verifyActionId, 'GCode 校验通过', LpBlocklyAiActionStatus.done);
+    await _finishPhase('verify');
+    final ordered = <String>[];
+    for (final m in RegExp(r'[Pp]\s*([0-9]+)').allMatches(prompt)) {
+      final p = m.group(1)!;
+      if (!ordered.contains(p)) ordered.add(p);
+    }
+    final startM = RegExp(
+      r'(?:自动启动|启动信号|启动)[^Mm]{0,12}[Mm]\s*([0-9]+)|等待\s*[Mm]\s*([0-9]+)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    final startIdx = startM?.group(1) ?? startM?.group(2);
+    final pointPath = ordered.map((p) => 'P$p').join(' → ');
+    final hasDelay = RegExp(r'等待\s*\d+\s*(?:秒|s)|延时', caseSensitive: false)
+        .hasMatch(prompt);
+    final hasClose = RegExp(r'关\s*真空|关闭\s*真空').hasMatch(prompt);
+    final lines = <String>[
+      '已按你的**动作顺序**生成 S 步序流程（非固定模板）：',
+      '1. 入口：S==1 且 ${startIdx != null ? 'M$startIdx' : '启动条件'} → S=10（其余步同样受启动条件约束）',
+      '2. 按描述顺序展开：走点 → 等停稳 → 开/关真空${hasDelay ? ' → 延时' : ''}…',
+      if (hasClose) '3. 含关闭真空',
+      '',
+      '点位路径：$pointPath',
+      'IO 映射函数不会被删除；若尚未生成映射，请先「从IO表生成」。',
+    ];
+    _emitAssistant(lines.join('\n'));
+    return LpBlocklyAiPipelineResult(
+      success: true,
+      stage: LpBlocklyAiPipelineStage.apply,
+      message: '已按真空取放步序模板生成并载入',
+      extractedXml: xml,
+      parsedPlan: normalized,
+    );
+  }
+
+  Future<LpBlocklyAiPipelineResult> _runIoTableGeneratePath({
+    required String prompt,
+    required LpBlocklyAiConfig config,
+    required LpBlocklyIoTableResult ioTable,
+    bool Function()? shouldCancel,
+  }) async {
+    if (ioTable.isEmpty || ioTable.localPoints.isEmpty) {
+      _emitAssistant(
+        '尚未导入有效 IO 表（或表中没有本机 3#/扩展/公用 点位）。\n'
+        '请先发送「导入IO表」选择 Excel，再发送「从IO表生成」。',
+      );
+      return const LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.collectContext,
+        message: '缺少 IO 表分配结果',
+      );
+    }
+
+    final rules = ioTable.toMappingRules(both: true);
+    _todos = [
+      LpBlocklyAiTodo(
+        id: 'generate',
+        title: '按 IO 表生成输入/输出映射',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+      const LpBlocklyAiTodo(
+        id: 'verify',
+        title: '编译并验证 GCode',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+    ];
+    _emit(LpBlocklyAiAgentEvent.todos(_todos));
+    _emitThink(
+      'IO 表分配 → 映射规则\n'
+      '${ioTable.toSummary(maxLines: 12)}\n'
+      '将生成 ${rules.length} 个函数（含手动IO附属）。',
+    );
+
+    final cancelled = _cancelIfRequested(shouldCancel);
+    if (cancelled != null) return cancelled;
+
+    await _beginPhase('generate');
+    final genActionId = _nextId('gen_iotable');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: genActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在按 IO 表生成映射…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+
+    final result = await _pipeline.runWithIoMappingRules(
+      prompt: prompt,
+      config: config,
+      ioRules: rules,
+    );
+
+    if (!result.success) {
+      _patchAction(genActionId, result.message, LpBlocklyAiActionStatus.failed);
+      await _failPhase('generate');
+      _emitAssistant('生成失败：${result.message}');
+      return result;
+    }
+
+    _patchAction(
+      genActionId,
+      '${result.message}\n\n${ioTable.toSummary()}',
+      LpBlocklyAiActionStatus.done,
+    );
+    await _finishPhase('generate');
+
+    final cancelledBeforeVerify = _cancelIfRequested(shouldCancel);
+    if (cancelledBeforeVerify != null) return cancelledBeforeVerify;
+
+    await _beginPhase('verify');
+    final verifyActionId = _nextId('verify_iotable');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: verifyActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在编译并验证 GCode…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+
+    final verify = await _xmlBridge.verifyGCode();
+    if (verify.ok) {
+      _patchAction(verifyActionId, 'GCode 编译验证通过', LpBlocklyAiActionStatus.done);
+      await _finishPhase('verify');
+      _emitAssistant(
+        '任务完成。已按 IO 表生成映射并载入画布。\n\n${ioTable.toSummary()}',
+      );
+    } else {
+      _patchAction(
+        verifyActionId,
+        verify.message ?? 'GCode 编译验证未通过',
+        LpBlocklyAiActionStatus.failed,
+      );
+      await _failPhase('verify');
+      _emitAssistant(
+        '映射已载入，但 GCode 校验未通过：${verify.message ?? '请检查块连接'}\n\n'
+        '${ioTable.toSummary()}',
+      );
+    }
+
+    return result;
+  }
+
+  /// 流程变量：登记 / 确认 / 修改 / 查看（不改画布）。
+  Future<LpBlocklyAiPipelineResult> _runFlowVarsPath({
+    required String prompt,
+    required LpBlocklyFlowVarsState state,
+    Future<void> Function(LpBlocklyFlowVarsState next)? onFlowVarsChanged,
+    bool Function()? shouldCancel,
+  }) async {
+    _todos = const [
+      LpBlocklyAiTodo(
+        id: 'answer',
+        title: '更新流程变量约定',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+    ];
+    _emit(LpBlocklyAiAgentEvent.todos(_todos));
+    await _beginPhase('answer');
+
+    final cancelled = _cancelIfRequested(shouldCancel);
+    if (cancelled != null) return cancelled;
+
+    final actionId = _nextId('vars');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: actionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在处理流程变量约定…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+
+    final parsed = LpBlocklyFlowVarsParser.parse(prompt);
+    var next = state;
+    String reply;
+
+    switch (parsed.kind) {
+      case LpBlocklyFlowVarsIntentKind.upsert:
+        next = LpBlocklyFlowVarsParser.mergeUpserts(state, parsed.upserts);
+        reply = '已登记 ${parsed.upserts.length} 项（待确认）：\n\n'
+            '${next.toUserReadableList()}\n\n'
+            '请核对含义与地址。无误请回复「确认」。';
+      case LpBlocklyFlowVarsIntentKind.confirm:
+        if (state.isEmpty) {
+          reply = '当前没有可确认的变量。请先发一批，例如：\n'
+              '自动使能 M20\n运动完成 D9000=0\n取料点 P1\n步序 S10';
+        } else {
+          next = LpBlocklyFlowVarsParser.confirmAll(state);
+          reply = '已确认全部流程变量（${next.confirmedCount} 项）：\n\n'
+              '${next.toUserReadableList()}\n\n'
+              '之后写流程我会只用这些已确认项。要改直接说「把 M20 改成 M16」。';
+        }
+      case LpBlocklyFlowVarsIntentKind.modify:
+        next = LpBlocklyFlowVarsParser.applyModifications(
+          state,
+          parsed.modifications,
+        );
+        reply = '已按你的要求修改（改后需重新确认）：\n\n'
+            '${next.toUserReadableList()}\n\n'
+            '确认后请回复「确认」。';
+      case LpBlocklyFlowVarsIntentKind.show:
+        reply = next.toUserReadableList();
+      case LpBlocklyFlowVarsIntentKind.clear:
+        next = const LpBlocklyFlowVarsState();
+        reply = '已清空流程变量约定。重新登记后再「确认」即可。';
+      case LpBlocklyFlowVarsIntentKind.none:
+        reply = '未识别到变量操作。';
+    }
+
+    if (onFlowVarsChanged != null &&
+        parsed.kind != LpBlocklyFlowVarsIntentKind.show &&
+        parsed.kind != LpBlocklyFlowVarsIntentKind.none) {
+      await onFlowVarsChanged(next);
+    }
+
+    _patchAction(actionId, '流程变量已更新', LpBlocklyAiActionStatus.done);
+    await _finishPhase('answer');
+    _emitAssistant(reply);
+
+    return LpBlocklyAiPipelineResult(
+      success: true,
+      stage: LpBlocklyAiPipelineStage.collectContext,
+      message: '流程变量约定已更新（未修改画布）',
+      rawResponse: reply,
+    );
+  }
+
+  /// 生成门型/步进流程前：变量未齐则先挡下确认。
+  Future<LpBlocklyAiPipelineResult> _runFlowVarsGatePath({
+    required LpBlocklyFlowVarsState state,
+  }) async {
+    _todos = const [
+      LpBlocklyAiTodo(
+        id: 'answer',
+        title: '核对流程变量',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+    ];
+    _emit(LpBlocklyAiAgentEvent.todos(_todos));
+    await _beginPhase('answer');
+
+    final buf = StringBuffer();
+    if (state.isEmpty) {
+      buf.writeln('写这类步进/门型流程前，需要先对齐你程序里的变量。');
+      buf.writeln('请先发一份清单，例如：');
+      buf.writeln();
+      buf.writeln('自动使能 M20');
+      buf.writeln('运动完成 D9000=0');
+      buf.writeln('取料点 P1');
+      buf.writeln('放料点 P2');
+      buf.writeln('安全点 P3');
+      buf.writeln('步序 S10');
+      buf.writeln();
+      buf.writeln('我会整理后请你「确认」，确认后才开始生成程序。');
+      buf.writeln('不会默认套用其他工程的寄存器。');
+    } else {
+      buf.writeln('检测到还有未确认的流程变量，暂不生成程序。');
+      buf.writeln();
+      buf.writeln(state.toUserReadableList());
+      buf.writeln();
+      buf.writeln('核对无误请回复「确认」；要改请说「把 Xxx 改成 Yyy」。');
+    }
+
+    final reply = buf.toString().trimRight();
+    await _finishPhase('answer');
+    _emitAssistant(reply);
+
+    return LpBlocklyAiPipelineResult(
+      success: true,
+      stage: LpBlocklyAiPipelineStage.collectContext,
+      message: '已请用户确认流程变量（未生成）',
+      rawResponse: reply,
+    );
+  }
+
+  /// 咨询/解释：只调用 LLM 回答，不导出、不生成、不改画布。
+  Future<LpBlocklyAiPipelineResult> _runChatOnlyPath({
+    required String prompt,
+    required LpBlocklyAiConfig config,
+    required LpBlocklyAiService service,
+    List<LpBlocklyAiChatTurn> conversationHistory = const [],
+    String persistentContext = '',
+    bool Function()? shouldCancel,
+  }) async {
+    _todos = LpBlocklyAiTodoPlanner.chatTodos();
+    _emit(LpBlocklyAiAgentEvent.todos(_todos));
+    _emitThink('识别为咨询/说明类问题，将直接回答，不修改画布。');
+
+    final cancelled = _cancelIfRequested(shouldCancel);
+    if (cancelled != null) return cancelled;
+
+    await _beginPhase('answer');
+
+    String? workspaceOverviewJson;
+    try {
+      final overview = await _xmlBridge.getWorkspaceOverview();
+      if (overview.ok && overview.blockCount > 0) {
+        workspaceOverviewJson = overview.toPromptJson();
+      }
+    } catch (_) {}
+
+    final answerActionId = _nextId('chat');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: answerActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: '正在组织回答…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+
+    try {
+      final referenceHabits =
+          await LpBlocklyAiHabitsLoader.loadReferenceContext();
+      final response = await service.complete(
+        config: config,
+        systemPrompt: LpBlocklyAiPrompt.buildChatSystemPrompt(
+          persistentContext: persistentContext,
+          workspaceOverviewJson: workspaceOverviewJson,
+          referenceHabits: referenceHabits,
+        ),
+        userMessage: prompt,
+        history: conversationHistory,
+      );
+
+      final cancelledAfter = _cancelIfRequested(shouldCancel);
+      if (cancelledAfter != null) return cancelledAfter;
+
+      _patchAction(
+        answerActionId,
+        '回答完成',
+        LpBlocklyAiActionStatus.done,
+      );
+      await _finishPhase('answer');
+      _emitAssistant(response);
+
+      return LpBlocklyAiPipelineResult(
+        success: true,
+        stage: LpBlocklyAiPipelineStage.collectContext,
+        message: '已回答（未修改画布）',
+        rawResponse: response,
+      );
+    } catch (e) {
+      _patchAction(
+        answerActionId,
+        '回答失败：$e',
+        LpBlocklyAiActionStatus.failed,
+      );
+      await _failPhase('answer');
+      _emitAssistant('回答失败：$e');
+      return LpBlocklyAiPipelineResult(
+        success: false,
+        stage: LpBlocklyAiPipelineStage.collectContext,
+        message: '回答失败：$e',
+      );
+    }
   }
 
   /// 输入/输出 IO 映射：跳过 Todo 规划、块库学习、参考工程加载。

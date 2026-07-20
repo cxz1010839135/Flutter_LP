@@ -7,6 +7,7 @@ import 'lp_blockly_ai_controls_if_plan.dart';
 import 'lp_blockly_ai_intent_builder.dart';
 import 'lp_blockly_ai_motion_plan.dart';
 import 'lp_blockly_ai_mode.dart';
+import 'lp_blockly_ai_protected_blocks.dart';
 import 'lp_blockly_ai_toolbox_registry.dart';
 
 /// GCode 校验结果。
@@ -28,11 +29,15 @@ class LpBlocklyTopBlockInfo {
     required this.id,
     required this.type,
     required this.text,
+    this.x = 0,
+    this.y = 0,
   });
 
   final String id;
   final String type;
   final String text;
+  final double x;
+  final double y;
 }
 
 /// JS getWorkspaceOverviewForAi 返回结果。
@@ -194,6 +199,12 @@ class LpBlocklyXmlBridge {
             id: m['id']?.toString() ?? '',
             type: m['type']?.toString() ?? '',
             text: m['text']?.toString() ?? '',
+            x: (m['x'] is num)
+                ? (m['x'] as num).toDouble()
+                : double.tryParse('${m['x']}') ?? 0,
+            y: (m['y'] is num)
+                ? (m['y'] as num).toDouble()
+                : double.tryParse('${m['y']}') ?? 0,
           ));
         }
       }
@@ -277,23 +288,25 @@ class LpBlocklyXmlBridge {
     }
   }
 
-  /// 移除所有顶层 ai_ 前缀块（修正模式清理，含散架残留）。
+  /// 移除可替换的顶层 AI 块（跳过 IO 映射 ai_io_proc_* 等）。
   Future<LpBlocklyRemoveBlocksResult> removeAllAiTopBlocks() async {
     return _invokeRemoveBlocks('Code.aiRemoveTopAiBlocks', null);
   }
 
   /// 移除画布上指定 id 的块（仅用于「替换上次 AI 结果」）。
   Future<LpBlocklyRemoveBlocksResult> removeBlocksByIds(List<String> ids) async {
-    if (ids.isEmpty) {
-      return const LpBlocklyRemoveBlocksResult(ok: true);
+    final safeIds = LpBlocklyAiProtectedBlocks.filterRemovableIds(ids);
+    if (safeIds.isEmpty) {
+      return const LpBlocklyRemoveBlocksResult(
+        ok: true,
+        removed: 0,
+        message: '无待移除块（IO 映射等已跳过）',
+      );
     }
-    final primary = await _invokeRemoveBlocks('Code.aiRemoveBlocksByIds', ids);
+    final primary = await _invokeRemoveBlocks('Code.aiRemoveBlocksByIds', safeIds);
     if (primary.ok && primary.removed > 0) return primary;
-    // 指定 id 未命中：尝试移除画布上仍存在的 ai_ 顶层块。
-    final fallback = await _invokeRemoveBlocks('Code.aiRemoveTopAiBlocks', null);
-    if (fallback.ok && fallback.removed > 0) return fallback;
     if (!primary.ok) return primary;
-    // 画布上已无目标块（用户可能已手动删除）→ 允许继续写入。
+    // 指定 id 未命中（用户可能已手动删除）→ 允许继续写入，不清理其他块。
     return const LpBlocklyRemoveBlocksResult(
       ok: true,
       removed: 0,

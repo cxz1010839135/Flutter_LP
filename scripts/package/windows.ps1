@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   Windows 平台一键打包：Release 构建 + MSI 安装程序。
@@ -78,7 +78,7 @@ function Build-MsiDotNet {
     Ensure-DotNet
     $wixproj = Join-Path $ProjectRoot "installer\LPRobot.Installer.wixproj"
 
-    foreach ($rel in @('installer\obj', 'build\installer')) {
+    foreach ($rel in @('installer\obj', 'installer\bin', 'build\installer')) {
         $dir = Join-Path $ProjectRoot $rel
         if (Test-Path $dir) {
             Write-Host ">>> clean $rel"
@@ -94,14 +94,113 @@ function Build-MsiDotNet {
 
     if ($LASTEXITCODE -ne 0) { throw 'dotnet build installer failed' }
 
-    $builtMsi = Join-Path $ProjectRoot "installer\bin\x64\Release\LPRobot.msi"
-    if (-not (Test-Path $builtMsi)) {
-        throw "MSI not found: $builtMsi"
+    # Cultures=zh-CN 会把最终 MSI 输出到对应文化子目录。
+    # 不可读取 Release 根目录，否则可能误用上一次遗留的旧 MSI。
+    Copy-Item -LiteralPath (Join-Path $ProjectRoot 'installer\bin\x64\Release\zh-CN\LPRobot.msi') -Destination $MsiPath -Force
+    Get-ChildItem (Join-Path $ProjectRoot 'installer\bin\x64\Release\zh-CN') -Filter "cab*.cab" -ErrorAction SilentlyContinue |
+        Remove-Item -Force
+}
+
+function Get-WebView2OfflineInstaller {
+    $prereqDir = Join-Path $ProjectRoot "build\prerequisites"
+    $installer = Join-Path $prereqDir "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+    $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2124701"
+
+    function Test-WebView2Installer([string]$Path) {
+        if (-not (Test-Path -LiteralPath $Path)) { return $false }
+        $file = Get-Item -LiteralPath $Path
+        if ($file.Length -lt 50MB) { return $false }
+        $signature = Get-AuthenticodeSignature -LiteralPath $Path
+        return $signature.Status -eq 'Valid' -and
+            $signature.SignerCertificate.Subject -match 'Microsoft Corporation'
     }
 
-    Copy-Item $builtMsi $MsiPath -Force
-    Get-ChildItem (Split-Path $builtMsi -Parent) -Filter "cab*.cab" -ErrorAction SilentlyContinue |
-        Remove-Item -Force
+    if (Test-WebView2Installer $installer) {
+        $cached = Get-Item -LiteralPath $installer
+        Write-Host ">>> reuse WebView2 offline runtime ($([math]::Round($cached.Length / 1MB, 1)) MB)"
+        return $installer
+    }
+
+    New-Item -ItemType Directory -Force -Path $prereqDir | Out-Null
+    $temp = "$installer.download"
+    if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force }
+
+    Write-Host ">>> download Microsoft WebView2 Evergreen Standalone x64"
+    Write-Host "    $downloadUrl"
+    Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $temp
+
+    if (-not (Test-WebView2Installer $temp)) {
+        Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        throw 'Downloaded WebView2 installer is incomplete or has an invalid Microsoft signature'
+    }
+
+    Move-Item -LiteralPath $temp -Destination $installer -Force
+    $downloaded = Get-Item -LiteralPath $installer
+    $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
+    Write-Host ">>> WebView2 runtime ready ($([math]::Round($downloaded.Length / 1MB, 1)) MB)"
+    Write-Host "    SHA256: $hash"
+    return $installer
+}
+
+function Build-WebView2RepairHelper {
+    $sourceDir = Join-Path $ProjectRoot "installer\webview2_repair"
+    $buildDir = Join-Path $ProjectRoot "build\webview2_repair"
+
+    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+        throw 'cmake is required to build the WebView2 repair helper'
+    }
+
+    if (Test-Path -LiteralPath $buildDir) {
+        Remove-Item -LiteralPath $buildDir -Recurse -Force
+    }
+
+    Write-Host ">>> build WebView2 pre-install repair helper"
+    cmake -S $sourceDir -B $buildDir -A x64 | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'configure WebView2 repair helper failed' }
+
+    cmake --build $buildDir --config Release | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'build WebView2 repair helper failed' }
+
+    $helper = Join-Path $buildDir "Release\LpWebView2Repair.exe"
+    if (-not (Test-Path -LiteralPath $helper)) {
+        throw "WebView2 repair helper not found: $helper"
+    }
+    return $helper
+}
+
+function Build-OfflineSetupBundle {
+    param(
+        [string]$MsiPath,
+        [string]$WebView2Installer,
+        [string]$WebView2RepairHelper,
+        [string]$ProductVersion,
+        [string]$SetupPath
+    )
+
+    Ensure-DotNet
+    $bundleProject = Join-Path $ProjectRoot "installer\bundle\LPRobot.Bundle.wixproj"
+    $bundleObj = Join-Path $ProjectRoot "installer\bundle\obj"
+    $bundleBin = Join-Path $ProjectRoot "installer\bundle\bin"
+    foreach ($dir in @($bundleObj, $bundleBin)) {
+        if (Test-Path -LiteralPath $dir) {
+            Remove-Item -LiteralPath $dir -Recurse -Force
+        }
+    }
+
+    Write-Host ">>> build offline Setup.exe (WebView2 Runtime + LPRobot MSI)"
+    dotnet build $bundleProject -c Release `
+        -p:ProductVersion=$ProductVersion `
+        -p:MsiPath=$MsiPath `
+        -p:WebView2Installer=$WebView2Installer `
+        -p:WebView2RepairHelper=$WebView2RepairHelper `
+        -v:minimal
+    if ($LASTEXITCODE -ne 0) { throw 'dotnet build offline bundle failed' }
+
+    $builtSetup = Join-Path $ProjectRoot "installer\bundle\bin\x64\Release\LPRobotSetup.exe"
+    if (-not (Test-Path -LiteralPath $builtSetup)) {
+        throw "Setup bundle not found: $builtSetup"
+    }
+    Copy-Item -LiteralPath $builtSetup -Destination $SetupPath -Force
 }
 
 function Build-MsiWix3 {
@@ -194,6 +293,19 @@ if (-not $SkipFlutterBuild) {
 }
 
 $releaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
+
+foreach ($rel in @(
+        'data\icudtl.dat',
+        'data\app.so',
+        'data\flutter_assets\AssetManifest.bin',
+        'flutter_windows.dll'
+    )) {
+    $path = Join-Path $releaseDir $rel
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Release payload incomplete (missing $rel). Run: flutter build windows --release"
+    }
+}
+
 $exe = Join-Path $releaseDir $ExeName
 $legacyExe = Join-Path $releaseDir "flutter_application_1.exe"
 if (-not (Test-Path -LiteralPath $exe)) {
@@ -250,17 +362,40 @@ Write-Host ">>> staged Blockly LPK ($([math]::Round($lpk.Length / 1MB, 2)) MB)"
 $distDir = Join-Path $ProjectRoot "dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 $msiPath = Join-Path $distDir "LPRobot-$($productVersion.TrimEnd('.0'))-x64.msi"
+$setupPath = Join-Path $distDir "LPRobot-$($productVersion.TrimEnd('.0'))-x64-Setup.exe"
 
 if ($UseWix3) {
     $wix3 = Find-Wix3Bin
     if (-not $wix3) { throw 'WiX v3 not found' }
     Build-MsiWix3 -WixBin $wix3 -ReleaseDir $releaseDir -ProductVersion $productVersion -MsiPath $msiPath
+    Write-Warning "WiX v3 mode only builds MSI; use default WiX 6 mode for bundled WebView2 Setup.exe"
 } else {
     Build-MsiDotNet -ReleaseDir $releaseDir -ProductVersion $productVersion -MsiPath $msiPath
+    $freshMsiPath = Join-Path $ProjectRoot "installer\bin\x64\Release\zh-CN\LPRobot.msi"
+    Copy-Item -LiteralPath $freshMsiPath -Destination $msiPath -Force
+    $freshMsiHash = (Get-FileHash -LiteralPath $freshMsiPath -Algorithm SHA256).Hash
+    $distMsiHash = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash
+    if ($freshMsiHash -ne $distMsiHash) {
+        throw "MSI verification failed: localized output and dist artifact differ"
+    }
+    Write-Host ">>> verified fresh localized MSI: $freshMsiHash"
+    $webView2Installer = Get-WebView2OfflineInstaller
+    $webView2RepairHelper = Build-WebView2RepairHelper
+    Build-OfflineSetupBundle `
+        -MsiPath $freshMsiPath `
+        -WebView2Installer $webView2Installer `
+        -WebView2RepairHelper $webView2RepairHelper `
+        -ProductVersion $productVersion `
+        -SetupPath $setupPath
 }
 
 $msi = Get-Item $msiPath
 Write-Host ""
 Write-Host "MSI: $($msi.FullName) ($([math]::Round($msi.Length / 1MB, 2)) MB)" -ForegroundColor Green
+if (Test-Path -LiteralPath $setupPath) {
+    $setup = Get-Item $setupPath
+    Write-Host "Offline Setup: $($setup.FullName) ($([math]::Round($setup.Length / 1MB, 2)) MB)" -ForegroundColor Green
+    Write-Host "Use this Setup.exe on a new PC; it includes Microsoft WebView2 Runtime." -ForegroundColor Green
+}
 Write-Host "Installed exe: <install dir>\$ExeName"
 Write-Host "Tip: choose a writable folder, or rely on auto data dir under %LOCALAPPDATA%\Lingpeng\LPRobot"

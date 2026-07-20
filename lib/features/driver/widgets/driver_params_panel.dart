@@ -57,6 +57,7 @@ class DriverParamsPanel extends StatefulWidget {
     required this.onSample,
     required this.onSoftReset,
     required this.findPhaseButtonLabel,
+    required this.findPhaseActive,
     required this.onFindPhase,
     required this.onListSingleAxisDir,
     required this.onLoadSingleAxisFile,
@@ -102,6 +103,7 @@ class DriverParamsPanel extends StatefulWidget {
   final DriverAction onSample;
   final DriverAction onSoftReset;
   final String findPhaseButtonLabel;
+  final bool findPhaseActive;
   final DriverAction onFindPhase;
   final DriverDirLoader onListSingleAxisDir;
   final DriverFileAction onLoadSingleAxisFile;
@@ -412,6 +414,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
                     widget.jogSpeed,
                     widget.onJogSpeedChanged,
                     helpKey: 'speed_jog',
+                    signed: true,
                   ),
                 ),
                 SizedBox(
@@ -425,7 +428,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
                   ),
                 ),
                 SizedBox(
-                  width: 150,
+                  width: 185,
                   child: _miniField(
                     context,
                     '矢量Jerk',
@@ -572,7 +575,12 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
             children: [
                 _check('刷新', widget.refreshChart, widget.onRefreshChartChanged),
                 _check('往返', widget.roundTrip, widget.onRoundTripChanged),
-                _check('循环', widget.loopMove, widget.onLoopChanged),
+                _check(
+                  '循环',
+                  widget.loopMove,
+                  widget.onLoopChanged,
+                  enabledWhenBusy: true,
+                ),
                 SizedBox(
                   width: 130,
                   child: _miniField(
@@ -584,7 +592,12 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
                   ),
                 ),
                 _actionBtn('软复位', widget.onSoftReset),
-                _actionBtn(widget.findPhaseButtonLabel, widget.onFindPhase),
+                _actionBtn(
+                  widget.findPhaseButtonLabel,
+                  widget.onFindPhase,
+                  highlighted: widget.findPhaseActive,
+                  enabled: !widget.busy || widget.findPhaseActive,
+                ),
                 _actionBtn('采集波形', widget.onSample, enabled: widget.refreshChart),
                 _actionBtn('点动', widget.onPosRef),
             ],
@@ -663,7 +676,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
             Expanded(child: _rowField('距离', row.distance, (v) {
               row.distance = v;
               widget.onAxisMotionFieldChanged(index, row);
-            })),
+            }, signed: true)),
           ],
         ),
       ),
@@ -675,22 +688,45 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
     DriverAction action, {
     bool enabled = true,
     bool compact = false,
+    bool highlighted = false,
   }) {
+    final canPress = enabled && (!widget.busy || highlighted);
+    final padding = compact
+        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+        : const EdgeInsets.symmetric(horizontal: 14, vertical: 10);
+    final textStyle = TextStyle(
+      fontSize: compact ? 12 : 14,
+      fontWeight: FontWeight.w600,
+    );
+    if (highlighted) {
+      return FilledButton(
+        onPressed: canPress ? () => action() : null,
+        style: FilledButton.styleFrom(
+          backgroundColor: LpRobotColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: LpRobotColors.primary.withValues(alpha: 0.45),
+          disabledForegroundColor: Colors.white70,
+          padding: padding,
+          minimumSize: compact ? Size.zero : const Size(0, 36),
+          tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
+          visualDensity:
+              compact ? VisualDensity.compact : VisualDensity.standard,
+          textStyle: textStyle,
+        ),
+        child: Text(label),
+      );
+    }
     return OutlinedButton(
-      onPressed: (widget.busy || !enabled) ? null : () => action(),
+      onPressed: canPress ? () => action() : null,
       style: OutlinedButton.styleFrom(
         foregroundColor: LpRobotColors.primary,
         side: const BorderSide(color: LpRobotColors.primary),
-        padding: compact
-            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
-            : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: padding,
         minimumSize: compact ? Size.zero : const Size(0, 36),
         tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
-        visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
-        textStyle: TextStyle(
-          fontSize: compact ? 12 : 14,
-          fontWeight: FontWeight.w600,
-        ),
+        visualDensity:
+            compact ? VisualDensity.compact : VisualDensity.standard,
+        textStyle: textStyle,
       ),
       child: Text(label),
     );
@@ -700,10 +736,10 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
     BuildContext context,
     String label,
     String value,
-    ValueChanged<String> onChanged,
-    {String? helpKey,
-    }
-  ) {
+    ValueChanged<String> onChanged, {
+    String? helpKey,
+    bool signed = false,
+  }) {
     void showHelp(BuildContext context) {
       final help = helpKey == null ? null : DriverParamsDefs.helpOf(helpKey);
       if (help == null || help.isEmpty) return;
@@ -744,6 +780,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
               value: value,
               enabled: !widget.busy,
               onChanged: onChanged,
+              signed: signed,
             ),
           ),
         ),
@@ -751,7 +788,12 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
     );
   }
 
-  Widget _rowField(String label, String value, ValueChanged<String> onChanged) {
+  Widget _rowField(
+    String label,
+    String value,
+    ValueChanged<String> onChanged, {
+    bool signed = false,
+  }) {
     return Row(
       children: [
         Flexible(
@@ -771,6 +813,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
               value: value,
               enabled: !widget.busy,
               onChanged: onChanged,
+              signed: signed,
             ),
           ),
         ),
@@ -793,13 +836,20 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
     );
   }
 
-  Widget _check(String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _check(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    bool enabledWhenBusy = false,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Checkbox(
           value: value,
-          onChanged: widget.busy ? null : (v) => onChanged(v ?? false),
+          onChanged: (widget.busy && !enabledWhenBusy)
+              ? null
+              : (v) => onChanged(v ?? false),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         Text(label, style: DriverUiStyle.compactControlLabelStyle),
@@ -813,11 +863,13 @@ class _DriverSmallField extends StatefulWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.signed = false,
   });
 
   final String value;
   final ValueChanged<String> onChanged;
   final bool enabled;
+  final bool signed;
 
   @override
   State<_DriverSmallField> createState() => _DriverSmallFieldState();
@@ -852,8 +904,13 @@ class _DriverSmallFieldState extends State<_DriverSmallField> {
       enabled: widget.enabled,
       controller: _controller,
       onChanged: widget.onChanged,
-      keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      keyboardType: TextInputType.numberWithOptions(signed: widget.signed),
+      inputFormatters: [
+        if (widget.signed)
+          FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))
+        else
+          FilteringTextInputFormatter.digitsOnly,
+      ],
       style: DriverUiStyle.fieldTextStyle,
       decoration: DriverUiStyle.fieldDecoration(
         enabled: widget.enabled,

@@ -19,6 +19,10 @@
     {
       "kind": "Y",
       "address": 1
+    },
+    {
+      "kind": "D",
+      "address": 9000
     }
   ],
   "autoRefresh": true,

@@ -54,7 +54,7 @@ flutter run -d windows
 
 | 平台 | 推荐操作 | 分发用文件（复制此路径） | 说明 |
 |------|----------|--------------------------|------|
-| **Windows** | 双击 [`打包Windows安装包.bat`](./打包Windows安装包.bat) | **`dist\LPRobot-<版本>-x64.msi`** | 例如 `dist\LPRobot-1.4.8-x64.msi` |
+| **Windows** | 双击 [`打包Windows安装包.bat`](./打包Windows安装包.bat) | **`dist\LPRobot-<版本>-x64-Setup.exe`** | 自带 WebView2 x64 离线运行时；新电脑请分发此文件 |
 | **Android** | 双击 [`打包Android安装包.bat`](./打包Android安装包.bat) | **`dist\LPRobot-<版本>.apk`** | 例如 `dist\LPRobot-1.4.8.apk` |
 | Android（上架） | `scripts\package\android.cmd -AppBundle` | **`dist\LPRobot-<版本>.aab`** | Google Play 等商店用 |
 
@@ -81,7 +81,7 @@ flutter run -d windows
 
 ---
 
-## Windows 打包流程（MSI 安装包）
+## Windows 打包流程（自带 WebView2 的 Setup.exe）
 
 ### 前置环境
 
@@ -103,8 +103,8 @@ dotnet --version
 
 1. 确认本文件与 `pubspec.yaml` 在同一目录（Flutter 工程根）。
 2. **双击** [`打包Windows安装包.bat`](./打包Windows安装包.bat)。
-3. 等待完成（首次约数分钟），窗口会列出 `dist\` 下的 MSI 文件名。
-4. 将 `dist\LPRobot-<版本>-x64.msi` 分发给用户安装即可。
+3. 等待完成；首次还会下载并缓存微软官方 WebView2 x64 离线运行时。
+4. 将 `dist\LPRobot-<版本>-x64-Setup.exe` 分发给用户安装。
 
 ### 脚本会自动完成的步骤
 
@@ -121,6 +121,10 @@ flutter build windows --release    → 生成 领鹏智能.exe 等
 dotnet build installer\LPRobot.Installer.wixproj
     ↓
 复制 MSI → dist\LPRobot-<版本>-x64.msi
+    ↓
+校验并嵌入 Microsoft WebView2 Evergreen Standalone x64
+    ↓
+生成一体化安装包 → dist\LPRobot-<版本>-x64-Setup.exe
 ```
 
 版本号只需改 `pubspec.yaml` 中的 `version:`（如 `1.4.7+1` → 界面/连接标识/MSI 均为 `1.4.7`；构建号 `+1` 递增即可）。
@@ -158,7 +162,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package\windows.ps
 
 | 项 | 说明 |
 |----|------|
-| 安装包路径 | `dist\LPRobot-<版本>-x64.msi`（单文件，体积随 `dll/visualprogram` 大小变化，通常约 10～130 MB） |
+| 推荐分发 | `dist\LPRobot-<版本>-x64-Setup.exe`（约 260～300 MB，离线自带 WebView2 Runtime） |
+| 单独 MSI | `dist\LPRobot-<版本>-x64.msi`（不含 WebView2，仅用于已部署运行环境的设备） |
 | 安装界面 | **简体中文**，可选 **自定义安装目录**（`WixUI_InstallDir`） |
 | 安装后程序 | `<安装目录>\领鹏智能.exe` |
 | 同目录资源 | `config\`、`dll\visualprogram\` |

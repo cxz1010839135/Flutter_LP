@@ -160,6 +160,39 @@ class DriverParamsService {
     res.ensureOk();
   }
 
+  /// 取消「循环」时停止点动（对齐 Android cb_loop 取消勾选时的 driverMove(0,0,0,...)）。
+  Future<void> stopTechLoop({required int chartAxis}) async {
+    final count = totalAxisNum;
+    final zeros = List<int>.filled(count, 0);
+    await techMove(
+      returnTrip: 0,
+      repeat: 0,
+      chart: 0,
+      chartData: 2000,
+      chartAxis: chartAxis,
+      delayMs: 100,
+      axes: List<int>.generate(count, (i) => i),
+      positions: zeros,
+      velocities: zeros,
+      accs: zeros,
+      jerks: zeros,
+    );
+  }
+
+  /// 点动勾选「刷新」后，轮询采集完成标志（对齐 Android pos_ref_debug + robotTechGetStatus）。
+  Future<void> waitForTechDataReady() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    while (true) {
+      final res = await HttpManager.instance.robotTechGetStatus();
+      final flag = res.data;
+      final ready = flag is num
+          ? flag.toInt() == 0
+          : int.tryParse(flag?.toString() ?? '') == 0;
+      if (ready) return;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
   Future<Map<String, List<double>>> fetchWaveformData({
     required int index,
     required int len,

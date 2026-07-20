@@ -1,0 +1,26 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <Platform>x64</Platform>
+    <OutputType>Bundle</OutputType>
+    <OutputName>LPRobotSetup</OutputName>
+    <Cultures>zh-CN</Cultures>
+    <NuGetAudit>false</NuGetAudit>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.8.7.0</ProductVersion>
+    <MsiPath Condition="'$(MsiPath)' == ''">$(MSBuildThisFileDirectory)..\bin\x64\Release\LPRobot.msi</MsiPath>
+    <WebView2Installer Condition="'$(WebView2Installer)' == ''">$(MSBuildThisFileDirectory)MicrosoftEdgeWebView2RuntimeInstallerX64.exe</WebView2Installer>
+    <WebView2RepairHelper Condition="'$(WebView2RepairHelper)' == ''">$(MSBuildThisFileDirectory)LpWebView2Repair.exe</WebView2RepairHelper>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\</RepoRoot>
+    <DefineConstants>ProductVersion=$(ProductVersion);MsiPath=$(MsiPath);WebView2Installer=$(WebView2Installer);WebView2RepairHelper=$(WebView2RepairHelper);RepoRoot=$(RepoRoot)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Bal.wixext" Version="6.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Bundle.wxs" />
+  </ItemGroup>
+</Project>

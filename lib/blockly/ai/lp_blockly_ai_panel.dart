@@ -716,6 +716,118 @@ class _LpBlocklyAiPanelState extends State<LpBlocklyAiPanel> {
                       isDense: true,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '流程变量约定',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: LpBlocklyAiAgentTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '写门型/步进流程前会强制核对；持久化到 config/blockly_ai_flow_vars.json。'
+                    '对话中发变量清单 → 回复「确认」；修改说「把 M20 改成 M16」。',
+                    style: LpBlocklyAiAgentTheme.statusText,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: LpBlocklyAiAgentTheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: LpBlocklyAiAgentTheme.border),
+                    ),
+                    child: Text(
+                      widget.controller.flowVars.isEmpty
+                          ? '尚未登记流程变量'
+                          : '已确认 ${widget.controller.flowVars.confirmedCount}/'
+                              '${widget.controller.flowVars.vars.length}\n'
+                              '${widget.controller.flowVars.toUserReadableList()}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        height: 1.35,
+                        color: LpBlocklyAiAgentTheme.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'IO 表 Excel',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: LpBlocklyAiAgentTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '读取 DM注释_*.xlsx 的「IO表」与「本体IP100」：'
+                    '自动分配 3#/扩展/公用 → X/Y → M；1#/2# 仅注释。'
+                    '持久化 config/blockly_ai_io_table.json。',
+                    style: LpBlocklyAiAgentTheme.statusText,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: LpBlocklyAiAgentTheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: LpBlocklyAiAgentTheme.border),
+                    ),
+                    child: Text(
+                      widget.controller.ioTable.isEmpty
+                          ? '尚未导入 IO 表'
+                          : widget.controller.ioTable.toSummary(maxLines: 12),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        height: 1.35,
+                        color: LpBlocklyAiAgentTheme.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: aiBusy
+                              ? null
+                              : () async {
+                                  final summary = await widget.controller
+                                      .importIoTableFromPicker();
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        summary.split('\n').first,
+                                      ),
+                                    ),
+                                  );
+                                  setState(() {});
+                                },
+                          child: const Text('导入 IO 表'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: aiBusy ||
+                                  widget.controller.ioTable.localPoints.isEmpty
+                              ? null
+                              : () async {
+                                  _closeSettings();
+                                  await widget.controller
+                                      .generateIoMappingFromTable();
+                                },
+                          child: const Text('生成到画布'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

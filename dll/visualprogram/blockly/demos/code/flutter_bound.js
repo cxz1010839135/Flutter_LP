@@ -2,9 +2,30 @@
  * Flutter WebView 桥接：
  * - 配置：{installRoot}/config/server/{name}.xml + .rp4
  * - 保存：{installRoot}/files/xml、files/projects、files/funlib 等
+ *
+ * 仅当宿主注入 FlutterBlockly 时生效；Android 原生使用 addJavascriptInterface 的 bound，不在此覆盖。
  */
 (function () {
   'use strict';
+
+  function getFlutterChannelEarly() {
+    try {
+      if (typeof FlutterBlockly !== 'undefined' && FlutterBlockly) return FlutterBlockly;
+      if (window.FlutterBlockly) return window.FlutterBlockly;
+    } catch (e) { }
+    return null;
+  }
+
+  if (!getFlutterChannelEarly()) {
+    return;
+  }
+
+  if (typeof isFlutter !== 'undefined') {
+    isFlutter = true;
+  }
+  if (typeof isWeb !== 'undefined') {
+    isWeb = false;
+  }
 
   var DEFAULT_NAME = 'main';
 
@@ -51,11 +72,7 @@
   }
 
   function getFlutterChannel() {
-    try {
-      if (typeof FlutterBlockly !== 'undefined') return FlutterBlockly;
-      if (window.FlutterBlockly) return window.FlutterBlockly;
-    } catch (e) {}
-    return null;
+    return getFlutterChannelEarly();
   }
 
   function postToFlutter(payload) {
@@ -248,10 +265,6 @@
     },
   };
 
-  if (typeof isWeb !== 'undefined') {
-    isWeb = false;
-  }
-
   function installFlutterSaveButton() {
     rebindToolbarButton('SaveDocDiv', function () {
       var fileName = prompt('请输入保存的工程名：', DEFAULT_NAME);
@@ -305,9 +318,6 @@
   }
 
   window.addEventListener('load', function () {
-    if (typeof isWeb !== 'undefined') {
-      isWeb = false;
-    }
     window.setTimeout(function () {
       installFlutterSaveButton();
       installFlutterLoadButton();

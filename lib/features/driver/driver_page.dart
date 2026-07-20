@@ -46,14 +46,17 @@ class _DriverPageState extends State<DriverPage>
   int _safeTab = 0;
 
   String _sampleCount = '2000';
-  String _delayMs = '0';
-  String _jerk = '0';
+  String _delayMs = '100';
+  String _jerk = '1000000000';
   String _currentMaxLimit = '5';
   String _speedMaxLimit = '3000';
   String _posErrMaxLimit = '10000';
   bool _refreshChart = false;
   bool _roundTrip = false;
   bool _loopMove = false;
+  bool _findPhaseRunning = false;
+  bool _findPhaseCancelled = false;
+  bool _loopSessionActive = false;
 
   late List<AxisDebugRow> _axisRows;
   Map<String, List<double>> _waveSeries = const {};
@@ -217,12 +220,16 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _writeDriver() async {
+    _clearSelectedRowServo();
+    if (mounted) setState(() {});
     await _runBusy(() async {
       await _service.writeParams(_curAxis, _model);
     }, okMsg: '写驱动参数成功！');
   }
 
   Future<void> _writeFile() async {
+    _clearSelectedRowServo();
+    if (mounted) setState(() {});
     await _runBusy(() async {
       await _service.writeParamsToFile(_curAxis, _model);
     }, okMsg: '写文件参数成功！');
@@ -235,49 +242,108 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _findPhase() async {
-    final isRunning = _live.findPhaseFlag == 1;
-    if (!isRunning) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('提示'),
-          content: Text('${_curAxis + 1}轴电机将进行寻相'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-    }
-    await _runBusy(() async {
-      if (!isRunning && _live.servoState != 0) {
-        final desc = RobotAlarmInfo.describeCode(_live.servoState);
-        throw Exception(
-          desc.isEmpty
-              ? '${_curAxis + 1}轴存在报警代码：${_live.servoState}'
-              : '${_curAxis + 1}轴存在报警代码：${_live.servoState}（$desc）',
-        );
-      }
-      if (isRunning) {
+    final isRunning = _findPhaseRunning || _live.findPhaseFlag == 1;
+    if (isRunning) {
+      _findPhaseCancelled = true;
+      setState(() => _findPhaseRunning = false);
+      try {
         await _service.stopPhase(_curAxis);
         await Future<void>.delayed(const Duration(milliseconds: 500));
-        _showFindPhaseTip(-2);
-        return;
+        if (mounted) {
+          _clearSelectedRowServo();
+          setState(() {});
+          _showFindPhaseTip(-2);
+        }
+      } catch (e) {
+        LpStatusLog.instance.warning('停止寻相失败：$e');
       }
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('提示'),
+        content: Text('${_curAxis + 1}轴电机将进行寻相'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    if (_live.servoState != 0) {
+      final desc = RobotAlarmInfo.describeCode(_live.servoState);
+      final msg = desc.isEmpty
+          ? '${_curAxis + 1}轴存在报警代码：${_live.servoState}'
+          : '${_curAxis + 1}轴存在报警代码：${_live.servoState}（$desc）';
+      LpStatusLog.instance.warning(msg);
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('提示'),
+            content: Text(msg),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    _findPhaseCancelled = false;
+    setState(() => _findPhaseRunning = true);
+    try {
       await _service.findPhase(_curAxis);
-      final flag = await _waitFindPhaseResult();
+    } catch (e) {
+      if (mounted) setState(() => _findPhaseRunning = false);
+      LpStatusLog.instance.warning('$e');
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('提示'),
+            content: Text('$e'),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    unawaited(_completeFindPhase());
+  }
+
+  Future<void> _completeFindPhase() async {
+    final flag = await _waitFindPhaseResult();
+    if (!mounted) return;
+    setState(() => _findPhaseRunning = false);
+    if (_findPhaseCancelled) return;
+    try {
       await _service.readParams(_curAxis, _model);
       await Future<void>.delayed(const Duration(milliseconds: 500));
-      _showFindPhaseTip(flag);
-      if (mounted) setState(() {});
-    });
+    } catch (_) {}
+    if (!mounted || _findPhaseCancelled) return;
+    _clearSelectedRowServo();
+    _showFindPhaseTip(flag);
+    setState(() {});
   }
 
   void _showFindPhaseTip(int flag) {
@@ -344,9 +410,20 @@ class _DriverPageState extends State<DriverPage>
   }
 
   void _clearSelectedRowServo() {
-    for (final row in _axisRows) {
-      row.servoOn = false;
-      row.motionOn = false;
+    if (_curAxis < 0 || _curAxis >= _axisRows.length) return;
+    _axisRows[_curAxis].servoOn = false;
+  }
+
+  Future<void> _onLoopChanged(bool on) async {
+    final wasOn = _loopMove;
+    setState(() => _loopMove = on);
+    if (wasOn && !on) {
+      _loopSessionActive = false;
+      try {
+        await _service.stopTechLoop(chartAxis: _curAxis);
+      } catch (e) {
+        LpStatusLog.instance.warning('停止循环点动失败：$e');
+      }
     }
   }
 
@@ -366,45 +443,85 @@ class _DriverPageState extends State<DriverPage>
   }
 
   Future<void> _posRef() async {
-    await _runBusy(() async {
-      final axes = <int>[];
-      final pos = <int>[];
-      final vel = <int>[];
-      final acc = <int>[];
-      final jerks = <int>[];
-      final jerkVal = int.tryParse(_jerk) ?? 0;
-      for (final row in _axisRows) {
-        if (!row.motionOn && !row.servoOn) continue;
-        axes.add(row.axisIndex);
-        pos.add(int.tryParse(row.distance) ?? 0);
-        vel.add(int.tryParse(row.vel) ?? 0);
-        acc.add(int.tryParse(row.acc) ?? 0);
-        jerks.add(jerkVal);
+    final axes = <int>[];
+    final pos = <int>[];
+    final vel = <int>[];
+    final acc = <int>[];
+    final jerks = <int>[];
+    final jerkVal = int.tryParse(_jerk) ?? 0;
+    for (final row in _axisRows) {
+      if (!row.motionOn) continue;
+      axes.add(row.axisIndex);
+      pos.add(int.tryParse(row.distance) ?? 0);
+      vel.add(int.tryParse(row.vel) ?? 0);
+      acc.add(int.tryParse(row.acc) ?? 0);
+      jerks.add(jerkVal);
+    }
+    if (axes.isEmpty) return;
+    if (_loopMove && _loopSessionActive) return;
+
+    final loopMove = _loopMove;
+    final refreshChart = _refreshChart;
+    final delayMs = int.tryParse(_delayMs.trim()) ?? 0;
+
+    Future<void> sendMove() => _service.techMove(
+          returnTrip: _roundTrip ? 1 : 0,
+          repeat: loopMove ? 1 : 0,
+          chart: refreshChart ? 1 : 0,
+          chartData: int.tryParse(_sampleCount) ?? 2000,
+          chartAxis: _curAxis,
+          delayMs: delayMs,
+          axes: axes,
+          positions: pos,
+          velocities: vel,
+          accs: acc,
+          jerks: jerks,
+        );
+
+    try {
+      if (loopMove) {
+        // 循环模式：只发一次指令，不阻塞 UI（对齐安卓 repeat=1 由控制器循环）。
+        await sendMove();
+        _loopSessionActive = true;
+        LpStatusLog.instance.success('点动指令已发送', openPanel: false);
+        if (refreshChart) {
+          unawaited(_fetchWaveformInBackground());
+        }
+        return;
       }
-      if (axes.isEmpty) {
-        axes.add(_curAxis);
-        pos.add(int.tryParse(_axisRows[_curAxis].distance) ?? 0);
-        vel.add(int.tryParse(_axisRows[_curAxis].vel) ?? 0);
-        acc.add(int.tryParse(_axisRows[_curAxis].acc) ?? 0);
-        jerks.add(jerkVal);
+
+      await _runBusy(() async {
+        await sendMove();
+        if (refreshChart) {
+          await _service.waitForTechDataReady();
+          await _pullWaveform(switchToWaveTab: false);
+        }
+      }, okMsg: '点动指令已发送');
+    } catch (e) {
+      LpStatusLog.instance.warning('$e');
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('提示'),
+            content: Text('$e'),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
       }
-      await _service.techMove(
-        returnTrip: _roundTrip ? 1 : 0,
-        repeat: _loopMove ? 1 : 0,
-        chart: _refreshChart ? 1 : 0,
-        chartData: int.tryParse(_sampleCount) ?? 2000,
-        chartAxis: _curAxis,
-        delayMs: int.tryParse(_delayMs) ?? 0,
-        axes: axes,
-        positions: pos,
-        velocities: vel,
-        accs: acc,
-        jerks: jerks,
-      );
-      if (_refreshChart) {
-        await _pullWaveform();
-      }
-    }, okMsg: '点动指令已发送');
+    }
+  }
+
+  Future<void> _fetchWaveformInBackground() async {
+    try {
+      await _service.waitForTechDataReady();
+      await _pullWaveform(switchToWaveTab: false);
+    } catch (_) {}
   }
 
   Future<void> _sampleWaveform() async {
@@ -413,14 +530,14 @@ class _DriverPageState extends State<DriverPage>
     });
   }
 
-  Future<void> _pullWaveform() async {
+  Future<void> _pullWaveform({bool switchToWaveTab = true}) async {
     setState(() => _waveLoading = true);
     try {
       final len = int.tryParse(_sampleCount) ?? 2000;
       final data = await _service.fetchWaveformData(index: 0, len: len);
       if (!mounted) return;
       setState(() => _waveSeries = data);
-      if (_tabController.index != 1) {
+      if (switchToWaveTab && _tabController.index != 1) {
         _tabController.animateTo(1);
       }
     } finally {
@@ -563,7 +680,7 @@ class _DriverPageState extends State<DriverPage>
                       onRefreshChartChanged: (v) =>
                           setState(() => _refreshChart = v),
                       onRoundTripChanged: (v) => setState(() => _roundTrip = v),
-                      onLoopChanged: (v) => setState(() => _loopMove = v),
+                      onLoopChanged: _onLoopChanged,
                       onAxisMotionFieldChanged: _onAxisMotionFieldChanged,
                       onAxisServoChanged: _onAxisServoChanged,
                       onAxisMotionChanged: _onAxisMotionChanged,
@@ -572,7 +689,11 @@ class _DriverPageState extends State<DriverPage>
                       onWriteFile: _writeFile,
                       onPosRef: _posRef,
                       onSample: _sampleWaveform,
-                      findPhaseButtonLabel: _live.findPhaseFlag == 1 ? '电机寻相中' : '电机寻相',
+                      findPhaseActive:
+                          _findPhaseRunning || _live.findPhaseFlag == 1,
+                      findPhaseButtonLabel: _findPhaseRunning || _live.findPhaseFlag == 1
+                          ? '电机寻相中'
+                          : '电机寻相',
                       onFindPhase: _findPhase,
                       onSoftReset: _softReset,
                       onListSingleAxisDir: _listSingleAxisDir,

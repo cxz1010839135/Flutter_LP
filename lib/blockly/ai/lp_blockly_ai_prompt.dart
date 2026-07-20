@@ -185,6 +185,11 @@ abstract final class LpBlocklyAiPrompt {
             ? '你的任务是根据用户自然语言，输出结构化 JSON 块计划（blocks 数组）。'
             : '你的任务是根据用户自然语言，生成可直接载入的 Blockly XML。',
       )
+      ..writeln(
+        '生成步进/门型/自动流程时：只使用「项目流程变量约定」中已确认的符号；'
+        '禁止套用其他工程默认寄存器（如擅自使用未确认的 M16）。'
+        '若约定缺失或未确认，应停止生成并请用户先确认变量。',
+      )
       ..writeln()
       ..writeln('## 输出要求（必须遵守）');
 
@@ -304,6 +309,50 @@ abstract final class LpBlocklyAiPrompt {
       buffer
         ..writeln()
         ..writeln(LpBlocklyAiToolboxRegistry.buildToolboxSection());
+    }
+
+    return buffer.toString();
+  }
+
+  /// 咨询/解释模式：只输出自然语言，不写 Blockly。
+  static String buildChatSystemPrompt({
+    String persistentContext = '',
+    String? workspaceOverviewJson,
+    String referenceHabits = '',
+  }) {
+    final buffer = StringBuffer()
+      ..writeln('你是领鹏机器人 Blockly 可视化编程助手。')
+      ..writeln('用户当前在咨询、讨论或了解概念，**不要**输出 Blockly XML/JSON，**不要**尝试修改画布。')
+      ..writeln('用简明、准确的中文回答；涉及寄存器、流程、块类型时可结合领鹏工程习惯说明。')
+      ..writeln('若用户最终需要生成程序，可提示其说明具体需求（如「生成 S10 自动流程」）。');
+
+    final ctx = persistentContext.trim();
+    if (ctx.isNotEmpty) {
+      final trimmed = ctx.length > 6000
+          ? '${ctx.substring(0, 6000)}\n<!-- context truncated -->'
+          : ctx;
+      buffer
+        ..writeln()
+        ..writeln('## 项目/用户长期上下文')
+        ..writeln(trimmed);
+    }
+
+    final habits = referenceHabits.trim();
+    if (habits.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('## 参考工程习惯（回答时可引用，勿整段照搬）')
+        ..writeln(habits.length > 4000
+            ? '${habits.substring(0, 4000)}\n<!-- habits truncated -->'
+            : habits);
+    }
+
+    if (workspaceOverviewJson != null &&
+        workspaceOverviewJson.trim().isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('## 当前画布概览（仅供解释参考，不要生成新块）')
+        ..writeln(workspaceOverviewJson);
     }
 
     return buffer.toString();

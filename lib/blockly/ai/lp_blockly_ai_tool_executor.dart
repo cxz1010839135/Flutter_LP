@@ -50,7 +50,14 @@ class LpBlocklyAiToolExecutor {
       onStep('tool:clear_workspace 完成', done: true);
     } else if (modifyPrevious || replaceBlockIdsOnAppend.isNotEmpty) {
       onStep('tool:remove_previous_ai 清理 AI 顶层块…');
-      final removed = await _bridge.removeAllAiTopBlocks();
+      final LpBlocklyRemoveBlocksResult removed;
+      if (replaceBlockIdsOnAppend.isNotEmpty) {
+        removed = await _bridge.removeBlocksByIds(replaceBlockIdsOnAppend);
+      } else if (modifyPrevious) {
+        removed = await _bridge.removeAllAiTopBlocks();
+      } else {
+        removed = const LpBlocklyRemoveBlocksResult(ok: true);
+      }
       if (!removed.ok) {
         onStep(
           'tool:remove_previous_ai 失败：${removed.message}',

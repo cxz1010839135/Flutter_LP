@@ -17,7 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 ROOT = Path(__file__).resolve().parent.parent
 COPYRIGHT_DIR = ROOT / "docs" / "copyright"
 SOFTWARE_FULL = "领鹏智能机器人上位机软件"
-VERSION = "V1.7.9"
+VERSION = "V1.8.7"
 HEADER_TEXT = f"{SOFTWARE_FULL} {VERSION}"
 
 # 待填写占位符（后续由用户告知后替换或直接在 Word 中填写）

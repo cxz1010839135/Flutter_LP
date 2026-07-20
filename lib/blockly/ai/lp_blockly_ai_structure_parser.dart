@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'lp_blockly_ai_controls_if_plan.dart';
 import 'lp_blockly_ai_logic_plan.dart';
 import 'lp_blockly_ai_motion_plan.dart';
+import 'lp_blockly_ai_protected_blocks.dart';
 import 'lp_blockly_ai_toolbox_registry.dart';
+import 'lp_blockly_xml_bridge.dart';
 
 /// 将 AI 输出的结构化 JSON 计划转换为 Blockly XML（参考 aily-blockly BlockConfig）。
 abstract final class LpBlocklyAiStructureParser {
@@ -90,6 +92,69 @@ abstract final class LpBlocklyAiStructureParser {
     return normalized;
   }
 
+  /// 追加纯新增：错开坐标，并保证 procedures 名称不与画布已有重复。
+  static void prepareAppendPlacement(
+    Map<String, dynamic> plan, {
+    List<LpBlocklyTopBlockInfo> existingTopBlocks = const [],
+  }) {
+    final blocks = plan['blocks'];
+    if (blocks is! List || blocks.isEmpty) return;
+
+    var maxY = 0.0;
+    var maxX = 0.0;
+    final existingNames = <String>{};
+    for (final b in existingTopBlocks) {
+      if (b.y > maxY) maxY = b.y;
+      if (b.x > maxX) maxX = b.x;
+      final text = b.text.trim();
+      if (text.isEmpty) continue;
+      existingNames.add(text);
+      // toString 可能是「至 NAME」等形式，尽量抽出函数名
+      final m = RegExp(r'至\s*(.+)$').firstMatch(text);
+      if (m != null) existingNames.add(m.group(1)!.trim());
+    }
+
+    final baseY = existingTopBlocks.isEmpty ? 80.0 : maxY + 280.0;
+    final baseX =
+        existingTopBlocks.isEmpty ? 80.0 : (maxX > 400 ? 80.0 : maxX + 40.0);
+
+    final nextBlocks = <dynamic>[];
+    for (var i = 0; i < blocks.length; i++) {
+      final item = blocks[i];
+      if (item is! Map) {
+        nextBlocks.add(item);
+        continue;
+      }
+      final map = Map<String, dynamic>.from(
+        item.map((k, v) => MapEntry(k.toString(), v)),
+      );
+      map['x'] = baseX.round();
+      map['y'] = baseY.round() + i * 40;
+
+      if (map['type']?.toString() == 'procedures_defnoreturn') {
+        final fieldsRaw = map['fields'];
+        final fields = fieldsRaw is Map
+            ? Map<String, dynamic>.from(
+                fieldsRaw.map((k, v) => MapEntry(k.toString(), v)),
+              )
+            : <String, dynamic>{};
+        var name = fields['NAME']?.toString().trim() ?? 'AI流程';
+        if (existingNames.contains(name)) {
+          var n = 2;
+          while (existingNames.contains('$name-$n')) {
+            n++;
+          }
+          name = '$name-$n';
+        }
+        fields['NAME'] = name;
+        existingNames.add(name);
+        map['fields'] = fields;
+      }
+      nextBlocks.add(map);
+    }
+    plan['blocks'] = nextBlocks;
+  }
+
   /// 计划中顶层块的 id（用于追加时仅替换上一轮 AI 结果）。
   static List<String> topBlockIdsFromPlan(Map<String, dynamic>? plan) {
     if (plan == null) return const [];
@@ -101,7 +166,7 @@ abstract final class LpBlocklyAiStructureParser {
       final id = item['id']?.toString();
       if (id != null && id.isNotEmpty) ids.add(id);
     }
-    return ids;
+    return LpBlocklyAiProtectedBlocks.filterRemovableIds(ids);
   }
 
   /// 从 XML 提取顶层 block id。
@@ -213,6 +278,9 @@ abstract final class LpBlocklyAiStructureParser {
     final fragmentedError = _rejectFragmentedTopLevel(plan);
     if (fragmentedError != null) return fragmentedError;
 
+    final emptyDoError = _rejectEmptyTopLevelDo0(plan);
+    if (emptyDoError != null) return emptyDoError;
+
     final normalized = normalizePlan(plan);
     final unknown = <String>{};
     final structural = <String>[];
@@ -256,6 +324,27 @@ abstract final class LpBlocklyAiStructureParser {
     }
     if (structural.isNotEmpty) {
       return structural.first;
+    }
+    return null;
+  }
+
+  /// 顶层 controls_if 的执行体 DO0 不能为空。
+  static String? _rejectEmptyTopLevelDo0(Map<String, dynamic> plan) {
+    final blocks = plan['blocks'];
+    if (blocks is! List) return null;
+
+    for (final item in blocks) {
+      if (item is! Map) continue;
+      final block = item.map((k, v) => MapEntry(k.toString(), v));
+      if (block['type']?.toString() != 'controls_if') continue;
+      final statements = block['statements'];
+      if (statements is! Map) {
+        return '顶层 controls_if 缺少 statements.DO0 执行体';
+      }
+      final do0 = statements['DO0'];
+      if (do0 is! Map || !_slotHasContent(do0)) {
+        return '顶层 controls_if 的 DO0 执行体为空，须写入门型/IO/等待等动作';
+      }
     }
     return null;
   }
@@ -494,25 +583,23 @@ abstract final class LpBlocklyAiStructureParser {
       }
     }
 
-    buffer.write('$pad</block>');
-
     final next = block['next'];
     if (next is Map) {
       final nextMap = next.map((k, v) => MapEntry(k.toString(), v));
       final nextBlock = nextMap['block'];
       if (nextBlock is Map) {
-        buffer.writeln();
-        buffer.writeln('$pad<next>');
-        buffer.writeln(
-          _blockChainToXml(
+        buffer.writeln('$pad  <next>');
+        buffer.write(
+          _blockToXml(
             nextBlock.map((k, v) => MapEntry(k.toString(), v)),
             indent: indent + 2,
           ),
         );
-        buffer.write('$pad</next>');
+        buffer.writeln('$pad  </next>');
       }
     }
 
+    buffer.writeln('$pad</block>');
     return buffer.toString();
   }
 
@@ -546,23 +633,7 @@ abstract final class LpBlocklyAiStructureParser {
   }
 
   static String _blockChainToXml(Map<String, dynamic> block, {int indent = 0}) {
-    final buffer = StringBuffer()..writeln(_blockToXml(block, indent: indent));
-    final next = block['next'];
-    if (next is Map) {
-      final nextMap = next.map((k, v) => MapEntry(k.toString(), v));
-      final nextBlock = nextMap['block'];
-      if (nextBlock is Map) {
-        buffer.writeln('${' ' * indent}<next>');
-        buffer.writeln(
-          _blockChainToXml(
-            nextBlock.map((k, v) => MapEntry(k.toString(), v)),
-            indent: indent + 2,
-          ),
-        );
-        buffer.write('${' ' * indent}</next>');
-      }
-    }
-    return buffer.toString();
+    return _blockToXml(block, indent: indent);
   }
 
   static String _slotInner(Map<String, dynamic> slot, int indent) {

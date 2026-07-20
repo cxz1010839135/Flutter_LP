@@ -30,7 +30,12 @@ Future<void> main() async {
     startupStack = st;
   }
   if (Platform.isWindows || Platform.isLinux) {
-    WindowsWebViewPlatform.registerWith();
+    try {
+      WindowsWebViewPlatform.registerWith();
+    } catch (e, st) {
+      startupError ??= e;
+      startupStack ??= st;
+    }
   }
   if (startupError != null) {
     runApp(_LpStartupErrorApp(

@@ -46,8 +46,8 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   static const double _frameHeightRatio = 0.90;
   static const int _rowFlex = 1;
   static const double _pickerWidth = 70;
-  /// 模式四格高度占模式行可用高度的比例。
-  static const double _modeTileHeightRatio = 2 / 3;
+  /// 模式四格高度占模式行比例（略矮，配合更大间距更接近图1）。
+  static const double _modeTileHeightRatio = 0.72;
 
   static const TextStyle _rowLabelStyle = TextStyle(
     fontSize: 16,
@@ -56,18 +56,19 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     height: 1.2,
   );
 
+  /// 速度百分比：对齐图1，再放大一档。
   static const TextStyle _valueStyle = TextStyle(
-    fontSize: 17,
-    fontWeight: FontWeight.w700,
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
     color: LpRobotColors.primary,
-    height: 1.2,
+    height: 1.05,
   );
 
   static const TextStyle _paramValueStyle = TextStyle(
-    fontSize: 22,
-    fontWeight: FontWeight.w700,
+    fontSize: 32,
+    fontWeight: FontWeight.w800,
     color: LpRobotColors.primary,
-    height: 1.15,
+    height: 1.05,
   );
 
   ControlJogMode _jogMode = ControlJogMode.continuous;
@@ -278,96 +279,134 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   }
 
   Widget _buildParamRow(double maxSpeed) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-        const SizedBox(
-          width: _labelWidth,
-          child: Text('最大速度', style: _rowLabelStyle),
+    // 图1：标签小字深色；数值大号橙色，上下结构更紧凑。
+    const captionStyle = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: Color(0xFF4A4A4A),
+      height: 1.15,
+    );
+
+    Widget cell(String caption, String value) {
+      // 标签与数值同列水平居中（图1 / 标注要求）。
+      return Expanded(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(caption, style: captionStyle, textAlign: TextAlign.center),
+            const SizedBox(height: 2),
+            Text(value, style: _paramValueStyle, textAlign: TextAlign.center),
+          ],
         ),
-        Text(
-          maxSpeed.toStringAsFixed(1),
-          style: _paramValueStyle,
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+            child: Row(
+              children: [
+                cell('最大速度', maxSpeed.toStringAsFixed(1)),
+                cell(
+                  '加速度',
+                  ControlJogMotion.defaultAcceleration.toStringAsFixed(1),
+                ),
+              ],
+            ),
+          ),
         ),
-        const Spacer(),
-        const Text('加速度', style: _rowLabelStyle),
-        const SizedBox(width: 8),
-        Text(
-          ControlJogMotion.defaultAcceleration.toStringAsFixed(1),
-          style: _paramValueStyle,
+        // 图1：中间实、两端渐隐的分隔线（非通栏实线）。
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: SizedBox(
+            height: 1.2,
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: const [
+                    Color(0x00C8B8A8),
+                    Color(0xFFD0C0B0),
+                    Color(0xFFD0C0B0),
+                    Color(0x00C8B8A8),
+                  ],
+                  stops: const [0.0, 0.18, 0.82, 1.0],
+                ),
+              ),
+            ),
+          ),
         ),
       ],
-      ),
     );
   }
 
   Widget _buildSpeedRow(int speed) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final trackH = (constraints.maxHeight * 0.78).clamp(36.0, 44.0);
+        // 分段块要够高，避免被行高压缩后几乎看不见。
+        final trackH = (constraints.maxHeight * 0.48).clamp(28.0, 38.0);
         return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const SizedBox(
-          width: _labelWidth,
-          child: Text('速度设定', style: _rowLabelStyle),
-        ),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ControlJogImageButton(
-                assetOff: ControlAssets.subtractUnpressed,
-                assetOn: ControlAssets.subtractPressed,
-                size: _jogBtnSize,
-                onPressStart: () => _onJogPressStart(-1),
-                onPressEnd: () => _onJogPressEnd(-1),
-              ),
-              const SizedBox(width: _jogGap),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: ControlOrangeSpeedBar(
-                        value: speed,
-                        height: trackH + 8,
-                        trackHeight: trackH,
-                        onChanged: RobotTelemetry.instance.setSpeedPercentValue,
-                        onChangeEnd: _applySpeedPercent,
-                      ),
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: _labelWidth,
+              child: Text('速度设定', style: _rowLabelStyle),
+            ),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ControlJogImageButton(
+                    assetOff: ControlAssets.subtractUnpressed,
+                    assetOn: ControlAssets.subtractPressed,
+                    size: _jogBtnSize,
+                    onPressStart: () => _onJogPressStart(-1),
+                    onPressEnd: () => _onJogPressEnd(-1),
+                  ),
+                  const SizedBox(width: _jogGap),
+                  Expanded(
+                    child: ControlOrangeSpeedBar(
+                      value: speed,
+                      height: trackH + 8,
+                      trackHeight: trackH,
+                      onChanged: RobotTelemetry.instance.setSpeedPercentValue,
+                      onChangeEnd: _applySpeedPercent,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '速度 $speed%',
+                  ),
+                  const SizedBox(width: _jogGap),
+                  ControlJogImageButton(
+                    assetOff: ControlAssets.addUnpressed,
+                    assetOn: ControlAssets.addPressed,
+                    size: _jogBtnSize,
+                    onPressStart: () => _onJogPressStart(1),
+                    onPressEnd: () => _onJogPressEnd(1),
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      '$speed%',
+                      textAlign: TextAlign.right,
                       maxLines: 1,
                       softWrap: false,
                       style: _valueStyle,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: _jogGap),
-              ControlJogImageButton(
-                assetOff: ControlAssets.addUnpressed,
-                assetOn: ControlAssets.addPressed,
-                size: _jogBtnSize,
-                onPressStart: () => _onJogPressStart(1),
-                onPressEnd: () => _onJogPressEnd(1),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
         );
       },
     );
   }
 
   Widget _buildModeRow() {
-    const gap = 6.0;
+    // 图1 四格之间有明显间隔，不宜贴太紧。
+    const gap = 14.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app/lp_robot_colors.dart';
 
-/// 模式选择格：Flutter 自绘，对齐 Android 截图（不用 PNG，避免拉伸/叠层）。
+/// 模式选择格：对齐 Android 截图（米色未选 / 橙底选中；距离格数值在上）。
 class ControlModeTile extends StatelessWidget {
   const ControlModeTile({
     super.key,
@@ -20,6 +20,11 @@ class ControlModeTile extends StatelessWidget {
   final TextEditingController? distanceController;
   final double bracketScale;
 
+  /// 对齐图1 暖米色（避免偏灰冷色）。
+  static const Color _idleFill = Color(0xFFF5E8D6);
+  static const Color _idleInk = Color(0xFF000000);
+  static const double _radius = 16;
+
   bool get _isDistance => distanceController != null;
 
   @override
@@ -27,51 +32,32 @@ class ControlModeTile extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight;
-        final labelSize = (h * 0.18).clamp(14.0, 17.0);
-        final valueSize = (h * 0.24).clamp(15.0, 20.0);
-        final continuousSize = (h * 0.22).clamp(15.0, 20.0);
-        final bracketH = (h * 0.16).clamp(10.0, 14.0);
+        final labelSize = (h * 0.15).clamp(12.0, 15.0);
+        final valueSize = (h * 0.30).clamp(17.0, 24.0);
+        final continuousSize = (h * 0.26).clamp(17.0, 24.0);
+        final bracketH = (h * 0.16).clamp(10.0, 15.0);
 
         return SizedBox(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: onTap,
-              child: Ink(
-                decoration: _decoration(),
-                child: _isDistance
-                    ? _distanceBody(
-                        labelSize: labelSize,
-                        valueSize: valueSize,
-                        bracketH: bracketH,
-                      )
-                    : _continuousBody(fontSize: continuousSize),
+          child: GestureDetector(
+            onTap: onTap,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: selected ? LpRobotColors.primary : _idleFill,
+                borderRadius: BorderRadius.circular(_radius),
               ),
+              child: _isDistance
+                  ? _distanceBody(
+                      labelSize: labelSize,
+                      valueSize: valueSize,
+                      bracketH: bracketH,
+                    )
+                  : _continuousBody(fontSize: continuousSize),
             ),
           ),
         );
       },
-    );
-  }
-
-  BoxDecoration _decoration() {
-    if (selected) {
-      return BoxDecoration(
-        color: LpRobotColors.primary,
-        borderRadius: BorderRadius.circular(10),
-      );
-    }
-
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(
-        color: const Color(0xFFFFC995),
-        width: 1.4,
-      ),
     );
   }
 
@@ -82,7 +68,7 @@ class ControlModeTile extends StatelessWidget {
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: FontWeight.w700,
-          color: selected ? Colors.white : LpRobotColors.primary,
+          color: selected ? Colors.white : _idleInk,
           height: 1.15,
         ),
       ),
@@ -94,30 +80,34 @@ class ControlModeTile extends StatelessWidget {
     required double valueSize,
     required double bracketH,
   }) {
-    final accent = selected ? Colors.white : LpRobotColors.primary;
-    const valueColor = LpRobotColors.textDark;
+    // 未选中：纯黑字体（图2标注）；选中：白字。
+    final accent = selected ? Colors.white : _idleInk;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(4, selected ? 8 : 6, 4, selected ? 6 : 4),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 7),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: _distanceField(accent, fontSize: valueSize),
+            ),
+          ),
+          const SizedBox(height: 2),
           Text(
             label,
             maxLines: 1,
+            textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: labelSize,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: accent,
               height: 1.1,
             ),
           ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.center,
-              child: _distanceField(valueColor, fontSize: valueSize),
-            ),
-          ),
+          const SizedBox(height: 3),
           SizedBox(
             height: bracketH,
             width: double.infinity,
@@ -134,6 +124,7 @@ class ControlModeTile extends StatelessWidget {
   }
 
   Widget _distanceField(Color textColor, {required double fontSize}) {
+    // 全局 Theme 的 OutlineInputBorder 会盖过来，必须逐项关掉。
     return TextField(
       controller: distanceController,
       textAlign: TextAlign.center,
@@ -153,9 +144,16 @@ class ControlModeTile extends StatelessWidget {
       cursorColor: textColor,
       decoration: const InputDecoration(
         isDense: true,
+        isCollapsed: true,
         contentPadding: EdgeInsets.zero,
-        border: InputBorder.none,
         filled: false,
+        fillColor: Colors.transparent,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
       ),
       onTap: onTap,
     );

@@ -48,11 +48,11 @@ abstract final class LpBlocklyAiMotionPlan {
       addParam('AvoidPoint', map['point'] ?? map['p'] ?? map['avoidPoint']);
       addParam(
         'HeightAvoid',
-        map['heightAvoid'] ?? map['height'] ?? '25',
+        map['heightAvoid'] ?? map['height'] ?? '10',
       );
       addParam(
         'MaxSpeed',
-        map['maxSpeed'] ?? map['speed'] ?? '1000',
+        map['maxSpeed'] ?? map['speed'] ?? '2500',
       );
       if (map['endSpeed'] != null) {
         addParam('EndSpeed', map['endSpeed']);
@@ -104,8 +104,8 @@ abstract final class LpBlocklyAiMotionPlan {
   static void ensureDoorFreeParams(
     Map<String, dynamic> block, {
     required String point,
-    String heightAvoid = '25',
-    String maxSpeed = '1000',
+    String heightAvoid = '10',
+    String maxSpeed = '2500',
   }) {
     if (block['type']?.toString() != 'motion_moveptp_point') return;
 
@@ -212,16 +212,16 @@ abstract final class LpBlocklyAiMotionPlan {
     final v2 = _readNum(inputs['PARA2']);
     if (v0 == null || v2 == null) return;
 
-    // 典型错误：1, 3000, 3000 → 应为 1, 25, 3000
+    // 典型错误：1, 3000, 3000 → 应为 1, 10, 3000
     if (v1 != null && v1 == v2 && v2 >= 100) {
-      inputs['PARA1'] = _numSlot('25');
+      inputs['PARA1'] = _numSlot('10');
       block['inputs'] = inputs;
       return;
     }
 
-    // 典型错误：1, 3000, 0（速度在中间）→ 1, 25, 3000
+    // 典型错误：1, 3000, 0（速度在中间）→ 1, 10, 3000
     if (v1 != null && v1 >= 100 && (v2 == 0 || v2 <= 100)) {
-      inputs['PARA1'] = _numSlot('25');
+      inputs['PARA1'] = _numSlot('10');
       inputs['PARA2'] = _numSlot(v1.toStringAsFixed(0));
       block['inputs'] = inputs;
     }
@@ -238,22 +238,93 @@ abstract final class LpBlocklyAiMotionPlan {
     return double.tryParse(raw);
   }
 
+  /// 按 id 提取门型块完整 XML（正确处理块内嵌套子 block）。
+  static String? extractMotionBlockXmlById(String xml, String blockId) {
+    final needle = 'id="$blockId"';
+    final start = xml.indexOf(needle);
+    if (start < 0) return null;
+
+    var blockStart = xml.lastIndexOf('<block', start);
+    if (blockStart < 0) return null;
+    final header = xml.substring(blockStart, start);
+    if (!header.contains('type="motion_moveptp_point"')) {
+      final typed = xml.indexOf('<block type="motion_moveptp_point"', start - 120);
+      if (typed < 0 || typed > start) return null;
+      blockStart = typed;
+    }
+
+    var depth = 0;
+    var i = blockStart;
+    while (i < xml.length) {
+      if (depth == 1 && xml.startsWith('<next>', i)) {
+        return xml.substring(blockStart, i).trimRight();
+      }
+      if (xml.startsWith('<block', i)) {
+        depth++;
+        i += 6;
+        continue;
+      }
+      if (xml.startsWith('</block>', i)) {
+        depth--;
+        i += 8;
+        if (depth == 0) return xml.substring(blockStart, i);
+        continue;
+      }
+      i++;
+    }
+    return null;
+  }
+
+  static Iterable<String> motionBlockIdsInXml(String xml) sync* {
+    final re = RegExp(
+      r'<block type="motion_moveptp_point" id="([^"]+)"',
+      caseSensitive: false,
+    );
+    for (final m in re.allMatches(xml)) {
+      final id = m.group(1);
+      if (id != null && id.isNotEmpty) yield id;
+    }
+  }
+
+  static String replaceMotionBlockXmlById(
+    String xml,
+    String blockId,
+    String newBlockXml,
+  ) {
+    final old = extractMotionBlockXmlById(xml, blockId);
+    if (old == null) return xml;
+    return xml.replaceFirst(old, newBlockXml);
+  }
+
+  /// 按文档顺序遍历门型块并替换 XML。
+  static String mapMotionBlocksInXml(
+    String xml,
+    String Function(String blockXml, int index) transform,
+  ) {
+    var result = xml;
+    var index = 0;
+    for (final id in motionBlockIdsInXml(xml)) {
+      final block = extractMotionBlockXmlById(result, id);
+      if (block == null) continue;
+      final next = transform(block, index);
+      index++;
+      result = replaceMotionBlockXmlById(result, id, next);
+    }
+    return result;
+  }
+
   /// 载入画布前修复 XML 中门型块的 OP 标签（兜底）。
   static String repairXml(String xml) {
-    final re = RegExp(
-      r'<block type="motion_moveptp_point"[\s\S]*?</block>',
-    );
-    return xml.replaceAllMapped(re, (m) => _repairMotionBlockXml(m.group(0)!));
+    return mapMotionBlocksInXml(xml, (block, _) => _repairMotionBlockXml(block));
   }
 
   /// 从 XML 读取第一个门型块的 P/避障高度/最大速度。
   static ({String point, String heightAvoid, String maxSpeed})?
       readDoorFreeParamsFromXml(String xml) {
-    final blockRe = RegExp(
-      r'<block type="motion_moveptp_point"[\s\S]*?</block>',
-      caseSensitive: false,
-    );
-    final block = blockRe.firstMatch(xml)?.group(0);
+    final firstId = motionBlockIdsInXml(xml).firstOrNull;
+    final block = firstId == null
+        ? null
+        : extractMotionBlockXmlById(xml, firstId);
     if (block == null) return null;
 
     String? readParaForOp(String opName) {
@@ -274,8 +345,8 @@ abstract final class LpBlocklyAiMotionPlan {
 
     return (
       point: readParaForOp('AvoidPoint') ?? '1',
-      heightAvoid: readParaForOp('HeightAvoid') ?? '25',
-      maxSpeed: readParaForOp('MaxSpeed') ?? '1000',
+      heightAvoid: readParaForOp('HeightAvoid') ?? '10',
+      maxSpeed: readParaForOp('MaxSpeed') ?? '2500',
     );
   }
 
@@ -287,11 +358,7 @@ abstract final class LpBlocklyAiMotionPlan {
     required String maxSpeed,
     String motionMode = 'DoorFree',
   }) {
-    final re = RegExp(
-      r'<block type="motion_moveptp_point"[\s\S]*?</block>',
-    );
-    return xml.replaceAllMapped(re, (m) {
-      final block = m.group(0)!;
+    return mapMotionBlocksInXml(xml, (block, _) {
       final base = block.contains('name="PARA0"')
           ? repairMotionBlockXml(block)
           : buildDoorFreeBlockXml(
@@ -356,7 +423,10 @@ abstract final class LpBlocklyAiMotionPlan {
       caseSensitive: false,
     );
     if (numFieldRe.hasMatch(inner)) {
-      inner = inner.replaceFirst(numFieldRe, '\$1$num\$2');
+      inner = inner.replaceFirstMapped(
+        numFieldRe,
+        (m) => '${m.group(1)}$num${m.group(2)}',
+      );
     } else {
       inner =
           '<shadow type="math_number"><field name="NUM">$num</field></shadow>';

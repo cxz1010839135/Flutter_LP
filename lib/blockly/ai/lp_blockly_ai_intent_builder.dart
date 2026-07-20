@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'lp_blockly_ai_controls_if_plan.dart';
+import 'lp_blockly_ai_flow_vars.dart';
+import 'lp_blockly_ai_io_table.dart';
 import 'lp_blockly_ai_logic_plan.dart';
 import 'lp_blockly_ai_motion_plan.dart';
 import 'lp_blockly_ai_service.dart';
@@ -9,8 +11,8 @@ import 'lp_blockly_ai_service.dart';
 class LpBlocklyAiMotionIntent {
   const LpBlocklyAiMotionIntent({
     this.point = '1',
-    this.heightAvoid = '25',
-    this.maxSpeed = '1000',
+    this.heightAvoid = '10',
+    this.maxSpeed = '2500',
     this.motionMode = 'DoorFree',
   });
 
@@ -71,12 +73,39 @@ class LpBlocklyAiFlowIntent {
   final LpBlocklyAiMotionIntent defaults;
 }
 
+enum _SeqKind { move, waitMotion, openVacuum, closeVacuum, delayMs }
+
+class _SeqAction {
+  const _SeqAction._(this.kind, {this.point, this.vacuumNo, this.delayMs});
+
+  factory _SeqAction.move(String point) =>
+      _SeqAction._(_SeqKind.move, point: point);
+  factory _SeqAction.waitMotion() => const _SeqAction._(_SeqKind.waitMotion);
+  factory _SeqAction.openVacuum(int no) =>
+      _SeqAction._(_SeqKind.openVacuum, vacuumNo: no);
+  factory _SeqAction.closeVacuum(int no) =>
+      _SeqAction._(_SeqKind.closeVacuum, vacuumNo: no);
+  factory _SeqAction.delayMs(int ms) =>
+      _SeqAction._(_SeqKind.delayMs, delayMs: ms);
+
+  final _SeqKind kind;
+  final String? point;
+  final int? vacuumNo;
+  final int? delayMs;
+}
+
 /// 常见「如果 X…且 Y…则门型」模式的确定性构建与计划修正。
 abstract final class LpBlocklyAiIntentBuilder {
   static final _conditionHint = RegExp(
     r'如果|若|当|判断条件|条件是|条件为|条件成立|也就是|when|if\b',
     caseSensitive: false,
   );
+  static final _flowWriteHint = RegExp(
+    r'写.*流程|帮我写|生成.*流程|做一个.*流程',
+    caseSensitive: false,
+  );
+  static final _vacuumHint = RegExp(r'真空', caseSensitive: false);
+  static final _vacuumIndexReg = RegExp(r'真空\s*([0-9０-９]+)');
   static final _doorHint = RegExp(
     r'门型|自由门型|点到点|PTP|走向\s*[Pp]|走到\s*[Pp]|机械手|G51',
     caseSensitive: false,
@@ -96,9 +125,18 @@ abstract final class LpBlocklyAiIntentBuilder {
   static final _speedReg = RegExp(
     r'(?:最大)?速度(?:应该)?(?:为|是)?\s*([0-9０-９]+)',
   );
+  static final _sequenceCueReg = RegExp(
+    r'然后|再去|再到|接着|随后|之后|最后|等待|延时|关真空|关闭真空|开真空|打开真空|完成|停稳',
+    caseSensitive: false,
+  );
 
   /// 是否为「只改门型参数」类追问（速度/避障高度/点位）。
   static bool isMotionParamPatchPrompt(String prompt) {
+    if (_flowWriteHint.hasMatch(prompt) ||
+        _vacuumHint.hasMatch(prompt) ||
+        _parsePointsList(prompt).length >= 2) {
+      return false;
+    }
     return _heightReg.hasMatch(prompt) ||
         _speedReg.hasMatch(prompt) ||
         _pointReg.hasMatch(prompt);
@@ -106,6 +144,9 @@ abstract final class LpBlocklyAiIntentBuilder {
 
   /// 多轮追问中可确定性补丁的细节（门型参数 / 寄存器条件等）。
   static bool isFollowUpDetailPatchPrompt(String prompt) {
+    if (_flowWriteHint.hasMatch(prompt) || _vacuumHint.hasMatch(prompt)) {
+      return false;
+    }
     if (isMotionParamPatchPrompt(prompt)) return true;
     final text = prompt.replaceAll('＝', '=');
     final conditions = _parseConditions(text);
@@ -274,9 +315,41 @@ abstract final class LpBlocklyAiIntentBuilder {
     return '<xml xmlns="http://www.w3.org/1999/xhtml">\n$inner\n</xml>';
   }
 
+  /// 是否为「真空 + 点位」类取放流程描述。
+  static bool isVacuumFlowPrompt(String prompt) {
+    if (!_vacuumHint.hasMatch(prompt)) return false;
+    if (!_doorHint.hasMatch(prompt) && !_flowWriteHint.hasMatch(prompt)) {
+      return false;
+    }
+    final actions = _parseSequenceActions(prompt);
+    if (actions.any((a) => a.kind == _SeqKind.move) &&
+        actions.any(
+          (a) =>
+              a.kind == _SeqKind.openVacuum ||
+              a.kind == _SeqKind.closeVacuum ||
+              a.kind == _SeqKind.delayMs,
+        )) {
+      return true;
+    }
+    return _parsePointsList(prompt).length >= 2;
+  }
+
   /// 高置信度时直接生成标准 JSON 计划（跳过 LLM）。
-  static Map<String, dynamic>? tryBuildCanonicalPlan(String prompt) {
-    final flow = parseFlowIntent(prompt);
+  static Map<String, dynamic>? tryBuildCanonicalPlan(
+    String prompt, {
+    LpBlocklyFlowVarsState? flowVars,
+    LpBlocklyIoTableResult? ioTable,
+  }) {
+    final vacuumPlan = tryBuildVacuumPickPlacePlan(
+      prompt,
+      flowVars: flowVars,
+      ioTable: ioTable,
+    );
+    if (vacuumPlan != null) return vacuumPlan;
+
+    if (isVacuumFlowPrompt(prompt)) return null;
+
+    final flow = parseFlowIntent(prompt, flowVars: flowVars);
     if (flow == null) return null;
     if (flow.points.length >= 2) {
       return _buildMultiPointPlan(flow);
@@ -333,10 +406,10 @@ abstract final class LpBlocklyAiIntentBuilder {
               : (_readPointFromBlock(block) ?? patchMotion.point);
           final height = _heightReg.hasMatch(text)
               ? patchMotion.heightAvoid
-              : (_readMotionOpValue(block, 'HeightAvoid') ?? '25');
+              : (_readMotionOpValue(block, 'HeightAvoid') ?? '10');
           final speed = _speedReg.hasMatch(text)
               ? patchMotion.maxSpeed
-              : (_readMotionOpValue(block, 'MaxSpeed') ?? '1000');
+              : (_readMotionOpValue(block, 'MaxSpeed') ?? '2500');
           LpBlocklyAiMotionPlan.ensureDoorFreeParams(
             block,
             point: point,
@@ -410,7 +483,7 @@ abstract final class LpBlocklyAiIntentBuilder {
       LpBlocklyAiConditionIntent c,
       String suffix,
     ) {
-      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W'}.contains(c.register);
+      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W', 'U'}.contains(c.register);
       final aBlock = isDataReg
           ? {
               'type': 'thread_get_data',
@@ -511,9 +584,15 @@ abstract final class LpBlocklyAiIntentBuilder {
   }
 
   /// 解析流程：寄存器条件 + P1 P2 P3… 多点。
-  static LpBlocklyAiFlowIntent? parseFlowIntent(String prompt) {
+  static LpBlocklyAiFlowIntent? parseFlowIntent(
+    String prompt, {
+    LpBlocklyFlowVarsState? flowVars,
+  }) {
     final text = prompt.replaceAll('＝', '=');
-    final conditions = _parseConditions(text);
+    var conditions = _parseConditions(text);
+    if (conditions.isEmpty && flowVars != null) {
+      conditions = _conditionsFromFlowVars(flowVars);
+    }
     if (conditions.isEmpty) return null;
 
     final points = _parsePointsList(text);
@@ -522,7 +601,9 @@ abstract final class LpBlocklyAiIntentBuilder {
         : '1');
 
     final looksConditional =
-        _conditionHint.hasMatch(text) || conditions.length >= 1;
+        _conditionHint.hasMatch(text) ||
+        conditions.isNotEmpty ||
+        (_flowWriteHint.hasMatch(text) && flowVars != null && flowVars.confirmedCount > 0);
     if (!looksConditional) return null;
 
     final hasMotion = points.length >= 2 ||
@@ -536,6 +617,804 @@ abstract final class LpBlocklyAiIntentBuilder {
       points: points,
       defaults: defaults,
     );
+  }
+
+  static final _startSignalReg = RegExp(
+    r'(?:自动启动|启动信号|启动)[^MmXYxy0-9]{0,12}([Mm])\s*([0-9０-９]+)|'
+    r'等待\s*([Mm])\s*([0-9０-９]+)',
+    caseSensitive: false,
+  );
+  static final _startGatesAllReg = RegExp(
+    r'所有流程才能启动|启动信号.{0,12}等于\s*1|启动信号.{0,8}=\s*1',
+    caseSensitive: false,
+  );
+
+  /// 从话术提取有序动作（走点 / 等完成 / 开真空 / 关真空 / 延时）。
+  static List<_SeqAction> _parseSequenceActions(String prompt) {
+    final text = prompt.replaceAll('＝', '=');
+    final found = <({int start, _SeqAction action})>[];
+
+    void add(int start, _SeqAction action) {
+      if (found.any((e) => (start - e.start).abs() < 2)) return;
+      found.add((start: start, action: action));
+    }
+
+    for (final m in RegExp(
+      r'(?:机械手)?(?:先|再|随后|接着|然后)?(?:去到|去|到|走到|走向|运动到)\s*[Pp]\s*([0-9０-９]+)',
+      caseSensitive: false,
+    ).allMatches(text)) {
+      add(m.start, _SeqAction.move(_normalizeDigits(m.group(1)!)));
+    }
+
+    for (final m in RegExp(
+      r'等待\s*(\d+(?:\.\d+)?)\s*(?:秒|s)|延时\s*(\d+(?:\.\d+)?)\s*(?:秒|s|毫秒|ms)?',
+      caseSensitive: false,
+    ).allMatches(text)) {
+      final raw = m.group(1) ?? m.group(2) ?? '1';
+      final n = double.tryParse(_normalizeDigits(raw)) ?? 1;
+      final isMs =
+          RegExp(r'毫秒|ms', caseSensitive: false).hasMatch(m.group(0)!);
+      final ms = isMs ? n.round() : (n * 1000).round();
+      add(m.start, _SeqAction.delayMs(ms <= 0 ? 1000 : ms));
+    }
+
+    for (final m in RegExp(
+      r'等待(?:机械手)?(?:动作)?(?:完成|停稳)|待(?:机械手)?(?:动作)?完成|(?:机械手)?动作完成|机械手完成|完全停止|停稳',
+      caseSensitive: false,
+    ).allMatches(text)) {
+      final window = text.substring(
+        m.start,
+        (m.end + 8).clamp(0, text.length),
+      );
+      if (RegExp(r'等待\s*\d').hasMatch(window)) continue;
+      if (RegExp(r'等待\s*[Mm]\s*\d').hasMatch(window)) continue;
+      add(m.start, _SeqAction.waitMotion());
+    }
+
+    for (final m in RegExp(
+      r'(?:打开|开)\s*真空\s*([0-9０-９]+)?',
+      caseSensitive: false,
+    ).allMatches(text)) {
+      final no = int.tryParse(_normalizeDigits(m.group(1) ?? '1')) ?? 1;
+      add(m.start, _SeqAction.openVacuum(no));
+    }
+
+    for (final m in RegExp(
+      r'(?:关闭|关)\s*真空\s*([0-9０-９]+)?',
+      caseSensitive: false,
+    ).allMatches(text)) {
+      final no = int.tryParse(_normalizeDigits(m.group(1) ?? '1')) ?? 1;
+      add(m.start, _SeqAction.closeVacuum(no));
+    }
+
+    found.sort((a, b) => a.start.compareTo(b.start));
+    return found.map((e) => e.action).toList();
+  }
+
+  /// 真空取放：优先按话术动作顺序生成；否则回退点位模板。
+  static Map<String, dynamic>? tryBuildVacuumPickPlacePlan(
+    String prompt, {
+    LpBlocklyFlowVarsState? flowVars,
+    LpBlocklyIoTableResult? ioTable,
+  }) {
+    if (!_vacuumHint.hasMatch(prompt)) return null;
+    if (!_doorHint.hasMatch(prompt) && !_flowWriteHint.hasMatch(prompt)) {
+      return null;
+    }
+
+    final points = _parsePointsList(prompt);
+    final actions = _parseSequenceActions(prompt);
+    final hasOrdered = actions.where((a) => a.kind == _SeqKind.move).isNotEmpty &&
+        actions.any(
+          (a) =>
+              a.kind == _SeqKind.openVacuum ||
+              a.kind == _SeqKind.closeVacuum ||
+              a.kind == _SeqKind.waitMotion ||
+              a.kind == _SeqKind.delayMs,
+        );
+
+    if (hasOrdered) {
+      return _buildSequenceVacuumPlan(
+        prompt,
+        actions: actions,
+        flowVars: flowVars,
+        ioTable: ioTable,
+      );
+    }
+    if (points.length < 2) return null;
+    // 仅当话术非常短、确实像“P1开真空再去P2”这类隐式两点式时，
+    // 才允许回退到旧模板；只要出现顺序提示词，就交给顺序解析/LLM，
+    // 避免用户觉得始终在套固定模板。
+    final shortImplicitTwoPoint = points.length == 2 &&
+        !_sequenceCueReg.hasMatch(prompt) &&
+        actions.every(
+          (a) => a.kind == _SeqKind.move || a.kind == _SeqKind.openVacuum,
+        );
+    if (!shortImplicitTwoPoint) return null;
+    return _buildLegacyPointVacuumPlan(
+      prompt,
+      points: points,
+      flowVars: flowVars,
+      ioTable: ioTable,
+    );
+  }
+
+  static Map<String, dynamic>? _buildSequenceVacuumPlan(
+    String prompt, {
+    required List<_SeqAction> actions,
+    LpBlocklyFlowVarsState? flowVars,
+    LpBlocklyIoTableResult? ioTable,
+  }) {
+    final startFromPrompt = _startSignalFromPrompt(prompt);
+    final hasFlow = flowVars != null && flowVars.confirmedCount > 0;
+    if (!hasFlow && startFromPrompt == null) return null;
+
+    final stepParsed =
+        _stepRegisterFromFlowVars(flowVars) ?? const ('S', '10');
+    final flowEnable = _enableRegisterFromFlowVars(flowVars);
+    final entryEnable = startFromPrompt ?? flowEnable ?? const ('M', '16');
+    // 「所有流程才能启动」或明确启动信号：跑步步也用同一启动条件
+    final runEnable = (_startGatesAllReg.hasMatch(prompt) || startFromPrompt != null)
+        ? entryEnable
+        : (flowEnable ?? entryEnable);
+
+    final motionDoneSym = _symbolFromFlowVars(
+          flowVars,
+          kindHints: const ['register', 'rule'],
+          meaningHints: const ['运动完成', '停稳', '停止', '到位'],
+        ) ??
+        'D9000';
+    final motionDone = _parseSymbol(motionDoneSym) ?? ('D', '9000');
+    final defaults = _parseMotionParams(
+      prompt,
+      fallbackPoint: actions
+              .where((a) => a.kind == _SeqKind.move)
+              .map((a) => a.point!)
+              .firstOrNull ??
+          '1',
+    );
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final pointTag = actions
+        .where((a) => a.kind == _SeqKind.move)
+        .map((a) => 'P${a.point}')
+        .join('');
+    final procName = pointTag.isEmpty
+        ? 'S${stepParsed.$2}自动流程-取放盘'
+        : 'S${stepParsed.$2}自动流程-$pointTag';
+    // 延时用固定定时器号，避免与用户表冲突时可再约定
+    const timerIdx = '0';
+
+    Map<String, dynamic> stepIf({
+      required String stepNo,
+      required Map<String, dynamic> doBody,
+      required String suffix,
+      List<LpBlocklyAiConditionIntent> extra = const [],
+    }) {
+      final conds = <LpBlocklyAiConditionIntent>[
+        LpBlocklyAiConditionIntent(
+          register: stepParsed.$1,
+          index: stepParsed.$2,
+          compareValue: stepNo,
+        ),
+        LpBlocklyAiConditionIntent(
+          register: runEnable.$1,
+          index: runEnable.$2,
+          compareValue: '1',
+        ),
+        ...extra,
+      ];
+      return {
+        'type': 'controls_if',
+        'id': 'ai_if_$suffix',
+        'inputs': {
+          'IF0': {
+            'block': _buildLogicRootFromConditions(conds, ts + suffix.hashCode),
+          },
+        },
+        'statements': {'DO0': {'block': doBody}},
+      };
+    }
+
+    String vacuumM(int vacuumNo) {
+      final vacuumIo = ioTable?.resolveVacuumIo(vacuumNo);
+      return '${vacuumIo?.outputM ?? (2000 + vacuumNo)}';
+    }
+
+    String? vacuumLabel(int vacuumNo) {
+      final vacuumIo = ioTable?.resolveVacuumIo(vacuumNo);
+      if (vacuumIo?.outputLabel.isNotEmpty == true) {
+        return vacuumIo!.outputLabel;
+      }
+      return null;
+    }
+
+    final stepBlocks = <Map<String, dynamic>>[];
+    var stepNo = 10;
+
+    void emitActionStep({
+      required List<Map<String, dynamic>> doParts,
+      required String nextStep,
+      String? suffix,
+    }) {
+      final thisStep = '$stepNo';
+      doParts.add(
+        _assignRegister(
+          stepParsed.$1,
+          stepParsed.$2,
+          nextStep,
+          'ai_s_${thisStep}_$ts',
+        ),
+      );
+      stepBlocks.add(
+        stepIf(
+          stepNo: thisStep,
+          suffix: suffix ?? 's$thisStep',
+          doBody: _chainBlocks(doParts),
+        ),
+      );
+      stepNo += 1;
+    }
+
+    void emitWaitMotionThen(String nextStep) {
+      final thisStep = '$stepNo';
+      stepBlocks.add(
+        stepIf(
+          stepNo: thisStep,
+          suffix: 's$thisStep',
+          extra: [
+            LpBlocklyAiConditionIntent(
+              register: motionDone.$1,
+              index: motionDone.$2,
+              compareValue: '0',
+            ),
+          ],
+          doBody: _assignRegister(
+            stepParsed.$1,
+            stepParsed.$2,
+            nextStep,
+            'ai_s_wait_mot_${thisStep}_$ts',
+          ),
+        ),
+      );
+      stepNo += 1;
+    }
+
+    /// 定时器步：条件成立时每扫掠写 T=ms 持续计时；中断则重计；↑T 到位后再跳步。
+    /// 对应 Blockly：如果 S==N：T0=1000；如果 ↑T0：S=下步（ACTIVE_Data=TUP，不用 T==1）。
+    void emitDelayStep(int ms, String nextStep) {
+      final thisStep = '$stepNo';
+      final tAssign = _assignRegister(
+        'T',
+        timerIdx,
+        '$ms',
+        'ai_t_run_${thisStep}_$ts',
+      );
+      final nestedIf = <String, dynamic>{
+        'type': 'controls_if',
+        'id': 'ai_if_t_done_${thisStep}_$ts',
+        'inputs': {
+          'IF0': {
+            'block': {
+              'type': 'thread_get_bitT',
+              'id': 'ai_tbit_${thisStep}_$ts',
+              'fields': {'ACTIVE_Data': 'TUP'},
+              'inputs': {
+                'Idx': {
+                  'shadow': {
+                    'type': 'math_number',
+                    'fields': {'NUM': timerIdx},
+                  },
+                },
+              },
+            },
+          },
+        },
+        'statements': {
+          'DO0': {
+            'block': _assignRegister(
+              stepParsed.$1,
+              stepParsed.$2,
+              nextStep,
+              'ai_s_after_t_${thisStep}_$ts',
+            ),
+          },
+        },
+      };
+      stepBlocks.add(
+        stepIf(
+          stepNo: thisStep,
+          suffix: 's$thisStep',
+          doBody: _chainBlocks([
+            _noteBlock(
+              '延时 ${ms}ms：条件成立时持续 T$timerIdx=$ms，中断重计，↑T 到期跳步',
+              'ai_note_delay_${thisStep}_$ts',
+            ),
+            tAssign,
+            nestedIf,
+          ]),
+        ),
+      );
+      stepNo += 1;
+    }
+
+    for (var i = 0; i < actions.length; i++) {
+      final action = actions[i];
+      final isLast = i == actions.length - 1;
+
+      switch (action.kind) {
+        case _SeqKind.move:
+          emitActionStep(
+            doParts: [
+              _motionBlock(
+                defaults,
+                action.point!,
+                'ai_door_p${action.point}_$ts',
+              ),
+            ],
+            nextStep: isLast ? '0' : '${stepNo + 1}',
+          );
+        case _SeqKind.waitMotion:
+          emitWaitMotionThen(isLast ? '0' : '${stepNo + 1}');
+        case _SeqKind.openVacuum:
+          final m = vacuumM(action.vacuumNo!);
+          final label = vacuumLabel(action.vacuumNo!);
+          emitActionStep(
+            doParts: [
+              _noteBlock(
+                '开真空${action.vacuumNo} → M$m${label != null ? '（$label）' : ''}',
+                'ai_note_vac_on_${action.vacuumNo}_$ts',
+              ),
+              _assignRegister(
+                'M',
+                m,
+                '1',
+                'ai_m_vac_on_${action.vacuumNo}_$ts',
+              ),
+            ],
+            nextStep: isLast ? '0' : '${stepNo + 1}',
+          );
+        case _SeqKind.closeVacuum:
+          final m = vacuumM(action.vacuumNo!);
+          final label = vacuumLabel(action.vacuumNo!);
+          emitActionStep(
+            doParts: [
+              _noteBlock(
+                '关真空${action.vacuumNo} → M$m${label != null ? '（$label）' : ''}',
+                'ai_note_vac_off_${action.vacuumNo}_$ts',
+              ),
+              _assignRegister(
+                'M',
+                m,
+                '0',
+                'ai_m_vac_off_${action.vacuumNo}_$ts',
+              ),
+            ],
+            nextStep: isLast ? '0' : '${stepNo + 1}',
+          );
+        case _SeqKind.delayMs:
+          emitDelayStep(
+            action.delayMs ?? 1000,
+            isLast ? '0' : '${stepNo + 1}',
+          );
+      }
+    }
+
+    final entry = <String, dynamic>{
+      'type': 'controls_if',
+      'id': 'ai_if_entry',
+      'inputs': {
+        'IF0': {
+          'block': _buildLogicRootFromConditions(
+            [
+              LpBlocklyAiConditionIntent(
+                register: stepParsed.$1,
+                index: stepParsed.$2,
+                compareValue: '1',
+              ),
+              LpBlocklyAiConditionIntent(
+                register: entryEnable.$1,
+                index: entryEnable.$2,
+                compareValue: '1',
+              ),
+            ],
+            ts + 1,
+          ),
+        },
+      },
+      'statements': {
+        'DO0': {
+          'block': _assignRegister(
+            stepParsed.$1,
+            stepParsed.$2,
+            '10',
+            'ai_s10_$ts',
+          ),
+        },
+      },
+    };
+
+    final head = entry;
+    var cur = entry;
+    for (final b in stepBlocks) {
+      cur['next'] = {'block': b};
+      cur = b;
+    }
+
+    return {
+      'blocks': [
+        {
+          'type': 'procedures_defnoreturn',
+          'id': 'ai_proc_$ts',
+          'x': 80,
+          'y': 80,
+          'fields': {'NAME': procName},
+          'statements': {
+            'STACK': {'block': head},
+          },
+        },
+      ],
+    };
+  }
+
+  /// 旧版：仅「P1…真空…P2」两点式回退模板。
+  static Map<String, dynamic>? _buildLegacyPointVacuumPlan(
+    String prompt, {
+    required List<String> points,
+    LpBlocklyFlowVarsState? flowVars,
+    LpBlocklyIoTableResult? ioTable,
+  }) {
+    final startFromPrompt = _startSignalFromPrompt(prompt);
+    final hasFlow = flowVars != null && flowVars.confirmedCount > 0;
+    if (!hasFlow && startFromPrompt == null) return null;
+
+    final stepParsed =
+        _stepRegisterFromFlowVars(flowVars) ?? const ('S', '10');
+    final runEnable = _enableRegisterFromFlowVars(flowVars) ??
+        startFromPrompt ??
+        const ('M', '16');
+    final entryEnable = startFromPrompt ?? runEnable;
+
+    final vacuumNo =
+        int.tryParse(_firstMatch(_vacuumIndexReg, prompt) ?? '1') ?? 1;
+    final vacuumIo = ioTable?.resolveVacuumIo(vacuumNo);
+    final outputM = vacuumIo?.outputM ?? (2000 + vacuumNo);
+    final feedbackX = vacuumIo?.feedbackXIndex ?? vacuumNo;
+
+    final motionDoneSym = _symbolFromFlowVars(
+          flowVars,
+          kindHints: const ['register', 'rule'],
+          meaningHints: const ['运动完成', '停稳', '停止', '到位'],
+        ) ??
+        'D9000';
+    final motionDone = _parseSymbol(motionDoneSym) ?? ('D', '9000');
+
+    final defaults = _parseMotionParams(prompt, fallbackPoint: points.first);
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final procName = 'S${stepParsed.$2}自动流程-取放盘流程';
+
+    Map<String, dynamic> stepIf({
+      required String stepNo,
+      required Map<String, dynamic> doBody,
+      required String suffix,
+      required (String, String) enable,
+      List<LpBlocklyAiConditionIntent> extra = const [],
+    }) {
+      final conds = <LpBlocklyAiConditionIntent>[
+        LpBlocklyAiConditionIntent(
+          register: stepParsed.$1,
+          index: stepParsed.$2,
+          compareValue: stepNo,
+        ),
+        LpBlocklyAiConditionIntent(
+          register: enable.$1,
+          index: enable.$2,
+          compareValue: '1',
+        ),
+        ...extra,
+      ];
+      return {
+        'type': 'controls_if',
+        'id': 'ai_if_$suffix',
+        'inputs': {
+          'IF0': {
+            'block': _buildLogicRootFromConditions(conds, ts + suffix.hashCode),
+          },
+        },
+        'statements': {'DO0': {'block': doBody}},
+      };
+    }
+
+    final vacNote = _noteBlock(
+      '开真空$vacuumNo → M$outputM'
+      '${vacuumIo?.outputLabel.isNotEmpty == true ? '（${vacuumIo!.outputLabel}）' : ''}',
+      'ai_note_vac_$ts',
+    );
+
+    final stepBlocks = <Map<String, dynamic>>[];
+    var stepNo = 10;
+
+    for (var i = 0; i < points.length; i++) {
+      final point = points[i];
+      final isFirst = i == 0;
+      final isLast = i == points.length - 1;
+      final thisStep = '$stepNo';
+
+      final doParts = <Map<String, dynamic>>[
+        _motionBlock(defaults, point, 'ai_door_p${point}_$ts'),
+      ];
+      if (isFirst) {
+        doParts.add(vacNote);
+        doParts.add(
+          _assignRegister('M', '$outputM', '1', 'ai_m_vac_on_$ts'),
+        );
+      }
+
+      if (isLast) {
+        doParts.add(
+          _assignRegister(
+            stepParsed.$1,
+            stepParsed.$2,
+            '0',
+            'ai_s_end_$ts',
+          ),
+        );
+        stepBlocks.add(
+          stepIf(
+            stepNo: thisStep,
+            suffix: 's$thisStep',
+            enable: runEnable,
+            doBody: _chainBlocks(doParts),
+          ),
+        );
+        break;
+      }
+
+      final waitStep = '${stepNo + 1}';
+      final afterWait = '${stepNo + 2}';
+      doParts.add(
+        _assignRegister(
+          stepParsed.$1,
+          stepParsed.$2,
+          waitStep,
+          'ai_s_to_wait_${thisStep}_$ts',
+        ),
+      );
+      stepBlocks.add(
+        stepIf(
+          stepNo: thisStep,
+          suffix: 's$thisStep',
+          enable: runEnable,
+          doBody: _chainBlocks(doParts),
+        ),
+      );
+
+      final waitExtra = <LpBlocklyAiConditionIntent>[
+        if (isFirst)
+          LpBlocklyAiConditionIntent(
+            register: 'X',
+            index: '$feedbackX',
+            compareValue: '1',
+          ),
+        LpBlocklyAiConditionIntent(
+          register: motionDone.$1,
+          index: motionDone.$2,
+          compareValue: '0',
+        ),
+      ];
+      stepBlocks.add(
+        stepIf(
+          stepNo: waitStep,
+          suffix: 's$waitStep',
+          enable: runEnable,
+          extra: waitExtra,
+          doBody: _assignRegister(
+            stepParsed.$1,
+            stepParsed.$2,
+            afterWait,
+            'ai_s_after_wait_${waitStep}_$ts',
+          ),
+        ),
+      );
+      stepNo += 2;
+    }
+
+    final entry = stepIf(
+      stepNo: '1',
+      suffix: 'entry',
+      enable: entryEnable,
+      doBody: _assignRegister(
+        stepParsed.$1,
+        stepParsed.$2,
+        '10',
+        'ai_s10_$ts',
+      ),
+    );
+
+    final head = entry;
+    var cur = entry;
+    for (final b in stepBlocks) {
+      cur['next'] = {'block': b};
+      cur = b;
+    }
+
+    return {
+      'blocks': [
+        {
+          'type': 'procedures_defnoreturn',
+          'id': 'ai_proc_$ts',
+          'x': 80,
+          'y': 80,
+          'fields': {'NAME': procName},
+          'statements': {
+            'STACK': {'block': head},
+          },
+        },
+      ],
+    };
+  }
+
+  static (String, String)? _startSignalFromPrompt(String prompt) {
+    final m = _startSignalReg.firstMatch(prompt);
+    if (m == null) return null;
+    final reg = (m.group(1) ?? m.group(3))?.toUpperCase();
+    final idxRaw = m.group(2) ?? m.group(4);
+    if (reg == null || idxRaw == null) return null;
+    return (reg, _normalizeDigits(idxRaw));
+  }
+
+  static Map<String, dynamic> _motionBlock(
+    LpBlocklyAiMotionIntent defaults,
+    String point,
+    String id,
+  ) {
+    return {
+      'type': 'motion_moveptp_point',
+      'id': id,
+      'fields': {'MotionMode': defaults.motionMode},
+      'motionParams': {
+        'point': point,
+        'heightAvoid': defaults.heightAvoid,
+        'maxSpeed': defaults.maxSpeed,
+      },
+    };
+  }
+
+  static Map<String, dynamic> _assignRegister(
+    String reg,
+    String idx,
+    String value,
+    String id,
+  ) {
+    return {
+      'type': 'math_variable',
+      'id': id,
+      'fields': {'Variable_Name': reg},
+      'inputs': {
+        'Variable_Idx': {
+          'shadow': {'type': 'math_number', 'fields': {'NUM': idx}},
+        },
+        'Variable_Value': {
+          'shadow': {'type': 'math_number', 'fields': {'NUM': value}},
+        },
+      },
+    };
+  }
+
+  static Map<String, dynamic> _noteBlock(String text, String id) {
+    return {
+      'type': 'math_variableNotes',
+      'id': id,
+      'fields': {'Variable_Notes': text},
+    };
+  }
+
+  static Map<String, dynamic> _chainBlocks(List<Map<String, dynamic>> blocks) {
+    if (blocks.isEmpty) return {'type': 'math_variableNotes', 'id': 'ai_empty'};
+    final head = Map<String, dynamic>.from(blocks.first);
+    var cur = head;
+    for (var i = 1; i < blocks.length; i++) {
+      cur['next'] = {'block': blocks[i]};
+      cur = blocks[i];
+    }
+    return head;
+  }
+
+  static (String, String)? _stepRegisterFromFlowVars(LpBlocklyFlowVarsState? fv) {
+    if (fv == null || fv.confirmedCount == 0) return null;
+    for (final v in fv.confirmedVars) {
+      if (v.kind == 'step' ||
+          RegExp(r'^S\d+', caseSensitive: false).hasMatch(v.symbol)) {
+        final parsed = _parseSymbol(v.symbol);
+        if (parsed != null) return parsed;
+      }
+    }
+    final hinted = _symbolFromFlowVars(
+      fv,
+      kindHints: const ['step', 'register'],
+      meaningHints: const ['步序', '流程步', '自动流程', '步进'],
+    );
+    if (hinted != null) {
+      final parsed = _parseSymbol(hinted);
+      if (parsed != null) return parsed;
+    }
+    for (final v in fv.confirmedVars) {
+      final parsed = _parseSymbol(v.symbol);
+      if (parsed != null && parsed.$1 == 'S') return parsed;
+    }
+    return null;
+  }
+
+  static (String, String)? _enableRegisterFromFlowVars(LpBlocklyFlowVarsState? fv) {
+    if (fv == null || fv.confirmedCount == 0) return null;
+    final hinted = _symbolFromFlowVars(
+      fv,
+      kindHints: const ['register'],
+      meaningHints: const ['自动使能', '自动模式', '使能', '自动'],
+    );
+    if (hinted != null) {
+      final parsed = _parseSymbol(hinted);
+      if (parsed != null) return parsed;
+    }
+    for (final v in fv.confirmedVars) {
+      final parsed = _parseSymbol(v.symbol);
+      if (parsed != null && parsed.$1 == 'M') return parsed;
+    }
+    return null;
+  }
+
+  static List<LpBlocklyAiConditionIntent> _conditionsFromFlowVars(
+    LpBlocklyFlowVarsState flowVars,
+  ) {
+    final conditions = <LpBlocklyAiConditionIntent>[];
+
+    final stepSym = _symbolFromFlowVars(
+      flowVars,
+      kindHints: const ['step', 'register'],
+      meaningHints: const ['步序', '流程步', '自动流程'],
+    );
+    final enableSym = _symbolFromFlowVars(
+      flowVars,
+      kindHints: const ['register'],
+      meaningHints: const ['自动使能', '自动模式', '使能'],
+    );
+
+    void addSym(String? sym, String value) {
+      if (sym == null) return;
+      final parsed = _parseSymbol(sym);
+      if (parsed == null) return;
+      conditions.add(
+        LpBlocklyAiConditionIntent(
+          register: parsed.$1,
+          index: parsed.$2,
+          compareValue: value,
+        ),
+      );
+    }
+
+    addSym(stepSym, '10');
+    addSym(enableSym, '1');
+    return conditions;
+  }
+
+  static (String, String)? _parseSymbol(String symbol) {
+    final m = RegExp(r'^([A-Za-z])\s*([0-9]+)$').firstMatch(symbol.trim());
+    if (m == null) return null;
+    return (m.group(1)!.toUpperCase(), m.group(2)!);
+  }
+
+  static String? _symbolFromFlowVars(
+    LpBlocklyFlowVarsState? flowVars, {
+    List<String> kindHints = const [],
+    List<String> meaningHints = const [],
+  }) {
+    if (flowVars == null) return null;
+    for (final v in flowVars.confirmedVars) {
+      if (kindHints.isNotEmpty && !kindHints.contains(v.kind)) continue;
+      if (meaningHints.any((h) => v.meaning.contains(h))) {
+        return v.symbol.replaceAll(' ', '');
+      }
+    }
+    return null;
   }
 
   static List<LpBlocklyAiConditionIntent> _parseConditions(String text) {
@@ -601,8 +1480,8 @@ abstract final class LpBlocklyAiIntentBuilder {
     final point = _firstMatch(_pointReg, text, group: 1) ?? fallbackPoint;
     final height = _firstMatch(_heightReg, text, group: 1) ??
         _firstMatch(_heightReg, text, group: 2) ??
-        '25';
-    final speed = _firstMatch(_speedReg, text) ?? '1000';
+        '10';
+    final speed = _firstMatch(_speedReg, text) ?? '2500';
     return LpBlocklyAiMotionIntent(
       point: point,
       heightAvoid: height,
@@ -683,7 +1562,7 @@ abstract final class LpBlocklyAiIntentBuilder {
       LpBlocklyAiConditionIntent c,
       String suffix,
     ) {
-      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W'}.contains(c.register);
+      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W', 'U'}.contains(c.register);
       final aBlock = isDataReg
           ? {
               'type': 'thread_get_data',
@@ -785,7 +1664,7 @@ abstract final class LpBlocklyAiIntentBuilder {
       LpBlocklyAiConditionIntent c,
       String suffix,
     ) {
-      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W'}.contains(c.register);
+      final isDataReg = {'D', 'V', 'I', 'J', 'K', 'W', 'U'}.contains(c.register);
       final aBlock = isDataReg
           ? {
               'type': 'thread_get_data',
@@ -937,8 +1816,36 @@ abstract final class LpBlocklyAiIntentBuilder {
   /// 结合用户描述修复 XML（门型参数 + OP + controls_if）。
   static String repairXmlFromPrompt(String xml, String prompt) {
     var result = xml;
-    if (isMotionParamPatchPrompt(prompt)) {
-      final text = prompt.replaceAll('＝', '=');
+    final text = prompt.replaceAll('＝', '=');
+    final points = _parsePointsList(prompt);
+    final motionDefaults = _parseMotionParams(
+      text,
+      fallbackPoint: points.isNotEmpty ? points.first : '1',
+    );
+
+    // 多点流程（如 P1→P2）：按出现顺序为每个门型块分配 P 点，避免误用首个 P。
+    if (points.length >= 2) {
+      result = LpBlocklyAiMotionPlan.mapMotionBlocksInXml(result, (block, motionIndex) {
+        final point = motionIndex < points.length
+            ? points[motionIndex]
+            : motionDefaults.point;
+        final base = block.contains('name="PARA0"')
+            ? LpBlocklyAiMotionPlan.repairMotionBlockXml(block)
+            : LpBlocklyAiMotionPlan.buildDoorFreeBlockXml(
+                block,
+                point: point,
+                heightAvoid: motionDefaults.heightAvoid,
+                maxSpeed: motionDefaults.maxSpeed,
+                motionMode: motionDefaults.motionMode,
+              );
+        return LpBlocklyAiMotionPlan.applyMotionParaValuesInBlockXml(
+          base,
+          point: point,
+          heightAvoid: motionDefaults.heightAvoid,
+          maxSpeed: motionDefaults.maxSpeed,
+        );
+      });
+    } else if (isMotionParamPatchPrompt(prompt)) {
       final existing = LpBlocklyAiMotionPlan.readDoorFreeParamsFromXml(result);
       if (existing != null) {
         final parsed = _parseMotionParams(text, fallbackPoint: existing.point);
@@ -951,35 +1858,30 @@ abstract final class LpBlocklyAiIntentBuilder {
               _speedReg.hasMatch(text) ? parsed.maxSpeed : existing.maxSpeed,
         );
       }
-    }
-    final flow = parseFlowIntent(prompt);
-    if (flow != null) {
-      var motionIndex = 0;
-      final re = RegExp(
-        r'<block type="motion_moveptp_point"[\s\S]*?</block>',
-      );
-      result = result.replaceAllMapped(re, (m) {
-        final block = m.group(0)!;
-        final point = motionIndex < flow.points.length
-            ? flow.points[motionIndex]
-            : flow.defaults.point;
-        motionIndex += 1;
-        if (!block.contains('name="PARA0"')) {
-          return LpBlocklyAiMotionPlan.buildDoorFreeBlockXml(
-            block,
+    } else {
+      final flow = parseFlowIntent(prompt);
+      if (flow != null) {
+        result = LpBlocklyAiMotionPlan.mapMotionBlocksInXml(result, (block, motionIndex) {
+          final point = motionIndex < flow.points.length
+              ? flow.points[motionIndex]
+              : flow.defaults.point;
+          if (!block.contains('name="PARA0"')) {
+            return LpBlocklyAiMotionPlan.buildDoorFreeBlockXml(
+              block,
+              point: point,
+              heightAvoid: flow.defaults.heightAvoid,
+              maxSpeed: flow.defaults.maxSpeed,
+              motionMode: flow.defaults.motionMode,
+            );
+          }
+          return LpBlocklyAiMotionPlan.applyMotionParaValuesInBlockXml(
+            LpBlocklyAiMotionPlan.repairMotionBlockXml(block),
             point: point,
             heightAvoid: flow.defaults.heightAvoid,
             maxSpeed: flow.defaults.maxSpeed,
-            motionMode: flow.defaults.motionMode,
           );
-        }
-        return LpBlocklyAiMotionPlan.applyMotionParaValuesInBlockXml(
-          LpBlocklyAiMotionPlan.repairMotionBlockXml(block),
-          point: point,
-          heightAvoid: flow.defaults.heightAvoid,
-          maxSpeed: flow.defaults.maxSpeed,
-        );
-      });
+        });
+      }
     }
     result = LpBlocklyAiMotionPlan.repairXml(result);
     return LpBlocklyAiControlsIfPlan.repairXml(result);

@@ -10,6 +10,7 @@ import 'lp_blockly_bridge.dart';
 import 'lp_blockly_config.dart';
 import 'lp_blockly_load_tracker.dart';
 import 'lp_blockly_progress_overlay.dart';
+import 'lp_blockly_webview2_check.dart';
 import 'lp_blockly_webview_visibility.dart';
 import '../app/lp_robot_colors.dart';
 import '../core/robot_path_layout.dart';
@@ -52,7 +53,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   LpBlocklyAiController? _aiController;
   bool _aiPanelOpen = false;
   Timer? _refreshFallbackTimer;
+  Timer? _webViewBootTimer;
   bool _webViewTeardownDone = false;
+  bool _webViewBootstrapping = false;
+  int _initEpoch = 0;
 
   @override
   void initState() {
@@ -80,6 +84,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
 
   /// Windows 原生 WebView 浮在 Flutter 上层，进度遮罩期间必须 hide。
   Future<void> _syncWebViewVisibility() async {
+    if (_webViewBootstrapping) return;
     final controller = _controller;
     if (controller == null) return;
     final visible = !_showProgressOverlay;
@@ -239,7 +244,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   }
 
   Future<void> _initBlockly() async {
+    final epoch = ++_initEpoch;
     setState(() {
+      _error = null;
       _loading = true;
       _taskActive = false;
       _progressPercent = 0;
@@ -274,14 +281,30 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         onRequestCompleted: _loadTracker!.handleRequest,
       );
       await server.start();
+      _server = server;
 
       final entryUrl = server.entryUrl;
       if (entryUrl == null) {
         throw StateError('Blockly 本地服务启动失败');
       }
+      await _probeBlocklyEntry(entryUrl);
+
+      if (Platform.isWindows) {
+        final hasWebView2 = await LpBlocklyWebView2Check.isRuntimeLikelyInstalled();
+        if (!hasWebView2) {
+          throw StateError(LpBlocklyWebView2Check.installHint);
+        }
+      }
 
       _setProgress(18, '正在初始化 WebView…');
-      final controller = createBlocklyWebViewController();
+      _webViewBootstrapping = true;
+      _webViewBootTimer?.cancel();
+      _webViewBootTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!mounted || !_loading || _progressPercent != 18) return;
+        _setProgress(18, '正在等待 WebView2 环境（首次可能需 1 分钟）…');
+      });
+
+      final controller = await createBlocklyWebViewController();
       final bridge = LpBlocklyBridge(
         controller: controller,
         showMessage: _showMessage,
@@ -302,8 +325,6 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _server = server;
         _controller = controller;
       });
-      _ensureAiController();
-      _scheduleWebViewVisibilitySync();
       await _awaitWebViewPlatformReady();
 
       await _configureAndLoadWebView(
@@ -311,9 +332,18 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         bridge: bridge,
         entryUrl: entryUrl,
       );
+      if (!mounted || epoch != _initEpoch) return;
+      _webViewBootstrapping = false;
+      _webViewBootTimer?.cancel();
+      _ensureAiController();
       _scheduleWebViewVisibilitySync();
     } catch (e, st) {
       debugPrint('Blockly init failed: $e\n$st');
+      if (epoch != _initEpoch) return;
+      _webViewBootstrapping = false;
+      _webViewBootTimer?.cancel();
+      await _server?.stop();
+      _server = null;
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -321,6 +351,44 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         _taskActive = false;
       });
     }
+  }
+
+  /// WebView 导航前先确认本地服务和入口文件确实可访问。
+  ///
+  /// 新电脑首次解压资源较慢，短暂重试可避免服务刚启动就导航导致白屏。
+  Future<void> _probeBlocklyEntry(String entryUrl) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= 4; attempt++) {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 4);
+      try {
+        final request = await client.getUrl(Uri.parse(entryUrl));
+        request.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
+        final response = await request.close().timeout(
+              const Duration(seconds: 8),
+            );
+        final body = await utf8.decoder.bind(response).join();
+        if (response.statusCode == HttpStatus.ok &&
+            body.toLowerCase().contains('<html')) {
+          return;
+        }
+        lastError = StateError(
+          'HTTP ${response.statusCode}，入口内容异常（${body.length} 字节）',
+        );
+      } catch (e) {
+        lastError = e;
+      } finally {
+        client.close(force: true);
+      }
+      if (attempt < 4) {
+        _setProgress(16, '正在等待 Blockly 本地服务（$attempt/4）…');
+        await Future<void>.delayed(Duration(milliseconds: attempt * 350));
+      }
+    }
+    throw StateError(
+      'Blockly 本地入口无法访问：$entryUrl\n'
+      '${lastError ?? '未知错误'}',
+    );
   }
 
   String _buildPathHint() {
@@ -334,8 +402,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
   Future<void> _awaitWebViewPlatformReady() async {
     await WidgetsBinding.instance.endOfFrame;
     if (Platform.isWindows || Platform.isLinux) {
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      await WidgetsBinding.instance.endOfFrame;
+      for (final delayMs in [120, 180, 250, 350]) {
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
+        await WidgetsBinding.instance.endOfFrame;
+      }
     } else if (Platform.isAndroid) {
       await Future<void>.delayed(const Duration(milliseconds: 120));
       await WidgetsBinding.instance.endOfFrame;
@@ -347,15 +417,15 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     required LpBlocklyBridge bridge,
     required String entryUrl,
   }) async {
-    const stepTimeout = Duration(seconds: 45);
+    const stepTimeout = Duration(seconds: 90);
+    final navigationOutcome = Completer<String?>();
 
     Future<void> guard(Future<void> future, String step) {
       return future.timeout(
         stepTimeout,
         onTimeout: () {
           throw TimeoutException(
-            '$step 超时。请确认本机已安装 Microsoft WebView2 运行时，'
-            '或稍后点击重试。',
+            '$step 超时。\n${LpBlocklyWebView2Check.installHint}',
           );
         },
       );
@@ -383,9 +453,17 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         NavigationDelegate(
           onWebResourceError: (error) {
             debugPrint('Blockly WebView error: ${error.description}');
+            if (error.isForMainFrame == true &&
+                !navigationOutcome.isCompleted) {
+              navigationOutcome.complete(
+                'WebView 导航失败（${error.errorCode}）：${error.description}',
+              );
+            }
           },
           onPageFinished: (_) {
-            _loadTracker?.markJsLoadComplete();
+            if (!navigationOutcome.isCompleted) {
+              navigationOutcome.complete(null);
+            }
             final c = controller;
             Future<void>.delayed(const Duration(milliseconds: 300), () {
               notifyBlocklyWebViewResized(c);
@@ -401,6 +479,54 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     await guard(
       controller.loadRequest(Uri.parse(entryUrl)),
       '加载 Blockly 页面',
+    );
+
+    final navigationError = await navigationOutcome.future.timeout(
+      const Duration(seconds: 45),
+      onTimeout: () => 'WebView 导航 45 秒无响应',
+    );
+    if (navigationError != null) {
+      throw StateError(
+        '$navigationError\n地址：$entryUrl\n'
+        '${LpBlocklyWebView2Check.installHint}',
+      );
+    }
+
+    _setProgress(88, '正在等待 Blockly 工作区就绪…');
+    Object? lastJsError;
+    for (var attempt = 0; attempt < 90; attempt++) {
+      try {
+        final result = await controller.runJavaScriptReturningResult('''
+(function () {
+  var workspace = null;
+  try {
+    if (window.Blockly && typeof Blockly.getMainWorkspace === 'function') {
+      workspace = Blockly.getMainWorkspace();
+    }
+  } catch (_) {}
+  return document.readyState === 'complete' &&
+         !!window.Blockly &&
+         !!window.Code &&
+         !!workspace
+    ? 'LP_BLOCKLY_READY'
+    : 'LP_BLOCKLY_WAIT';
+})()
+''').timeout(const Duration(seconds: 5));
+        if (result.toString().contains('LP_BLOCKLY_READY')) {
+          _loadTracker?.markJsLoadComplete();
+          _loadTracker?.complete();
+          return;
+        }
+      } catch (e) {
+        lastJsError = e;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    throw StateError(
+      'Blockly 页面已打开，但脚本或工作区在 45 秒内未就绪。\n'
+      '请检查资源包是否完整，或安装/修复 WebView2 Runtime。'
+      '${lastJsError == null ? '' : '\n最后错误：$lastJsError'}',
     );
   }
 
@@ -475,6 +601,32 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     await _controller!.runJavaScript(
       "if(window.Code&&typeof Code.NewDoc==='function'){Code.NewDoc();}",
     );
+  }
+
+  Future<void> _retryBlockly() async {
+    ++_initEpoch;
+    _refreshFallbackTimer?.cancel();
+    _webViewBootTimer?.cancel();
+    final oldController = _controller;
+    if (mounted) {
+      setState(() {
+        _error = null;
+        _controller = null;
+        _loading = true;
+        _progressPercent = 0;
+        _progressMessage = '正在重新初始化…';
+      });
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    await teardownBlocklyWebView(oldController);
+    await _server?.stop();
+    _server = null;
+    _loadTracker?.dispose();
+    _loadTracker = null;
+    _aiController?.dispose();
+    _aiController = null;
+    _webViewTeardownDone = false;
+    if (mounted) await _initBlockly();
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -557,7 +709,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
 
   @override
   void dispose() {
+    ++_initEpoch;
     _refreshFallbackTimer?.cancel();
+    _webViewBootTimer?.cancel();
     _aiController?.dispose();
     _loadTracker?.dispose();
     if (!_webViewTeardownDone) {
@@ -624,15 +778,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     if (_error != null) {
       return _ErrorPanel(
         message: _error!,
-        onRetry: () {
-          setState(() {
-            _error = null;
-            _controller = null;
-          });
-          _server?.stop();
-          _server = null;
-          _initBlockly();
-        },
+        onRetry: _retryBlockly,
+        onInstallWebView2: Platform.isWindows
+            ? LpBlocklyWebView2Check.openInstallPage
+            : null,
       );
     }
 
@@ -705,19 +854,22 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
 }
 
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel({required this.message, required this.onRetry});
+  const _ErrorPanel({
+    required this.message,
+    required this.onRetry,
+    this.onInstallWebView2,
+  });
 
   final String message;
-  final VoidCallback onRetry;
+  final Future<void> Function() onRetry;
+  final Future<void> Function()? onInstallWebView2;
 
   String get _troubleshootingHint {
     final lower = message.toLowerCase();
     if (message.contains('WebView') ||
         message.contains('超时') ||
         lower.contains('timeout')) {
-      return 'Windows 请安装 Microsoft WebView2 运行时（Evergreen）：\n'
-          'https://developer.microsoft.com/microsoft-edge/webview2/\n\n'
-          '安装后重启应用再试。';
+      return LpBlocklyWebView2Check.installHint;
     }
     if (Platform.isAndroid) {
       if (lower.contains('cleartext') ||
@@ -766,10 +918,23 @@ class _ErrorPanel extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('重试'),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              if (onInstallWebView2 != null)
+                OutlinedButton.icon(
+                  onPressed: onInstallWebView2,
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('下载 WebView2'),
+                ),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('重新检测并重试'),
+              ),
+            ],
           ),
         ],
       ),

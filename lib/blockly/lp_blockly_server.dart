@@ -216,8 +216,8 @@ class LpBlocklyServer {
 }
 
 Future<bool> _isBlocklyRoot(String root) async {
-  final marker = File(p.join(root, 'blockly_uncompressed.js'));
-  return marker.exists();
+  final visualProgramRoot = p.dirname(root);
+  return LpBlocklyAssetBootstrap.isRuntimeComplete(visualProgramRoot);
 }
 
 /// 查找 dll 包根目录（开发态、exe 同级目录等）

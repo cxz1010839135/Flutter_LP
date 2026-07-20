@@ -22,6 +22,15 @@ class LpBlocklyAssetBootstrap {
   LpBlocklyAssetBootstrap._();
 
   static const String _legacyZipAsset = 'assets/blockly/visualprogram.zip';
+  static const List<String> _criticalRuntimeFiles = [
+    'blockly/blockly_uncompressed.js',
+    'blockly/demos/code/index.html',
+    'blockly/core/blockly.js',
+    'blockly/blocks/customconfig.js',
+    'blockly/demos/code/flutter_bound.js',
+    'blockly/demos/code/code.js',
+    'closure-library/closure/goog/base.js',
+  ];
 
   static Future<void> ensureInstalled({
     BlocklyBootstrapProgress? onProgress,
@@ -32,7 +41,7 @@ class LpBlocklyAssetBootstrap {
     if (plainRoot != null) return;
 
     final targetRoot = await RobotPaths.blocklyRuntimeRoot();
-    if (await _markerExists(targetRoot)) return;
+    if (await isRuntimeComplete(targetRoot)) return;
 
     onProgress?.call(8, '正在准备 Blockly 资源…');
 
@@ -43,9 +52,12 @@ class LpBlocklyAssetBootstrap {
     }
 
     final targetDir = Directory(targetRoot);
-    if (!await targetDir.exists()) {
-      await targetDir.create(recursive: true);
+    if (await targetDir.exists()) {
+      // 上次解压中断时不能沿用残缺缓存，否则入口能打开但 Blockly 会白屏。
+      onProgress?.call(9, '检测到 Blockly 资源不完整，正在重新安装…');
+      await targetDir.delete(recursive: true);
     }
+    await targetDir.create(recursive: true);
 
     final total = archive.where((e) => e.isFile).length;
     var done = 0;
@@ -65,17 +77,20 @@ class LpBlocklyAssetBootstrap {
       }
     }
 
-    if (!await _markerExists(targetRoot)) {
+    if (!await isRuntimeComplete(targetRoot)) {
       throw StateError(
-        'Blockly 解压后仍缺少入口文件，请重新打包 ${LpBlocklyPack.fileName}。',
+        'Blockly 解压后关键文件仍不完整，请重新打包 ${LpBlocklyPack.fileName}。',
       );
     }
   }
 
-  static Future<bool> _markerExists(String root) async {
-    return File(
-      p.join(root, 'blockly', 'blockly_uncompressed.js'),
-    ).exists();
+  /// 校验入口、核心脚本及 Closure 运行库，避免把半解压目录当作可用资源。
+  static Future<bool> isRuntimeComplete(String root) async {
+    for (final relative in _criticalRuntimeFiles) {
+      final file = File(p.joinAll([root, ...relative.split('/')]));
+      if (!await file.exists() || await file.length() == 0) return false;
+    }
+    return true;
   }
 
   /// 开发态明文目录（`dll/visualprogram`）。
@@ -111,7 +126,7 @@ class LpBlocklyAssetBootstrap {
     }
 
     for (final root in candidates) {
-      if (await _markerExists(root)) return root;
+      if (await isRuntimeComplete(root)) return root;
     }
     return null;
   }

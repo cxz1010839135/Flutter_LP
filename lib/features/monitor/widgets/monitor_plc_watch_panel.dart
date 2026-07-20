@@ -10,7 +10,7 @@ import '../monitor_special_register_dialog.dart';
 import '../monitor_plc_watch_storage.dart';
 import '../monitor_watch_status.dart';
 
-/// 寄存器监视（D/M/S/X/Y 分 tab，最多 30 项）。
+/// 寄存器监视（D/M/S/X/Y 分 tab，上限可配置，默认 30 项）。
 class MonitorPlcWatchPanel extends StatefulWidget {
   const MonitorPlcWatchPanel({super.key});
 
@@ -33,6 +33,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
   List<MonitorPlcWatchEntry> _entries = [];
   bool _autoRefresh = true;
   int _intervalMs = 500;
+  int _maxEntries = MonitorPlcWatchStorage.defaultMaxEntries;
   bool _polling = false;
   Timer? _timer;
   late final TabController _tabController;
@@ -65,6 +66,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
       _entries = List.from(config.entries);
       _autoRefresh = config.autoRefresh;
       _intervalMs = config.intervalMs;
+      _maxEntries = config.maxEntries;
     });
     _syncWatchStatus();
     _syncPolling();
@@ -80,6 +82,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
         entries: _entries,
         autoRefresh: _autoRefresh,
         intervalMs: _intervalMs,
+        maxEntries: _maxEntries,
       ),
     );
   }
@@ -147,13 +150,63 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
     return _entries.any((e) => e.kind == kind && e.address == address);
   }
 
+  Future<void> _editMaxEntries() async {
+    final controller = TextEditingController(text: '$_maxEntries');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('监视数量上限'),
+        content: SizedBox(
+          width: 280,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: '最多监视条数',
+              helperText:
+                  '范围 ${MonitorPlcWatchStorage.minMaxEntries}–${MonitorPlcWatchStorage.absoluteMaxEntries}',
+              border: const OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) {
+      controller.dispose();
+      return;
+    }
+    final next = MonitorPlcWatchStorage.clampMaxEntries(
+      int.tryParse(controller.text.trim()),
+    );
+    controller.dispose();
+    setState(() {
+      _maxEntries = next;
+      if (_entries.length > next) {
+        _entries = _entries.take(next).toList();
+      }
+    });
+    _syncWatchStatus();
+    await _persist();
+    _syncPolling();
+  }
+
   Future<void> _addEntry(PlcRegisterKind kind) async {
-    if (_entries.length >= MonitorPlcWatchStorage.maxEntries) {
+    if (_entries.length >= _maxEntries) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '已达总数上限 ${MonitorPlcWatchStorage.maxEntries} 条',
-          ),
+          content: Text('已达总数上限 $_maxEntries 条'),
         ),
       );
       return;
@@ -161,6 +214,8 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
 
     final labelController = TextEditingController();
     final addrController = TextEditingController(text: '0');
+    final countController = TextEditingController(text: '1');
+    final remaining = _maxEntries - _entries.length;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -176,16 +231,27 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(
-                  labelText: '${kind.label} 地址',
+                  labelText: '${kind.label} 起始地址',
                   border: const OutlineInputBorder(),
                 ),
                 autofocus: true,
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: countController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: '连续数量',
+                  helperText: '从起始地址起连续添加，默认 1；还可添加 $remaining 条',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: labelController,
                 decoration: const InputDecoration(
-                  labelText: '别名（可选）',
+                  labelText: '别名（可选，仅首条）',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -208,30 +274,120 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
     if (ok != true || !mounted) {
       labelController.dispose();
       addrController.dispose();
+      countController.dispose();
       return;
     }
 
-    final addr = int.tryParse(addrController.text.trim()) ?? 0;
+    final startAddr = int.tryParse(addrController.text.trim()) ?? 0;
+    var count = int.tryParse(countController.text.trim()) ?? 1;
+    if (count < 1) count = 1;
     final label = labelController.text.trim();
     labelController.dispose();
     addrController.dispose();
+    countController.dispose();
 
-    if (_hasEntry(kind, addr)) {
+    final slotsLeft = _maxEntries - _entries.length;
+    if (count > slotsLeft) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${kind.label}$addr 已在列表中')),
+        SnackBar(
+          content: Text('最多还能添加 $slotsLeft 条，已按 $slotsLeft 条处理'),
+        ),
+      );
+      count = slotsLeft;
+    }
+
+    final added = <MonitorPlcWatchEntry>[];
+    var skipped = 0;
+    for (var i = 0; i < count; i++) {
+      final addr = startAddr + i;
+      if (_hasEntry(kind, addr)) {
+        skipped++;
+        continue;
+      }
+      added.add(
+        MonitorPlcWatchEntry(
+          kind: kind,
+          address: addr,
+          label: i == 0 ? label : '',
+        ),
+      );
+    }
+
+    if (added.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            skipped > 0
+                ? '${kind.label}$startAddr 起连续 $count 个地址均已存在'
+                : '没有可添加的地址',
+          ),
+        ),
       );
       return;
     }
 
     setState(() {
-      _entries = [
-        ..._entries,
-        MonitorPlcWatchEntry(kind: kind, address: addr, label: label),
-      ];
+      _entries = [..._entries, ...added];
     });
     _syncWatchStatus();
     await _persist();
     _syncPolling();
+
+    if (!mounted) return;
+    final msg = StringBuffer('已添加 ${added.length} 条');
+    if (skipped > 0) {
+      msg.write('，跳过 $skipped 条重复');
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg.toString())),
+    );
+  }
+
+  Future<void> _editEntryLabel(MonitorPlcWatchEntry entry) async {
+    final controller = TextEditingController(text: entry.label);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('修改别名 · ${entry.displayAddress}'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '别名',
+            hintText: '留空则显示地址',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) {
+      controller.dispose();
+      return;
+    }
+    final label = controller.text.trim();
+    controller.dispose();
+
+    setState(() {
+      _entries = _entries
+          .map(
+            (e) => e.kind == entry.kind && e.address == entry.address
+                ? e.copyWith(label: label)
+                : e,
+          )
+          .toList();
+    });
+    _syncWatchStatus();
+    await _persist();
   }
 
   void _removeEntry(MonitorPlcWatchEntry entry) {
@@ -250,7 +406,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
   @override
   Widget build(BuildContext context) {
     final total = _entries.length;
-    final maxed = total >= MonitorPlcWatchStorage.maxEntries;
+    final maxed = total >= _maxEntries;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -265,10 +421,12 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
         children: [
           _Toolbar(
             total: total,
+            maxEntries: _maxEntries,
             polling: _polling,
             autoRefresh: _autoRefresh,
             intervalMs: _intervalMs,
             intervalOptions: _intervalOptions,
+            onEditMaxEntries: _editMaxEntries,
             onRefresh: _entries.isEmpty ? null : _pollAll,
             onAutoRefreshChanged: (v) {
               setState(() => _autoRefresh = v);
@@ -321,6 +479,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
                     maxed: maxed,
                     onAdd: () => _addEntry(kind),
                     onRemove: _removeEntry,
+                    onEditLabel: _editEntryLabel,
                   ),
               ],
             ),
@@ -334,20 +493,24 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.total,
+    required this.maxEntries,
     required this.polling,
     required this.autoRefresh,
     required this.intervalMs,
     required this.intervalOptions,
+    required this.onEditMaxEntries,
     required this.onRefresh,
     required this.onAutoRefreshChanged,
     required this.onIntervalChanged,
   });
 
   final int total;
+  final int maxEntries;
   final bool polling;
   final bool autoRefresh;
   final int intervalMs;
   final List<int> intervalOptions;
+  final VoidCallback onEditMaxEntries;
   final VoidCallback? onRefresh;
   final ValueChanged<bool> onAutoRefreshChanged;
   final ValueChanged<int> onIntervalChanged;
@@ -366,12 +529,19 @@ class _Toolbar extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  '寄存器监视 $total/${MonitorPlcWatchStorage.maxEntries}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: LpRobotColors.textDark,
+                child: InkWell(
+                  onTap: onEditMaxEntries,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      '寄存器监视 $total/$maxEntries',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: LpRobotColors.textDark,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -482,6 +652,7 @@ class _KindWatchPage extends StatelessWidget {
     required this.maxed,
     required this.onAdd,
     required this.onRemove,
+    required this.onEditLabel,
   });
 
   final PlcRegisterKind kind;
@@ -490,6 +661,7 @@ class _KindWatchPage extends StatelessWidget {
   final bool maxed;
   final VoidCallback onAdd;
   final void Function(MonitorPlcWatchEntry entry) onRemove;
+  final void Function(MonitorPlcWatchEntry entry) onEditLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -529,6 +701,7 @@ class _KindWatchPage extends StatelessWidget {
                     return _WatchRow(
                       entry: e,
                       onRemove: () => onRemove(e),
+                      onEditLabel: () => onEditLabel(e),
                     );
                   },
                 ),
@@ -559,10 +732,12 @@ class _WatchRow extends StatelessWidget {
   const _WatchRow({
     required this.entry,
     required this.onRemove,
+    required this.onEditLabel,
   });
 
   final MonitorPlcWatchEntry entry;
   final VoidCallback onRemove;
+  final VoidCallback onEditLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -589,27 +764,31 @@ class _WatchRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: LpRobotColors.textDark,
+              child: GestureDetector(
+                onDoubleTap: onEditLabel,
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: LpRobotColors.textDark,
+                      ),
                     ),
-                  ),
-                  Text(
-                    entry.displayAddress,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: LpRobotColors.label,
+                    Text(
+                      entry.displayAddress,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: LpRobotColors.label,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Text(

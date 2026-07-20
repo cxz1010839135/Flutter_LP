@@ -4,9 +4,17 @@
 import 'dart:io';
 
 const softwareName = '领鹏智能机器人上位机软件';
-const version = '1.7.9';
+const version = '1.8.7';
 const pages = 30;
 const linesPerPage = 50;
+
+/// 未纳入本版著作权登记范围的源码路径（相对 lib/）。
+bool _isExcluded(String absPath) {
+  final n = absPath.replaceAll('\\', '/').toLowerCase();
+  // 智能对话辅助生成可视化程序等扩展模块
+  if (n.contains('/blockly/ai/')) return true;
+  return false;
+}
 
 Future<void> main() async {
   final root = Directory.current;
@@ -20,6 +28,7 @@ Future<void> main() async {
       .listSync(recursive: true)
       .whereType<File>()
       .where((f) => f.path.endsWith('.dart'))
+      .where((f) => !_isExcluded(f.absolute.path))
       .toList()
     ..sort((a, b) => a.path.compareTo(b.path));
 

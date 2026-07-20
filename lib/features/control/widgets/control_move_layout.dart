@@ -34,13 +34,13 @@ abstract final class ControlMoveLayout {
   static const double rowControlHeightRatio = 0.68;
 
   /// 速度行：滑条右侧百分比区宽度。
-  static const double speedPercentWidth = 52;
+  static const double speedPercentWidth = 76;
 
-  static const double labelFontSize = 16;
-  static const double fieldFontSize = 16;
-  static const double confirmFontSize = 22;
+  static const double labelFontSize = 18;
+  static const double fieldFontSize = 18;
+  static const double confirmFontSize = 24;
 
-  /// 输入框内数值字号，约为框高的 48%。
+  /// 输入框内数值字号，约为框高的 52%。
   static double fieldValueFontSize(double fieldHeight) =>
-      (fieldHeight * 0.48).clamp(22.0, 30.0);
+      (fieldHeight * 0.52).clamp(24.0, 32.0);
 }

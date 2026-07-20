@@ -79,4 +79,7 @@ class RobotPathLayout {
 
   /// 运行时解压目录（相对可写数据根）
   static const String blocklyCacheDir = 'cache/visualprogram';
+
+  /// WebView2 用户数据目录（相对可写数据根，避免 Program Files 只读）
+  static const String webView2UserDataDir = 'WebView2';
 }

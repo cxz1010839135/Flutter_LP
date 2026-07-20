@@ -36,4 +36,22 @@
     <Compile Include="wix\Package.wxs" />
   </ItemGroup>
 
+  <!--
+    Cultures=zh-CN 会把 MSI 输出到 zh-CN 子目录。
+    同步到 Release 根目录，确保外部打包脚本不会读取历史遗留 MSI。
+  -->
+  <Target Name="MirrorLocalizedMsiToReleaseRoot" AfterTargets="Build">
+    <PropertyGroup>
+      <LocalizedMsiPath>$(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\zh-CN\LPRobot.msi</LocalizedMsiPath>
+      <RootMsiPath>$(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\LPRobot.msi</RootMsiPath>
+    </PropertyGroup>
+    <Error
+      Condition="!Exists('$(LocalizedMsiPath)')"
+      Text="Localized MSI not found: $(LocalizedMsiPath)" />
+    <Copy
+      SourceFiles="$(LocalizedMsiPath)"
+      DestinationFiles="$(RootMsiPath)"
+      SkipUnchangedFiles="false" />
+  </Target>
+
 </Project>

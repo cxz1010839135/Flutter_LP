@@ -45,6 +45,10 @@ if %ERR% neq 0 (
 )
 
 echo [OK] Output folder: %PROJECT_ROOT%\dist\
+echo Recommended for new PCs (includes WebView2):
+dir /b "%PROJECT_ROOT%\dist\*-Setup.exe" 2>nul
+echo.
+echo Standalone MSI:
 dir /b "%PROJECT_ROOT%\dist\*.msi" 2>nul
 echo.
 pause

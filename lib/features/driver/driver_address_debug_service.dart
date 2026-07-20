@@ -1,4 +1,5 @@
 import '../../network/http_manager.dart';
+import 'driver_params_model.dart';
 
 /// 地址/总线/SDO 调试（对齐 Android [DriverDebugActivity]）。
 class DriverAddressDebugService {
@@ -7,7 +8,7 @@ class DriverAddressDebugService {
     required int addr,
   }) async {
     final res = await HttpManager.instance.driverGetParam(axis: axis, addr: addr);
-    return _extractScalar(res);
+    return _extractScalarAsInt16(res);
   }
 
   Future<void> writeDriverParam({
@@ -69,6 +70,14 @@ class DriverAddressDebugService {
       data: data,
     );
     res.ensureOk();
+  }
+
+  /// 控制参数读回值按 int16 显示（如 65336 → -200）。
+  String _extractScalarAsInt16(RobotApiResponse res) {
+    final raw = _extractScalar(res);
+    final n = int.tryParse(raw.trim());
+    if (n == null) return raw;
+    return '${DriverParamsModel.toInt16(n)}';
   }
 
   /// 解析读回标量（兼容 Android 旧版 substring 与标准 JSON）。

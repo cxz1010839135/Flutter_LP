@@ -1,6 +1,7 @@
 import 'lp_blockly_ai_config.dart';
 import 'lp_blockly_ai_intent_builder.dart';
 import 'lp_blockly_ai_mode.dart';
+import 'lp_blockly_ai_protected_blocks.dart';
 import 'lp_blockly_ai_service.dart';
 import 'lp_blockly_xml_bridge.dart';
 
@@ -16,8 +17,8 @@ enum LpBlocklyAiAppendIntent {
 /// 追加模式智能策略：有上下文时支持「修改」而非重复叠加。
 abstract final class LpBlocklyAiAppendStrategy {
   static final _pureAddHint = RegExp(
-    r'另外|再写|新增|再加|额外|另加|同时加|不要删|保留原|别动|叠加|'
-    r'在.*基础上加|额外增加',
+    r'另外|再写|再帮我写|再帮我做|又写|又做|新增|再加|额外|另加|同时加|不要删|保留原|别动|叠加|'
+    r'在.*基础上加|额外增加|另一个流程|再做一个|再来一个|第二个流程|继续写',
     caseSensitive: false,
   );
 
@@ -45,12 +46,7 @@ abstract final class LpBlocklyAiAppendStrategy {
     if (LpBlocklyAiIntentBuilder.isFollowUpDetailPatchPrompt(userPrompt)) {
       return LpBlocklyAiAppendIntent.modifyPrevious;
     }
-    // 多轮对话：默认修正上一轮，避免重复叠加（除非用户明确「另外/再写」）。
-    final hasAssistantTurn =
-        conversationHistory.any((t) => t.role == 'assistant');
-    if (hasAssistantTurn) {
-      return LpBlocklyAiAppendIntent.modifyPrevious;
-    }
+    // 追加模式默认纯新增；仅用户明确说「修改/补全」等才走修正上一轮。
     return LpBlocklyAiAppendIntent.addNew;
   }
 
@@ -74,20 +70,26 @@ abstract final class LpBlocklyAiAppendStrategy {
     if (!shouldReplacePrevious(config: config, intent: intent)) {
       return const [];
     }
+    List<String> finalize(Iterable<String> ids) =>
+        LpBlocklyAiProtectedBlocks.filterRemovableIds(ids);
     if (lastAiTopBlockIds.isNotEmpty) {
       if (workspaceTopBlocks.isEmpty) {
-        return List<String>.from(lastAiTopBlockIds);
+        return finalize(lastAiTopBlockIds);
       }
       final existing = workspaceTopBlocks.map((b) => b.id).toSet();
       final matched =
           lastAiTopBlockIds.where(existing.contains).toList(growable: false);
-      if (matched.isNotEmpty) return matched;
-      return fallbackIdsFromTopBlocks(workspaceTopBlocks, intent: intent);
+      if (matched.isNotEmpty) return finalize(matched);
+      return finalize(
+        fallbackIdsFromTopBlocks(workspaceTopBlocks, intent: intent),
+      );
     }
-    return fallbackIdsFromTopBlocks(workspaceTopBlocks, intent: intent);
+    return finalize(
+      fallbackIdsFromTopBlocks(workspaceTopBlocks, intent: intent),
+    );
   }
 
-  /// 画布概览中推断可替换的 AI 顶层块（id 以 ai_ 开头或仅一块时）。
+  /// 画布概览中推断可替换的 AI 顶层块（排除 IO 映射等基础设施）。
   static List<String> fallbackIdsFromTopBlocks(
     List<LpBlocklyTopBlockInfo> topBlocks, {
     LpBlocklyAiAppendIntent intent = LpBlocklyAiAppendIntent.modifyPrevious,
@@ -95,17 +97,7 @@ abstract final class LpBlocklyAiAppendStrategy {
     if (intent != LpBlocklyAiAppendIntent.modifyPrevious) return const [];
     if (topBlocks.isEmpty) return const [];
 
-    final aiPrefixed = topBlocks
-        .where((b) => b.id.startsWith('ai_'))
-        .map((b) => b.id)
-        .toList();
-    if (aiPrefixed.isNotEmpty) return aiPrefixed;
-
-    if (topBlocks.length == 1) {
-      return [topBlocks.first.id];
-    }
-
-    return const [];
+    return LpBlocklyAiProtectedBlocks.removableAiTopBlockIds(topBlocks);
   }
 
   static String intentLabel(LpBlocklyAiAppendIntent intent) {

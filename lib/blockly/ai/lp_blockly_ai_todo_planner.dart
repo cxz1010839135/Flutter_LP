@@ -1,6 +1,7 @@
 import 'lp_blockly_ai_config.dart';
 import 'lp_blockly_ai_message.dart';
 import 'lp_blockly_ai_mode.dart';
+import 'lp_blockly_ai_request_router.dart';
 import 'lp_blockly_ai_service.dart';
 import 'lp_blockly_ai_structure_parser.dart';
 
@@ -8,14 +9,14 @@ import 'lp_blockly_ai_structure_parser.dart';
 abstract final class LpBlocklyAiTodoPlanner {
   static const _systemPrompt = '''
 你是领鹏 Blockly Agent 任务规划器。
-根据用户需求输出 JSON，格式：
-{"todos":[{"id":"唯一id","title":"任务标题","priority":"high|medium|low"}]}
+先判断用户需求类型，再输出 JSON：
+{"kind":"generate|chat","todos":[{"id":"唯一id","title":"任务标题","priority":"high|medium|low"}]}
 
 要求：
 1. 只输出 JSON，不要 markdown 或解释
-2. 必须包含 id=export、id=generate、id=verify 三项
-3. 可增加 learn、analyze 等子任务
-4. 任务 3~6 项为宜
+2. kind=generate（要写/改 Blockly）时：必须包含 id=export、id=generate、id=verify
+3. kind=chat（问答、解释、咨询）时：只包含 id=answer 一项
+4. 可增加 learn、analyze 等子任务；generate 模式 3~6 项为宜
 ''';
 
   /// 规划任务列表；失败时返回 [fallback]。
@@ -24,9 +25,14 @@ abstract final class LpBlocklyAiTodoPlanner {
     required LpBlocklyAiConfig config,
     required LpBlocklyAiService service,
     List<LpBlocklyAiChatTurn> history = const [],
+    LpBlocklyAiRequestKind requestKind = LpBlocklyAiRequestKind.generate,
   }) async {
+    if (requestKind == LpBlocklyAiRequestKind.chat) {
+      return _chatTodos();
+    }
+
     if (!config.useDynamicTodos) {
-      return _fallbackTodos(config);
+      return _fallbackGenerateTodos(config);
     }
 
     try {
@@ -37,11 +43,14 @@ abstract final class LpBlocklyAiTodoPlanner {
         history: history,
       );
       final parsed = LpBlocklyAiStructureParser.extractJson(raw);
-      if (parsed == null) return _fallbackTodos(config);
+      if (parsed == null) return _fallbackGenerateTodos(config);
+
+      final kindRaw = parsed['kind']?.toString().toLowerCase();
+      if (kindRaw == 'chat') return _chatTodos();
 
       final todosRaw = parsed['todos'];
       if (todosRaw is! List || todosRaw.isEmpty) {
-        return _fallbackTodos(config);
+        return _fallbackGenerateTodos(config);
       }
 
       final todos = <LpBlocklyAiTodo>[];
@@ -58,14 +67,26 @@ abstract final class LpBlocklyAiTodoPlanner {
         ));
       }
 
-      if (!_hasRequiredIds(todos)) return _fallbackTodos(config);
+      if (!_hasRequiredGenerateIds(todos)) return _fallbackGenerateTodos(config);
       return todos;
     } catch (_) {
-      return _fallbackTodos(config);
+      return _fallbackGenerateTodos(config);
     }
   }
 
-  static List<LpBlocklyAiTodo> _fallbackTodos(LpBlocklyAiConfig config) {
+  static List<LpBlocklyAiTodo> chatTodos() => _chatTodos();
+
+  static List<LpBlocklyAiTodo> _chatTodos() {
+    return const [
+      LpBlocklyAiTodo(
+        id: 'answer',
+        title: '分析并回答问题',
+        priority: LpBlocklyAiTodoPriority.high,
+      ),
+    ];
+  }
+
+  static List<LpBlocklyAiTodo> _fallbackGenerateTodos(LpBlocklyAiConfig config) {
     final genTitle = config.generationMode == LpBlocklyAiGenerationMode.structured
         ? '生成 JSON 计划并导入画布'
         : '生成并导入 Blockly XML';
@@ -93,7 +114,7 @@ abstract final class LpBlocklyAiTodoPlanner {
     ];
   }
 
-  static bool _hasRequiredIds(List<LpBlocklyAiTodo> todos) {
+  static bool _hasRequiredGenerateIds(List<LpBlocklyAiTodo> todos) {
     final ids = todos.map((t) => t.id).toSet();
     return ids.contains('export') &&
         ids.contains('generate') &&

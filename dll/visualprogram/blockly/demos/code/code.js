@@ -97,10 +97,23 @@ Code.LANGUAGE_RTL = ['ar', 'fa', 'he', 'lki'];
  */
 Code.workspace = null;
 
-//网页APP转换
-var isWeb = true;
+//网页 / Android 原生 / Flutter 环境标识（flutter_bound.js 需在 code.js 之前加载）
+var isFlutter = false;
+(function detectHostEnv_() {
+  try {
+    if (typeof FlutterBlockly !== 'undefined' && FlutterBlockly) {
+      isFlutter = true;
+    } else if (window.FlutterBlockly) {
+      isFlutter = true;
+    } else if (typeof bound !== 'undefined' && bound && bound._isFlutter) {
+      isFlutter = true;
+    }
+  } catch (e) { }
+})();
+// 纯浏览器为 true；Android / Flutter WebView 为 false
+var isWeb = !isFlutter && (typeof bound === 'undefined');
 // APP/WebView 下让 Blockly 使用 prompt 弹窗输入，避免内联输入框无法聚焦、弹不出键盘
-if (typeof Blockly !== 'undefined') Blockly.IS_APP = (typeof bound !== 'undefined');
+if (typeof Blockly !== 'undefined') Blockly.IS_APP = !isWeb;
 /**
  * Extracts a parameter from the URL.
  * If the parameter is absent default_value is returned.
@@ -118,8 +131,6 @@ Code.getStringParamFromUrl = function (name, defaultValue) {
  * @return {string} User's language.
  */
 Code.getLang = function () {
-  //网页APP转换
-  isWeb = true;
   var lang = Code.getStringParamFromUrl('lang', '');
   if (!isWeb) {
     //APP版本------------
@@ -912,7 +923,7 @@ Code.init = function () {
   SearchResultsCollapseBtn.textContent = '▲';
   SearchResultsCollapseBtn.addEventListener('click', function (e) {
     e.stopPropagation();
-    Code.hideSearchResultsPanel();
+    Code.toggleSearchResultsPanel();
   }, true);
   SearchResultsHeader.appendChild(SearchResultsTitle);
   SearchResultsHeader.appendChild(SearchResultsCollapseBtn);
@@ -922,6 +933,22 @@ Code.init = function () {
   SearchResultsPanel.appendChild(SearchResultsHeader);
   SearchResultsPanel.appendChild(SearchResultsList);
   Code.searchResultsPanel = SearchResultsPanel;
+  Code.searchResultsCollapsed_ = false;
+  Code.searchResultsHidden_ = false;
+
+  var SearchResultsExpandBtn = document.createElement('button');
+  SearchResultsExpandBtn.className = 'SearchResultsExpandBtn';
+  SearchResultsExpandBtn.id = 'searchResultsExpandBtn';
+  SearchResultsExpandBtn.type = 'button';
+  SearchResultsExpandBtn.title = '展开搜索结果';
+  SearchResultsExpandBtn.style.display = 'none';
+  SearchResultsExpandBtn.style.top = (IconTop * 0.6 + IconHeight * 1.9 + 4) + 'px';
+  SearchResultsExpandBtn.style.right = (8.3 * IconHeight) + 'px';
+  SearchResultsExpandBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    Code.showSearchResultsPanel();
+  }, true);
+  Code.searchResultsExpandBtn = SearchResultsExpandBtn;
 
   //添加鼠标单击事件
   SaveDocDiv.addEventListener('click', Code.SaveDoc, true);
@@ -943,7 +970,7 @@ Code.init = function () {
   // 挂到覆盖层上，确保在 SVG 之上且可交互
   [Searchbg, SearchInput, SaveDocDiv, NewDocDiv, BlueToothDiv, HelperDiv,
     SearchButton, SearchGrup, SearchGrup_open, SearchDownButton, SearchUpButton,
-    SearchResultsPanel].forEach(function(el) {
+    SearchResultsPanel, SearchResultsExpandBtn].forEach(function(el) {
     if (!el) return;
     el.style.pointerEvents = 'auto';
     uiHost.appendChild(el);
@@ -1360,6 +1387,80 @@ Code.hideSearchResultsPanel = function () {
   if (panel) {
     panel.style.display = 'none';
   }
+  Code.searchResultsHidden_ = true;
+  Code.updateSearchResultsExpandBtn_();
+};
+
+/** 收起搜索结果：隐藏大面板，仅显示紧凑标签。 */
+Code.collapseSearchResultsPanel = function () {
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  if (panel) {
+    panel.style.display = 'none';
+    panel.classList.remove('collapsed');
+  }
+  Code.searchResultsCollapsed_ = true;
+  Code.searchResultsHidden_ = false;
+  Code.updateSearchResultsExpandBtn_();
+};
+
+/** 展开搜索结果列表。 */
+Code.expandSearchResultsPanel = function () {
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  var btn = document.querySelector('.SearchResultsCollapseBtn');
+  if (!panel) {
+    return;
+  }
+  panel.classList.remove('collapsed');
+  panel.style.display = 'flex';
+  Code.searchResultsCollapsed_ = false;
+  Code.searchResultsHidden_ = false;
+  if (btn) {
+    btn.textContent = '▲';
+    btn.title = '收起列表';
+  }
+  Code.updateSearchResultsExpandBtn_();
+};
+
+/** 切换搜索结果面板展开/收起。 */
+Code.toggleSearchResultsPanel = function () {
+  if (Code.searchResultsCollapsed_) {
+    Code.expandSearchResultsPanel();
+  } else {
+    Code.collapseSearchResultsPanel();
+  }
+};
+
+/** 重新显示搜索结果面板（列表 + 标题）。 */
+Code.showSearchResultsPanel = function () {
+  Code.expandSearchResultsPanel();
+};
+
+/** 面板隐藏或仅显示标题栏时，显示「展开结果」快捷按钮。 */
+Code.updateSearchResultsExpandBtn_ = function () {
+  var chip = Code.searchResultsExpandBtn ||
+      document.getElementById('searchResultsExpandBtn');
+  if (!chip) {
+    return;
+  }
+  var hasResults = Code.workspace && Code.workspace.search_ &&
+      Code.workspace.search_.length > 0;
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  var hidden = Code.searchResultsHidden_ ||
+      !panel || panel.style.display === 'none';
+  var collapsed = Code.searchResultsCollapsed_;
+  if (hasResults && (hidden || collapsed)) {
+    var count = Code.workspace.search_.length;
+    var input = document.getElementById('searchInput');
+    var keyword = input && input.value ? input.value : '';
+    chip.textContent = count + ' 处 · ' + keyword + ' ▾';
+    chip.title = '共 ' + count + ' 处「' + keyword + '」，点击展开';
+    chip.style.display = 'inline-block';
+  } else {
+    chip.style.display = 'none';
+  }
 };
 
 /** 渲染可点击的搜索结果简表。 */
@@ -1380,6 +1481,10 @@ Code.renderSearchResultsPanel = function (keyword) {
     empty.textContent = '请尝试其他关键字';
     list.appendChild(empty);
     panel.style.display = 'flex';
+    Code.searchResultsHidden_ = false;
+    Code.searchResultsCollapsed_ = false;
+    panel.classList.remove('collapsed');
+    Code.updateSearchResultsExpandBtn_();
     return;
   }
   title.textContent = '共 ' + count + ' 处「' + keyword + '」，点击定位';
@@ -1401,6 +1506,15 @@ Code.renderSearchResultsPanel = function (keyword) {
     })(i);
   }
   panel.style.display = 'flex';
+  Code.searchResultsHidden_ = false;
+  Code.searchResultsCollapsed_ = false;
+  panel.classList.remove('collapsed');
+  var collapseBtn = document.querySelector('.SearchResultsCollapseBtn');
+  if (collapseBtn) {
+    collapseBtn.textContent = '▲';
+    collapseBtn.title = '收起列表';
+  }
+  Code.updateSearchResultsExpandBtn_();
   var active = list.querySelector('.SearchResultsItem.active');
   if (active && active.scrollIntoView) {
     active.scrollIntoView({block: 'nearest'});
@@ -2031,6 +2145,9 @@ Code.aiRemoveBlocksByIds = function (ids) {
         var block = Code.workspace.getBlockById(ids[i]);
         // 旧版 Blockly Block 无 isDisposed()，用 workspace 是否存在判断。
         if (block && block.workspace) {
+          if (Code.aiIsProtectedTopBlock_ && Code.aiIsProtectedTopBlock_(block)) {
+            continue;
+          }
           block.dispose(false);
           removed++;
         }
@@ -2046,7 +2163,37 @@ Code.aiRemoveBlocksByIds = function (ids) {
 };
 
 /**
- * AI Agent：移除所有顶层 id 以 ai_ 开头的块（修正模式兜底）。
+ * AI 基础设施块（IO 映射等）不可删除。
+ * @param {!Blockly.Block} block
+ * @return {boolean}
+ */
+Code.aiIsProtectedTopBlock_ = function (block) {
+  if (!block || !block.id) {
+    return false;
+  }
+  var id = block.id;
+  if (id.indexOf('ai_io_proc_') === 0 || id.indexOf('ai_manual_proc_') === 0) {
+    return true;
+  }
+  if (block.type === 'procedures_defnoreturn') {
+    try {
+      var name = block.getFieldValue('NAME') || '';
+      if (/^(本体)?(输入|输出)IO$/.test(name)) {
+        return true;
+      }
+      if (/^扩展(输入|输出)IO-\d+$/.test(name)) {
+        return true;
+      }
+      if (name === '手动IO' || /^扩展手动IO-\d+$/.test(name)) {
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+  }
+  return false;
+};
+
+/**
+ * AI Agent：移除可替换的顶层 ai_ 块（跳过 IO 映射等基础设施）。
  * @return {string} JSON
  */
 Code.aiRemoveTopAiBlocks = function () {
@@ -2059,6 +2206,9 @@ Code.aiRemoveTopAiBlocks = function () {
     for (var i = topBlocks.length - 1; i >= 0; i--) {
       var block = topBlocks[i];
       if (block && block.workspace && block.id && block.id.indexOf('ai_') === 0) {
+        if (Code.aiIsProtectedTopBlock_(block)) {
+          continue;
+        }
         block.dispose(false);
         removed++;
       }
@@ -2099,9 +2249,17 @@ document.write('<script src="../../msg/js/' + Code.LANG + '.js"></script>\n');
 
 window.addEventListener('load', Code.init);
 
-//: 判断网页是否加载完成（非 Flutter 宿主时由本处触发加载工程）
+//: 判断网页是否加载完成
+// Flutter: flutter_bound.js 的 scheduleInitialLoad 负责加载
+// Android 原生: 与 visualprogram1 一致，页面完成后加载 main 工程
 document.onreadystatechange = function () {
-  if (document.readyState == "complete" && typeof bound === 'undefined') {
+  if (document.readyState != 'complete') {
+    return;
+  }
+  if (isFlutter) {
+    return;
+  }
+  if (!isWeb) {
     window.setTimeout(Code.ReLoadXML, 1000);
   }
 };

@@ -2,13 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../lp_blockly_file_picker.dart';
 import 'lp_blockly_ai_agent.dart';
 import 'lp_blockly_ai_append_strategy.dart';
 import 'lp_blockly_ai_config.dart';
 import 'lp_blockly_ai_context_store.dart';
+import 'lp_blockly_ai_flow_vars.dart';
 import 'lp_blockly_ai_intent_builder.dart';
+import 'lp_blockly_ai_io_table.dart';
 import 'lp_blockly_ai_message.dart';
 import 'lp_blockly_ai_mode.dart';
 import 'lp_blockly_ai_pipeline.dart';
@@ -46,6 +50,12 @@ class LpBlocklyAiController extends ChangeNotifier {
   /// 长期上下文（写入 config/blockly_ai_context.txt）。
   String contextText = '';
 
+  /// 流程变量约定（写入 config/blockly_ai_flow_vars.json）。
+  LpBlocklyFlowVarsState flowVars = const LpBlocklyFlowVarsState();
+
+  /// 最近导入的 IO 表分配结果。
+  LpBlocklyIoTableResult ioTable = const LpBlocklyIoTableResult();
+
   final List<LpBlocklyAiChatMessage> messages = [];
   List<LpBlocklyAiTodo> todos = [];
 
@@ -78,6 +88,8 @@ class LpBlocklyAiController extends ChangeNotifier {
   Future<void> loadPersisted() async {
     config = await LpBlocklyAiConfig.load();
     contextText = await LpBlocklyAiContextStore.loadContextText();
+    flowVars = await LpBlocklyFlowVarsStore.load();
+    ioTable = await LpBlocklyIoTableStore.load();
     if (config.persistSession) {
       await LpBlocklyAiContextStore.migrateLegacyIfNeeded();
       sessionHistory = await LpBlocklyAiContextStore.listSessions();
@@ -113,7 +125,76 @@ class LpBlocklyAiController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 停止当前 Agent 生成（Cursor Stop 按钮）。
+  /// 更新并保存流程变量约定。
+  Future<void> updateFlowVars(LpBlocklyFlowVarsState state) async {
+    flowVars = state;
+    await LpBlocklyFlowVarsStore.save(state);
+    notifyListeners();
+  }
+
+  /// 弹窗选择并导入 IO 表 Excel；返回给人看的摘要。
+  Future<String> importIoTableFromPicker() async {
+    final last = await LpBlocklyIoTableStore.loadLastDir();
+    final initial = last ??
+        r'D:\Adroid_ws\LpRobt_Flutter\G代码触摸屏改造-0425';
+    final path = await LpBlocklyFilePicker.pickXlsxFile(initial);
+    if (path == null || path.isEmpty) {
+      return '已取消选择文件';
+    }
+    return importIoTableFromPath(path);
+  }
+
+  /// 从指定路径导入 IO 表，合并流程变量并持久化。
+  Future<String> importIoTableFromPath(String path) async {
+    try {
+      final result = await LpBlocklyIoTableParser.parseFile(path);
+      ioTable = result;
+      await LpBlocklyIoTableStore.save(result);
+      await LpBlocklyIoTableStore.saveLastDir(p.dirname(path));
+
+      final incoming = result.toFlowVars();
+      if (incoming.isNotEmpty) {
+        flowVars = LpBlocklyFlowVarsParser.mergeUpserts(flowVars, incoming);
+        await LpBlocklyFlowVarsStore.save(flowVars);
+      }
+
+      final summary = StringBuffer()
+        ..writeln('已导入 IO 表并完成地址分配。')
+        ..writeln()
+        ..writeln(result.toSummary())
+        ..writeln()
+        ..writeln(
+          '已写入 ${incoming.length} 项流程变量（待确认）。'
+          '回复「确认」后可写流程；或发送「从IO表生成」写入映射函数。',
+        );
+      statusMessage = 'IO 表已导入';
+      notifyListeners();
+      return summary.toString().trimRight();
+    } catch (e, st) {
+      debugPrint('import IO table failed: $e\n$st');
+      statusMessage = 'IO 表导入失败';
+      notifyListeners();
+      return 'IO 表导入失败：$e';
+    }
+  }
+
+  /// 按已缓存的 IO 表分配结果，生成输入/输出映射到画布。
+  Future<void> generateIoMappingFromTable() async {
+    if (ioTable.isEmpty || ioTable.localPoints.isEmpty) {
+      messages.add(LpBlocklyAiChatMessage(
+        id: 'io_${DateTime.now().millisecondsSinceEpoch}',
+        kind: LpBlocklyAiMessageKind.assistant,
+        content:
+            '尚未导入有效 IO 表。请先在设置中「导入 IO 表 Excel」，或发送「导入IO表」。',
+      ));
+      statusMessage = '缺少 IO 表';
+      notifyListeners();
+      return;
+    }
+    await sendMessage('从IO表生成');
+  }
+
+  /// 停止当前 Agent 生成（Stop 按钮）。
   Future<void> stopGeneration() async {
     if (!loading) return;
     _runGeneration++;
@@ -251,6 +332,27 @@ class LpBlocklyAiController extends ChangeNotifier {
 
     _finalizeStaleRunningActions();
 
+    // 导入 IO 表：本地弹窗，不走 LLM。
+    if (RegExp(r'^(导入|读取|加载)?\s*IO\s*表|导入IO表Excel', caseSensitive: false)
+        .hasMatch(prompt)) {
+      loading = true;
+      statusMessage = '正在选择 IO 表…';
+      notifyListeners();
+      try {
+        final summary = await importIoTableFromPicker();
+        messages.add(LpBlocklyAiChatMessage(
+          id: 'io_${DateTime.now().millisecondsSinceEpoch}',
+          kind: LpBlocklyAiMessageKind.assistant,
+          content: summary,
+        ));
+      } finally {
+        loading = false;
+        await _persistSessionIfNeeded();
+        notifyListeners();
+      }
+      return;
+    }
+
     final runId = ++_runGeneration;
     loading = true;
     todos = [];
@@ -267,7 +369,11 @@ class LpBlocklyAiController extends ChangeNotifier {
         service: LpBlocklyAiService.forMode(config.mode),
         conversationHistory: history,
         persistentContext: contextText,
+        flowVars: flowVars,
+        onFlowVarsChanged: updateFlowVars,
+        ioTable: ioTable,
         replaceBlockIdsOnAppend: replaceIds,
+        lastAiTopBlockIds: lastAiTopBlockIds,
         appendIntent: lastAppendIntent,
         previousPlan: lastParsedPlan,
         shouldCancel: () => runId != _runGeneration,

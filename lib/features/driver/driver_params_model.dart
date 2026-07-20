@@ -14,6 +14,12 @@ class DriverParamsModel {
     return int.tryParse(t) ?? 0;
   }
 
+  /// 无符号 16 位寄存器值转有符号显示（如 65336 → -200）。
+  static int toInt16(int value) {
+    final v = value & 0xFFFF;
+    return v >= 0x8000 ? v - 0x10000 : v;
+  }
+
   /// 从 [robotDriverGetParams] 响应填充。
   void applyFromDriverJson(Map<String, dynamic> json) {
     const directKeys = [
@@ -37,7 +43,6 @@ class DriverParamsModel {
       'filter_current',
       'time_acc',
       'time_s',
-      'speed_jog',
       'rated_speed',
       'max_speed',
       'rated_current',
@@ -60,6 +65,10 @@ class DriverParamsModel {
     ];
     for (final k in directKeys) {
       if (json.containsKey(k)) values[k] = json[k].toString();
+    }
+    if (json.containsKey('speed_jog')) {
+      values['speed_jog'] =
+          '${toInt16(parseInt(json['speed_jog'].toString()))}';
     }
     if (json.containsKey('battery_type')) {
       values['battery_option'] = json['battery_type'].toString();
@@ -123,7 +132,7 @@ class DriverParamsModel {
     values['filter_current'] = '${paras[77]}';
     values['time_acc'] = '${paras[78]}';
     values['time_s'] = '${paras[79]}';
-    values['speed_jog'] = '${paras[80]}';
+    values['speed_jog'] = '${toInt16(paras[80])}';
     values['rated_speed'] = '${paras[81]}';
     values['max_speed'] = '${paras[82]}';
     values['rated_current'] = '${paras[83]}';

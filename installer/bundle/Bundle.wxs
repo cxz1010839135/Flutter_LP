@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  离线一体化安装包：
+  1. 静默安装 Microsoft WebView2 Evergreen x64 Runtime
+  2. 安装领鹏智能 MSI
+
+  WebView2 设置为 Permanent，卸载本软件时不移除系统共享 Runtime。
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Bundle
+    Name="领鹏智能"
+    Manufacturer="领鹏智能"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="D7E1A3D4-BC4C-4A20-8E58-64ACD08E81B2"
+    IconSourceFile="$(var.RepoRoot)windows\runner\resources\app_icon.ico">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+        Theme="hyperlinkLicense"
+        LicenseUrl=""
+        LogoFile="$(var.RepoRoot)windows\runner\resources\app_icon.ico"
+        LocalizationFile="$(var.RepoRoot)installer\bundle\HyperlinkTheme.zh-CN.wxl"
+        SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
+
+    <!--
+      按微软官方建议读取 WebView2 Runtime 的 pv 值。
+      同时覆盖整机安装（HKLM，32 位注册表视图）和当前用户安装（HKCU）。
+    -->
+    <util:RegistrySearch
+      Id="FindWebView2MachineVersion"
+      Variable="WebView2MachineVersion"
+      Root="HKLM"
+      Key="SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+      Value="pv"
+      Result="value"
+      Bitness="always32" />
+    <util:RegistrySearch
+      Id="FindWebView2UserVersion"
+      Variable="WebView2UserVersion"
+      Root="HKCU"
+      Key="Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+      Value="pv"
+      Result="value" />
+
+    <Chain>
+      <!--
+        先清理由异常同名文件造成的 EdgeUpdate 目录冲突（0x800700B7）。
+        修复程序只删除 EdgeUpdate/EdgeWebView/Temp 同名“文件”，不会删除目录。
+      -->
+      <ExePackage
+        Id="WebView2PreInstallRepair"
+        Name="LpWebView2Repair.exe"
+        DisplayName="检查 WebView2 安装环境"
+        Description="自动修复阻止 WebView2 安装的文件冲突"
+        SourceFile="$(var.WebView2RepairHelper)"
+        Compressed="yes"
+        PerMachine="yes"
+        Permanent="yes"
+        Vital="yes"
+        DetectCondition="false"
+        InstallCondition="NOT ((WebView2MachineVersion AND WebView2MachineVersion &lt;&gt; &quot;0.0.0.0&quot;) OR (WebView2UserVersion AND WebView2UserVersion &lt;&gt; &quot;0.0.0.0&quot;))" />
+
+      <!--
+        仅在整机和当前用户均未检测到有效 Runtime 时调用离线安装器。
+        不设置卸载参数，避免卸载应用时删除其他软件共用的 WebView2。
+      -->
+      <ExePackage
+        Id="WebView2EvergreenX64"
+        Name="MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+        DisplayName="Microsoft Edge WebView2 Runtime（离线运行环境）"
+        Description="领鹏智能 Blockly 所需的离线网页运行环境"
+        SourceFile="$(var.WebView2Installer)"
+        Compressed="yes"
+        PerMachine="yes"
+        Permanent="yes"
+        Vital="yes"
+        DetectCondition="(WebView2MachineVersion AND WebView2MachineVersion &lt;&gt; &quot;0.0.0.0&quot;) OR (WebView2UserVersion AND WebView2UserVersion &lt;&gt; &quot;0.0.0.0&quot;)"
+        InstallArguments="/silent /install" />
+
+      <MsiPackage
+        Id="LPRobotMsi"
+        SourceFile="$(var.MsiPath)"
+        Compressed="yes"
+        Visible="no"
+        Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>
