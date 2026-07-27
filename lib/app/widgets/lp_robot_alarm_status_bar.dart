@@ -75,7 +75,7 @@ class LpRobotAlarmStatusBar extends StatelessWidget {
                 ),
               if (compact) const SizedBox(height: 6),
               _StatusTile(
-                label: '电机报警',
+                label: '报警',
                 value: alarmText,
                 valueColor: online && !t.motorAlarm
                     ? LpRobotColors.liveValue

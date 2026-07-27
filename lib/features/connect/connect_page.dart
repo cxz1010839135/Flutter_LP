@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_brand_logo.dart';
+import '../../app/widgets/lp_page_background.dart';
 import '../../core/app_info.dart';
 import '../../core/robot_connection_monitor.dart';
 import '../../core/local_app_settings.dart';
@@ -270,90 +271,92 @@ class _ConnectPageState extends State<ConnectPage> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: LpRobotColors.shellBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 420,
-                minHeight: MediaQuery.sizeOf(context).height -
-                    MediaQuery.paddingOf(context).vertical -
-                    bottomInset -
-                    48,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const LpBrandLogo(height: 96, maxWidth: 380, bundledOnly: true),
-                  const SizedBox(height: 14),
-                  Text(
-                    AppInfo.displayTitle,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: LpRobotColors.label,
-                        ),
-                  ),
-                  const SizedBox(height: 40),
-                  TextField(
-                    controller: _ipController,
-                    focusNode: _ipFocus,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: '控制器 IP',
-                      hintText: _defaultIp,
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.done,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    smartDashesType: SmartDashesType.disabled,
-                    smartQuotesType: SmartQuotesType.disabled,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    enabled: !_connecting,
-                    onSubmitted: (_) => _onConnect(),
-                  ),
-                  const SizedBox(height: 24),
-                  if (_connectStatus != null) ...[
+      backgroundColor: Colors.transparent,
+      body: LpPageBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 420,
+                  minHeight: MediaQuery.sizeOf(context).height -
+                      MediaQuery.paddingOf(context).vertical -
+                      bottomInset -
+                      48,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const LpBrandLogo(height: 96, maxWidth: 380, bundledOnly: true),
+                    const SizedBox(height: 14),
                     Text(
-                      _connectStatus!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      AppInfo.displayTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
                             color: LpRobotColors.label,
                           ),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: _connecting ? null : _onConnect,
-                      child: _connecting
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('连接'),
+                    const SizedBox(height: 40),
+                    TextField(
+                      controller: _ipController,
+                      focusNode: _ipFocus,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: '控制器 IP',
+                        hintText: _defaultIp,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      smartDashesType: SmartDashesType.disabled,
+                      smartQuotesType: SmartQuotesType.disabled,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      enabled: !_connecting,
+                      onSubmitted: (_) => _onConnect(),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _connecting ? null : _openOfflineHome,
-                    child: const Text('跳过连接（仅本地 Blockly）'),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    if (_connectStatus != null) ...[
+                      Text(
+                        _connectStatus!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: LpRobotColors.label,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: _connecting ? null : _onConnect,
+                        child: _connecting
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('连接'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _connecting ? null : _openOfflineHome,
+                      child: const Text('跳过连接（仅本地 Blockly）'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

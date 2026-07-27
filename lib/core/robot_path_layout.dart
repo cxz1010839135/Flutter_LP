@@ -22,15 +22,25 @@ class RobotPathLayout {
 
   static const String brandAppIconFile = 'ic_launcher.png';
 
-  /// 主页左侧四键（`config/imgs/control_*` 等，含图标与文案）。
-  static const String mainNavControlOff = 'control_unpressed.png';
-  static const String mainNavControlOn = 'control_pressed.png';
-  static const String mainNavProgramOff = 'program_unpressed.png';
-  static const String mainNavProgramOn = 'program_pressed.png';
-  static const String mainNavMonitorOff = 'monitor_unpressed.png';
-  static const String mainNavMonitorOn = 'monitor_pressed.png';
-  static const String mainNavToolOff = 'tool_unpressed.png';
-  static const String mainNavToolOn = 'tool_pressed.png';
+  /// 主页左侧四键（优先 `config/imgs/切图1/left-icon*`）。
+  static const String mainNavControlOff = 'left-icon1-1.png';
+  static const String mainNavControlOn = 'left-icon1-2.png';
+  static const String mainNavProgramOff = 'left-icon2-1.png';
+  static const String mainNavProgramOn = 'left-icon2-2.png';
+  static const String mainNavMonitorOff = 'left-icon3-1.png';
+  static const String mainNavMonitorOn = 'left-icon3-2.png';
+  static const String mainNavToolOff = 'left-icon4-1.png';
+  static const String mainNavToolOn = 'left-icon4-2.png';
+
+  /// 主页右侧四键（优先 `config/imgs/切图1/right-icon*`）。
+  static const String runStartOff = 'right-icon1-1.png';
+  static const String runStartOn = 'right-icon1-2.png';
+  static const String runStopOff = 'right-icon2-1.png';
+  static const String runStopOn = 'right-icon2-2.png';
+  static const String runSpeedOff = 'right-icon3-1.png';
+  static const String runSpeedOn = 'right-icon3-2.png';
+  static const String runResetOff = 'right-icon4-1.png';
+  static const String runResetOn = 'right-icon4-2.png';
 
   /// 控制器侧程序配置：`config/server/{name}.xml`、`.rp4`
   static const String serverDir = 'config/server';

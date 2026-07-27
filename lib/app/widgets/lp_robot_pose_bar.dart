@@ -1,8 +1,10 @@
-import 'dart:math' as math;
+import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/robot_link_kind.dart';
+import '../../core/robot_paths.dart';
 import '../../core/robot_pose.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
@@ -39,13 +41,15 @@ class LpRobotPoseBar extends StatelessWidget {
   final VoidCallback? onBackToConnect;
 
   static const double _barHeight = 82;
-  /// 品牌区左内边距（Logo/铭牌尽量靠左，坐标区紧随其后）。
-  static const double _brandInsetLeft = 8;
-  /// 顶栏品牌区 : 坐标区 宽度比（对齐 Android TopView 约 5:12）。
-  static const int _brandFlex = 5;
-  static const int _poseFlex = 12;
-  /// Logo 相对顶栏内高的占比（略小于满高，避免左上角过于抢眼）。
-  static const double _logoHeightFactor = 0.62;
+  /// 顶栏三区宽度比（图1标注）：Logo 20.47% · 坐标 68.06% · 返回 11.47%。
+  static const double _brandWidthFactor = 0.2047;
+  static const double _poseWidthFactor = 0.6806;
+  static const double _trailingWidthFactor = 0.1147;
+
+  /// 整块 logo（图标+字）在橙色区内：约宽 76%、高 56%，居中。
+  /// （图标注的 48% 是纯文字宽，不能直接套到含图标的整图上。）
+  static const double _logoInBrandWidthFactor = 0.76;
+  static const double _logoInBrandHeightFactor = 0.56;
 
   @override
   Widget build(BuildContext context) {
@@ -66,12 +70,10 @@ class LpRobotPoseBar extends StatelessWidget {
             height: _barHeight,
             showBrand: true,
             showPoseRows: true,
-            trailing: Center(
-              child: _ConnectionAction(
-                connected: data.connected,
-                onDisconnect: onDisconnect,
-                onBackToConnect: onBackToConnect,
-              ),
+            trailing: _ConnectionAction(
+              connected: data.connected,
+              onDisconnect: onDisconnect,
+              onBackToConnect: onBackToConnect,
             ),
           );
         }
@@ -313,42 +315,53 @@ class _UnifiedTopBar extends StatelessWidget {
     return SizedBox(
       height: height,
       child: _MenuBg(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            LpRobotPoseBar._brandInsetLeft,
-            1,
-            4,
-            2,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showBrand)
-                Expanded(
-                  flex: LpRobotPoseBar._brandFlex,
-                  child: ClipRect(
-                    child: _BrandColumn(
-                      subtitle: data.subtitle,
-                      connected: data.connected,
-                      linkKind: data.linkKind,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final brandW =
+                showBrand ? w * LpRobotPoseBar._brandWidthFactor : 0.0;
+            final trailingW = w * LpRobotPoseBar._trailingWidthFactor;
+            final poseW = showPoseRows
+                ? (showBrand
+                    ? w * LpRobotPoseBar._poseWidthFactor
+                    : (w - trailingW).clamp(0.0, w))
+                : 0.0;
+
+            return Padding(
+              padding: const EdgeInsets.only(top: 1, bottom: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (showBrand)
+                    SizedBox(
+                      width: brandW,
+                      child: ClipRect(
+                        child: _BrandColumn(
+                          subtitle: data.subtitle,
+                          connected: data.connected,
+                          linkKind: data.linkKind,
+                        ),
+                      ),
                     ),
+                  if (showPoseRows)
+                    SizedBox(
+                      width: poseW,
+                      child: ClipRect(
+                        child: _PoseColumns(
+                          worldPairs: data.worldPairs,
+                          jointPairs: data.jointPairs,
+                          live: data.connected && data.hasData,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: trailingW,
+                    child: trailing,
                   ),
-                ),
-              if (showPoseRows)
-                Expanded(
-                  flex: showBrand ? LpRobotPoseBar._poseFlex : 1,
-                  child: _PoseColumns(
-                    worldPairs: data.worldPairs,
-                    jointPairs: data.jointPairs,
-                    live: data.connected && data.hasData,
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: trailing,
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -363,18 +376,23 @@ class _SubpageTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (onBack == null && extra == null) return const SizedBox.shrink();
+
+    // 与主页一致：右侧整槽使用 TOPBACK +「返回」。
+    if (extra == null && onBack != null) {
+      return _TopBackButton(onTap: onBack!, semanticLabel: '返回');
+    }
+
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ?extra,
+        if (extra != null) ...[
+          extra!,
+          const SizedBox(width: 4),
+        ],
         if (onBack != null)
-          LpImagePressButton(
-            assetOff: LpAppAssets.backUnpressed,
-            assetOn: LpAppAssets.backPressed,
-            onTap: onBack!,
-            semanticLabel: '返回',
-            size: 36,
+          Expanded(
+            child: _TopBackButton(onTap: onBack!, semanticLabel: '返回'),
           ),
       ],
     );
@@ -415,47 +433,43 @@ class _BrandColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final logoHeight = (constraints.maxHeight * LpRobotPoseBar._logoHeightFactor)
-            .clamp(38.0, 48.0);
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final logoW = w * LpRobotPoseBar._logoInBrandWidthFactor;
+        final logoH = h * LpRobotPoseBar._logoInBrandHeightFactor;
         final showLinkRow = connected &&
             linkKind != RobotLinkKind.ethernet &&
             linkKind != RobotLinkKind.unknown;
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: constraints.maxWidth,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    height: logoHeight,
-                    child: Image.asset(
-                      LpAppAssets.homeTopLogo,
-                      fit: BoxFit.fitHeight,
-                      alignment: Alignment.centerLeft,
-                      errorBuilder: (_, e, st) => const SizedBox.shrink(),
-                    ),
-                  ),
+
+        return Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            // 整块 logo 在橙色区内水平垂直居中。
+            Center(
+              child: SizedBox(
+                width: logoW,
+                height: logoH,
+                child: Image.asset(
+                  LpAppAssets.homeTopLogo,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, e, st) => const SizedBox.shrink(),
                 ),
               ),
-              if (showLinkRow) ...[
-                const SizedBox(height: 2),
-                SizedBox(
-                  width: constraints.maxWidth,
-                  child: _ConnectionLinkRow(
-                    linkKind: linkKind,
-                    subtitle: subtitle,
-                    connected: connected,
-                  ),
+            ),
+            if (showLinkRow)
+              Positioned(
+                left: w * 0.08,
+                right: w * 0.08,
+                bottom: 2,
+                child: _ConnectionLinkRow(
+                  linkKind: linkKind,
+                  subtitle: subtitle,
+                  connected: connected,
                 ),
-              ],
-            ],
-          ),
+              ),
+          ],
         );
       },
     );
@@ -528,16 +542,17 @@ class _PoseColumns extends StatefulWidget {
 }
 
 class _PoseColumnsState extends State<_PoseColumns> {
-  final _scrollController = ScrollController();
+  final _jointScrollController = ScrollController();
 
   static const _cellMinWidth = 96.0;
+  static const _cellGap = 2.0;
   static const _minReadableWidth = 74.0;
   static const _baseFontSize = 16.0;
   static const _minFontSize = 14.0;
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _jointScrollController.dispose();
     super.dispose();
   }
 
@@ -545,66 +560,97 @@ class _PoseColumnsState extends State<_PoseColumns> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columnCount = math.max(
-          widget.worldPairs.length,
-          widget.jointPairs.length,
-        );
-        final contentWidth = columnCount * _cellMinWidth;
-        final perColumn = columnCount > 0
-            ? constraints.maxWidth / columnCount
-            : constraints.maxWidth;
-        final needScroll =
-            contentWidth > constraints.maxWidth + 1 ||
-            perColumn < _minReadableWidth;
-        final fontSize = needScroll
-            ? _baseFontSize
-            : (perColumn / 5.2).clamp(_minFontSize, _baseFontSize);
+        final worldCount = widget.worldPairs.length;
+        final jointCount = widget.jointPairs.length;
 
-        Widget rows({double? cellWidth}) {
-          return Column(
+        // 上行 XYZWABC：固定均分，不随关节行滚动。
+        final worldPerColumn =
+            worldCount > 0 ? constraints.maxWidth / worldCount : constraints.maxWidth;
+        final worldFontSize =
+            (worldPerColumn / 5.2).clamp(_minFontSize, _baseFontSize);
+
+        // 下行 J 轴：列多时横向拖动；上行保持不动。
+        final jointGaps =
+            jointCount > 1 ? (jointCount - 1) * _cellGap : 0.0;
+        final jointContentWidth =
+            jointCount * _cellMinWidth + jointGaps;
+        final jointNeedScroll =
+            jointContentWidth > constraints.maxWidth + 1 ||
+            (jointCount > 0 &&
+                constraints.maxWidth / jointCount < _minReadableWidth);
+        final jointFontSize = jointNeedScroll
+            ? _baseFontSize
+            : ((jointCount > 0
+                        ? constraints.maxWidth / jointCount
+                        : constraints.maxWidth) /
+                    5.2)
+                .clamp(_minFontSize, _baseFontSize);
+
+        final jointRow = jointNeedScroll
+            ? ScrollConfiguration(
+                behavior: const _PoseJointScrollBehavior(),
+                child: Scrollbar(
+                  controller: _jointScrollController,
+                  thumbVisibility: true,
+                  interactive: true,
+                  child: SingleChildScrollView(
+                    controller: _jointScrollController,
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.hardEdge,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    child: SizedBox(
+                      width: jointContentWidth,
+                      child: _PoseInlineRow(
+                        pairs: widget.jointPairs,
+                        live: widget.live,
+                        cellWidth: _cellMinWidth,
+                        cellGap: _cellGap,
+                        fontSize: jointFontSize,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : _PoseInlineRow(
+                pairs: widget.jointPairs,
+                live: widget.live,
+                cellGap: _cellGap,
+                fontSize: jointFontSize,
+              );
+
+        return ClipRect(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _PoseInlineRow(
                   pairs: widget.worldPairs,
                   live: widget.live,
-                  cellWidth: cellWidth,
-                  fontSize: fontSize,
+                  cellGap: _cellGap,
+                  fontSize: worldFontSize,
                 ),
               ),
-              Expanded(
-                child: _PoseInlineRow(
-                  pairs: widget.jointPairs,
-                  live: widget.live,
-                  cellWidth: cellWidth,
-                  fontSize: fontSize,
-                ),
-              ),
+              Expanded(child: jointRow),
             ],
-          );
-        }
-
-        if (!needScroll) {
-          return rows();
-        }
-
-        return Scrollbar(
-          controller: _scrollController,
-          thumbVisibility: true,
-          interactive: true,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: contentWidth,
-              height: constraints.maxHeight,
-              child: rows(cellWidth: _cellMinWidth),
-            ),
           ),
         );
       },
     );
   }
+}
+
+class _PoseJointScrollBehavior extends ScrollBehavior {
+  const _PoseJointScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
+      };
 }
 
 class _PoseInlineRow extends StatelessWidget {
@@ -613,19 +659,22 @@ class _PoseInlineRow extends StatelessWidget {
     required this.live,
     required this.fontSize,
     this.cellWidth,
+    this.cellGap = 2,
   });
 
   final List<_LabelValuePair> pairs;
   final bool live;
   final double fontSize;
   final double? cellWidth;
+  final double cellGap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < pairs.length; i++)
+        for (var i = 0; i < pairs.length; i++) ...[
+          if (i > 0) SizedBox(width: cellGap),
           if (cellWidth != null)
             SizedBox(
               width: cellWidth,
@@ -645,6 +694,7 @@ class _PoseInlineRow extends StatelessWidget {
                 fontSize: fontSize,
               ),
             ),
+        ],
       ],
     );
   }
@@ -663,6 +713,9 @@ class _PoseInlineCell extends StatelessWidget {
   final bool live;
   final double fontSize;
 
+  /// 切图1 top-X-BG.png 原始比例 169×48。
+  static const _bgAspect = 169 / 48;
+
   @override
   Widget build(BuildContext context) {
     final valueColor =
@@ -680,19 +733,197 @@ class _PoseInlineCell extends StatelessWidget {
       height: 1.05,
     );
 
-    return Align(
-      alignment: Alignment.center,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: label, style: labelStyle),
-            TextSpan(text: value, style: valueStyle),
-          ],
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.visible,
-        softWrap: false,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final maxH = constraints.maxHeight;
+        if (!maxW.isFinite || !maxH.isFinite || maxW <= 0 || maxH <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        // 按切图比例排格，宽高都不超出父级。
+        var cellH = maxH * 0.92;
+        var cellW = cellH * _bgAspect;
+        if (cellW > maxW * 0.98) {
+          cellW = maxW * 0.98;
+          cellH = cellW / _bgAspect;
+        }
+        if (cellH > maxH * 0.98) {
+          cellH = maxH * 0.98;
+          cellW = cellH * _bgAspect;
+        }
+
+        return Center(
+          child: SizedBox(
+            width: cellW,
+            height: cellH,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const _PoseAxisCellBg(),
+                Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: label, style: labelStyle),
+                          TextSpan(text: value, style: valueStyle),
+                        ],
+                      ),
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 坐标格底图：优先切图1 `top-X-BG.png`，再 assets。
+class _PoseAxisCellBg extends StatefulWidget {
+  const _PoseAxisCellBg();
+
+  @override
+  State<_PoseAxisCellBg> createState() => _PoseAxisCellBgState();
+}
+
+class _PoseAxisCellBgState extends State<_PoseAxisCellBg> {
+  late final Future<File?> _fileFuture =
+      RobotPaths.findMainNavImageFile('top-X-BG.png');
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<File?>(
+      future: _fileFuture,
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        if (file != null) {
+          return Image.file(
+            file,
+            fit: BoxFit.fill,
+            filterQuality: FilterQuality.medium,
+            gaplessPlayback: true,
+            errorBuilder: (_, error, stackTrace) => _assetImage(),
+          );
+        }
+        return _assetImage();
+      },
+    );
+  }
+
+  Widget _assetImage() {
+    return Image.asset(
+      LpAppAssets.homeTopAxisBg,
+      fit: BoxFit.fill,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+      errorBuilder: (_, error, stackTrace) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// 顶栏右侧返回：TOPBACK 图标 +「返回」文案（主页/操控/点位/清零共用）。
+class _TopBackButton extends StatefulWidget {
+  const _TopBackButton({
+    required this.onTap,
+    required this.semanticLabel,
+  });
+
+  final VoidCallback onTap;
+  final String semanticLabel;
+
+  /// 标注基准：图标 32.73% / 文案 59.09%；整体略左移以更协调。
+  static const _iconLeftFactor = 0.22;
+  static const _textLeftFactor = 0.48;
+  static const _textTopFactor = 0.3564;
+  static const _textBottomFactor = 0.3168;
+
+  @override
+  State<_TopBackButton> createState() => _TopBackButtonState();
+}
+
+class _TopBackButtonState extends State<_TopBackButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        final textTop = h * _TopBackButton._textTopFactor;
+        final textBottom = h * _TopBackButton._textBottomFactor;
+        final contentH = (h - textTop - textBottom).clamp(10.0, h);
+        final iconLeft = w * _TopBackButton._iconLeftFactor;
+        final textLeft = w * _TopBackButton._textLeftFactor;
+        final iconSize = contentH;
+        final iconTop = textTop + (contentH - iconSize) / 2;
+        final fontSize = (contentH * 0.85).clamp(11.0, 18.0);
+
+        return Semantics(
+          button: true,
+          label: widget.semanticLabel,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            },
+            onTapCancel: () => setState(() => _pressed = false),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  left: iconLeft,
+                  top: iconTop,
+                  width: iconSize,
+                  height: iconSize,
+                  child: Image.asset(
+                    _pressed
+                        ? LpAppAssets.homeTopBackPressed
+                        : LpAppAssets.homeTopBack,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                  ),
+                ),
+                Positioned(
+                  left: textLeft,
+                  top: textTop,
+                  right: 2,
+                  bottom: textBottom,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '返回',
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w600,
+                        color: LpRobotColors.textDark,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -720,12 +951,9 @@ class _ConnectionAction extends StatelessWidget {
     }
     if (onTap == null) return const SizedBox.shrink();
 
-    return LpImagePressButton(
-      assetOff: LpAppAssets.backUnpressed,
-      assetOn: LpAppAssets.backPressed,
+    return _TopBackButton(
       onTap: onTap,
       semanticLabel: connected ? '断开' : '返回连接',
-      size: 36,
     );
   }
 }

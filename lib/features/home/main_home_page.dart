@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
 import '../../app/lp_ui_scale.dart';
+import '../../app/widgets/lp_page_background.dart';
 import '../../app/widgets/lp_shell_edge.dart';
 import '../../app/widgets/lp_robot_foot_bar.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
@@ -23,9 +24,12 @@ import '../../core/robot_path_layout.dart';
 import '../config_file/config_file_page.dart';
 import 'home_assets.dart';
 import 'home_robot_assets.dart';
-import 'widgets/home_nav_button.dart';
+import 'widgets/home_side_icon_rail.dart';
 
-/// 主界面（对齐 Android MainActivity 权重：左 6 / 中 51 / 右 6，中间上 11 / 下 1）。
+/// 主界面布局（侧栏按标注重排）。
+///
+/// 侧栏：顶 6.85% / 键距 5.19% / 底 18.1%；键宽随高度按切图比；
+/// 水平：左右约各 7%，中间约 86%（对应键心距约 91.7%）。
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
 
@@ -34,6 +38,14 @@ class MainHomePage extends StatefulWidget {
 }
 
 class _MainHomePageState extends State<MainHomePage> {
+  /// 单侧约 7%，中间约 86%。
+  // 侧栏略加宽，配合键面 sizeScale≈1.35，避免被宽度卡住。
+  static const _sideFlex = 95;
+  static const _centerFlex = 810;
+
+  static const _viewportFlex = 80;
+  static const _footFlex = 20;
+
   @override
   void initState() {
     super.initState();
@@ -100,61 +112,79 @@ class _MainHomePageState extends State<MainHomePage> {
         final moving = RobotTelemetry.instance.isRobotMoving;
 
         return Scaffold(
-          backgroundColor: LpRobotColors.controlCanvas,
-          body: Column(
-            children: [
-              LpRobotPoseBar(
-                showConnectionActions: true,
-                onDisconnect: online ? _disconnect : null,
-                onBackToConnect: online ? null : _backToConnect,
-              ),
-              Expanded(
-                child: LpShellContentFrame(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: _MainNavRail(
-                          onControl: moving ? null : _openControl,
-                          onProgram: _openBlockly,
-                          onMonitor: online ? _openMonitor : null,
-                          onTool: online ? _openTool : null,
+          backgroundColor: Colors.transparent,
+          body: LpPageBackground(
+            child: Column(
+              children: [
+                LpRobotPoseBar(
+                  showConnectionActions: true,
+                  onDisconnect: online ? _disconnect : null,
+                  onBackToConnect: online ? null : _backToConnect,
+                ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // 标注左边距约 0.78%。
+                      final edgePad =
+                          math.max(2.0, constraints.maxWidth * 0.0078);
+                      final padY =
+                          math.max(2.0, constraints.maxHeight * 0.008);
+                      return LpShellContentFrame(
+                        padding: EdgeInsets.fromLTRB(
+                          edgePad,
+                          padY,
+                          edgePad,
+                          padY,
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 51,
-                        child: Column(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
-                              flex: 11,
-                              child: _RobotViewport(online: online),
-                            ),
-                            const SizedBox(height: 2),
-                            Expanded(
-                              flex: 1,
-                              child: LpRobotFootBar(
-                                canvasColor: Colors.transparent,
-                                ioSurfaceColor: Colors.transparent,
-                                compactStatus: true,
+                              flex: _sideFlex,
+                              child: _MainNavRail(
+                                onControl: moving ? null : _openControl,
+                                onProgram: _openBlockly,
+                                onMonitor: online ? _openMonitor : null,
+                                onTool: online ? _openTool : null,
                               ),
+                            ),
+                            Expanded(
+                              flex: _centerFlex,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: edgePad,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      flex: _viewportFlex,
+                                      child: _RobotViewport(online: online),
+                                    ),
+                                    Expanded(
+                                      flex: _footFlex,
+                                      child: const LpRobotFootBar(
+                                        canvasColor: Colors.transparent,
+                                        ioSurfaceColor: Colors.transparent,
+                                        compactStatus: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: _sideFlex,
+                              child: const LpRobotRunSidebar(),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 6,
-                        child: const LpRobotRunSidebar(),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-              ),
-              const LpStatusPanel(),
-            ],
+                const LpStatusPanel(),
+              ],
+            ),
           ),
         );
       },
@@ -162,7 +192,7 @@ class _MainHomePageState extends State<MainHomePage> {
   }
 }
 
-/// 左侧四键竖排：操控 / 编程 / 监控 / 维护。
+/// 左侧四键：操控 / 编程 / 监控 / 维护。
 class _MainNavRail extends StatelessWidget {
   const _MainNavRail({
     required this.onControl,
@@ -176,77 +206,52 @@ class _MainNavRail extends StatelessWidget {
   final VoidCallback? onMonitor;
   final VoidCallback? onTool;
 
-  static const _items = [
-    (
-      RobotPathLayout.mainNavControlOff,
-      RobotPathLayout.mainNavControlOn,
-      HomeAssets.mainNavControlOff,
-      HomeAssets.mainNavControlOn,
-    ),
-    (
-      RobotPathLayout.mainNavProgramOff,
-      RobotPathLayout.mainNavProgramOn,
-      HomeAssets.mainNavProgramOff,
-      HomeAssets.mainNavProgramOn,
-    ),
-    (
-      RobotPathLayout.mainNavMonitorOff,
-      RobotPathLayout.mainNavMonitorOn,
-      HomeAssets.mainNavMonitorOff,
-      HomeAssets.mainNavMonitorOn,
-    ),
-    (
-      RobotPathLayout.mainNavToolOff,
-      RobotPathLayout.mainNavToolOn,
-      HomeAssets.mainNavToolOff,
-      HomeAssets.mainNavToolOn,
-    ),
-  ];
-
-  /// `config/imgs/control_unpressed.png` 原始比例 488×622。
-  static const _navGap = 4.0;
-
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      onControl,
-      onProgram,
-      onMonitor,
-      onTool,
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < 4; i++) ...[
-          if (i > 0) const SizedBox(height: _navGap),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, slot) {
-                return HomeNavButton(
-                  configOffName: _items[i].$1,
-                  configOnName: _items[i].$2,
-                  assetOff: _items[i].$3,
-                  assetOn: _items[i].$4,
-                  onTap: actions[i],
-                  borderRadius: slot.maxHeight * 0.06,
-                );
-              },
-            ),
-          ),
-        ],
+    return HomeSideIconRail(
+      items: [
+        HomeSideIconItem(
+          configOffName: RobotPathLayout.mainNavControlOff,
+          configOnName: RobotPathLayout.mainNavControlOn,
+          assetOff: HomeAssets.mainNavControlOff,
+          assetOn: HomeAssets.mainNavControlOn,
+          label: '操控',
+          onTap: onControl,
+        ),
+        HomeSideIconItem(
+          configOffName: RobotPathLayout.mainNavProgramOff,
+          configOnName: RobotPathLayout.mainNavProgramOn,
+          assetOff: HomeAssets.mainNavProgramOff,
+          assetOn: HomeAssets.mainNavProgramOn,
+          label: '编程',
+          onTap: onProgram,
+        ),
+        HomeSideIconItem(
+          configOffName: RobotPathLayout.mainNavMonitorOff,
+          configOnName: RobotPathLayout.mainNavMonitorOn,
+          assetOff: HomeAssets.mainNavMonitorOff,
+          assetOn: HomeAssets.mainNavMonitorOn,
+          label: '监控',
+          onTap: onMonitor,
+        ),
+        HomeSideIconItem(
+          configOffName: RobotPathLayout.mainNavToolOff,
+          configOnName: RobotPathLayout.mainNavToolOn,
+          assetOff: HomeAssets.mainNavToolOff,
+          assetOn: HomeAssets.mainNavToolOn,
+          label: '维护',
+          onTap: onTool,
+        ),
       ],
     );
   }
 }
 
-/// 中央视口（对齐 Android `iv_main_robot` / `fl_main_robot`）。
+/// 中央视口：机台在视口内居中（机型名改在底栏左侧，避免重复）。
 class _RobotViewport extends StatelessWidget {
   const _RobotViewport({required this.online});
 
   final bool online;
-
-  static const _imageAspect = 4 / 3;
 
   @override
   Widget build(BuildContext context) {
@@ -261,91 +266,60 @@ class _RobotViewport extends StatelessWidget {
         final asset = HomeRobotAssets.diagramForRobotType(
           RobotState.instance.robotType,
         );
-        final caption = RobotState.instance.displayRobotLabel;
 
         return LayoutBuilder(
-            builder: (context, constraints) {
-              final availW = constraints.maxWidth;
-              final availH = constraints.maxHeight;
-              final captionSize = LpUiScale.scaledForConstraints(
-                constraints,
-                20,
-              );
-              final movingSize = LpUiScale.scaledForConstraints(
-                constraints,
-                13,
-              );
-              final captionBlock = 12.0 +
-                  captionSize * 1.15 +
-                  (online && moving ? 8.0 + movingSize * 1.15 : 0.0);
-              final maxImageH = math.max(0.0, availH - captionBlock);
+          builder: (context, constraints) {
+            final availW = constraints.maxWidth;
+            final availH = constraints.maxHeight;
+            final movingSize = LpUiScale.scaledForConstraints(constraints, 13);
 
-              var imageWidth = availW * 0.96;
-              var imageHeight = imageWidth / _imageAspect;
-              if (imageHeight > maxImageH) {
-                imageHeight = maxImageH;
-                imageWidth = imageHeight * _imageAspect;
-              }
+            // 机台略放大（相对原框约 85%，此前 70% 偏小）。
+            final imageW = availW * 0.58 * 0.85;
+            final imageH = availH * 0.86 * 0.85;
 
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: imageWidth,
-                            height: imageHeight,
-                            child: Image.asset(
-                              asset,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.center,
-                              filterQuality: FilterQuality.medium,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Icon(
-                                    Icons.precision_manufacturing_outlined,
-                                    size: 96,
-                                    color: LpRobotColors.textDark
-                                        .withValues(alpha: 0.75),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            caption,
-                            style: TextStyle(
-                              fontSize: captionSize,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.6,
-                              color: LpRobotColors.primary,
-                            ),
-                          ),
-                          if (online && moving)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '运行中 ${t.speedPercentValue}%',
-                                style: TextStyle(
-                                  fontSize: movingSize,
-                                  color: LpRobotColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                        ],
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  left: (availW - imageW) / 2,
+                  top: (availH - imageH) / 2,
+                  width: imageW,
+                  height: imageH,
+                  child: Image.asset(
+                    asset,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Icon(
+                          Icons.precision_manufacturing_outlined,
+                          size: math.min(imageW, imageH) * 0.4,
+                          color: LpRobotColors.textDark.withValues(alpha: 0.75),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (online && moving)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: availH * 0.02,
+                    child: Text(
+                      '运行中 ${t.speedPercentValue}%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: movingSize,
+                        color: LpRobotColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              );
-            },
-          );
+              ],
+            );
+          },
+        );
       },
     );
   }

@@ -7,7 +7,12 @@ import 'driver_address_debug_service.dart';
 import 'driver_ui_style.dart';
 import 'widgets/driver_title_bar.dart';
 
-/// 地址/总线/SDO 调试（对齐 Android [DriverDebugActivity]）。
+/// 地址/总线/SDO 调试（比例严格对齐目标图1）。
+///
+/// 图1比例要点：
+/// - 参数控制：左侧轴号约占 1/3，右侧地址/当前值 1:1 均分剩余，按钮贴右
+/// - 总线：左侧地址与上方轴号同宽同列；当前值与上方「当前值」同列
+/// - SDO：三列等分铺满，按钮贴右
 class DriverAddressDebugPage extends StatefulWidget {
   const DriverAddressDebugPage({
     super.key,
@@ -35,14 +40,25 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
   final _sdoIndexCtrl = TextEditingController(text: '6060');
   final _sdoSubIndexCtrl = TextEditingController(text: '0');
   final _sdoSizeCtrl = TextEditingController(text: '32');
-  final _sdoDataCtrl = TextEditingController(text: '0');
+  final _sdoReadDataCtrl = TextEditingController();
+  final _sdoWriteDataCtrl = TextEditingController(text: '0');
 
   bool _busy = false;
 
-  static const _inputH = 34.0;
-  static const _addrW = 72.0;
-  static const _fieldW = 80.0;
-  static const _narrowBreak = 480.0;
+  /// 左侧栏 : 右侧内容 ≈ 1 : 2（左侧约 1/3）。
+  static const _leftFlex = 1;
+  static const _rightFlex = 2;
+  static const _labelW = 64.0;
+  static const _sdoLabelW = 70.0;
+  static const _btnW = 72.0;
+  static const _inputH = 40.0;
+  static const _rowGap = 12.0;
+  static const _cardGap = 10.0;
+  static const _sideGap = 16.0;
+  static const _colGap = 14.0;
+  static const _readFill = Color(0xFFFFE8D4);
+  static const _cardBorder = Color(0xFFFFBE7F);
+  static const _ribbon = Color(0xFFFF7E1A);
 
   @override
   void initState() {
@@ -65,7 +81,8 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
     _sdoIndexCtrl.dispose();
     _sdoSubIndexCtrl.dispose();
     _sdoSizeCtrl.dispose();
-    _sdoDataCtrl.dispose();
+    _sdoReadDataCtrl.dispose();
+    _sdoWriteDataCtrl.dispose();
     super.dispose();
   }
 
@@ -145,7 +162,7 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
         subIndex: subIndex,
         dataSize: size,
       );
-      setState(() => _sdoDataCtrl.text = value);
+      setState(() => _sdoReadDataCtrl.text = value);
     }, okMsg: '读取 SDO 成功');
   }
 
@@ -155,7 +172,7 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
       final index = DriverAddressDebugService.parseHex(_sdoIndexCtrl.text);
       final subIndex = DriverAddressDebugService.parseHex(_sdoSubIndexCtrl.text);
       final size = DriverAddressDebugService.parseInt(_sdoSizeCtrl.text);
-      final data = DriverAddressDebugService.parseInt(_sdoDataCtrl.text);
+      final data = DriverAddressDebugService.parseInt(_sdoWriteDataCtrl.text);
       await _service.writeSdo(
         axis: axis,
         index: index,
@@ -175,6 +192,8 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
         children: [
           DriverTitleBar(
             title: '地址参数',
+            titleAlignLeft: true,
+            showBackLabel: true,
             onBack: () => Navigator.of(context).pop(),
           ),
           if (_busy)
@@ -185,86 +204,33 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
           Expanded(
             child: IgnorePointer(
               ignoring: _busy,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _section(
-                            title: '控制参数',
-                            children: [
-                              _fieldRow('当前轴号', _axisCtrl),
-                              _rwRow(
-                                addrLabel: '当前地址',
-                                addrCtrl: _readAddrCtrl,
-                                valueLabel: '当前值',
-                                valueCtrl: _readValueCtrl,
-                                readOnlyValue: true,
-                                onAction: _readDriverParam,
-                                actionLabel: '读',
-                              ),
-                              _rwRow(
-                                addrLabel: '当前地址',
-                                addrCtrl: _writeAddrCtrl,
-                                valueLabel: '当前值',
-                                valueCtrl: _writeValueCtrl,
-                                onAction: _writeDriverParam,
-                                actionLabel: '写',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          _section(
-                            title: '总线参数',
-                            children: [
-                              _fieldRow('当前地址', _busAddrCtrl),
-                              _rwRow(
-                                valueLabel: '当前值',
-                                valueCtrl: _busReadCtrl,
-                                readOnlyValue: true,
-                                onAction: _readBusData,
-                                actionLabel: '读',
-                              ),
-                              _rwRow(
-                                valueLabel: '当前值',
-                                valueCtrl: _busWriteCtrl,
-                                onAction: _writeBusData,
-                                actionLabel: '写',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          _section(
-                            title: 'SDO参数',
-                            children: [
-                              _fieldRow('轴号', _sdoAxisCtrl),
-                              _sdoIndexRow(),
-                              _fieldRow('size', _sdoSizeCtrl),
-                              _rwRow(
-                                valueLabel: 'data',
-                                valueCtrl: _sdoDataCtrl,
-                                readOnlyValue: true,
-                                onAction: _readSdo,
-                                actionLabel: '读',
-                              ),
-                              _rwRow(
-                                valueLabel: 'data',
-                                valueCtrl: _sdoDataCtrl,
-                                onAction: _writeSdo,
-                                actionLabel: '写',
-                              ),
-                            ],
-                          ),
-                        ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _sectionCard(
+                        title: '参数控制',
+                        child: _controlSection(),
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: _cardGap),
+                    Expanded(
+                      child: _sectionCard(
+                        title: '总线参数',
+                        child: _busSection(),
+                      ),
+                    ),
+                    const SizedBox(height: _cardGap),
+                    Expanded(
+                      child: _sectionCard(
+                        title: 'SDO参数',
+                        child: _sdoSection(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -273,161 +239,273 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
     );
   }
 
-  Widget _section({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _sectionCard({required String title, required Widget child}) {
     return DecoratedBox(
-      decoration: DriverUiStyle.panelDecoration(),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, style: DriverUiStyle.sectionTitleStyle),
-            const SizedBox(height: 10),
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              children[i],
-            ],
-          ],
-        ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _cardBorder, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: const BoxDecoration(
+                color: _ribbon,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(7),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: child,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _sdoIndexRow() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < _narrowBreak;
-        if (narrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _pairField('index', _sdoIndexCtrl, hex: true),
-              const SizedBox(height: 8),
-              _pairField('subindex', _sdoSubIndexCtrl, hex: true),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(
-              child: _pairField('index', _sdoIndexCtrl, hex: true),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _pairField('subindex', _sdoSubIndexCtrl, hex: true),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _fieldRow(String label, TextEditingController controller, {bool hex = false}) {
-    return _pairField(label, controller, hex: hex, fieldWidth: _fieldW);
-  }
-
-  Widget _pairField(
-    String label,
-    TextEditingController controller, {
-    bool hex = false,
-    double fieldWidth = _addrW,
-  }) {
+  Widget _controlSection() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 72,
-          child: Text(
-            label,
-            style: DriverUiStyle.controlLabelStyle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        Expanded(
+          flex: _leftFlex,
+          child: _labeledField('当前轴号', _axisCtrl, expand: true),
         ),
-        const SizedBox(width: 6),
-        SizedBox(
-          width: fieldWidth,
-          height: _inputH,
-          child: _inputBox(controller: controller, hex: hex),
+        const SizedBox(width: _sideGap),
+        Expanded(
+          flex: _rightFlex,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _pairRow(
+                addrCtrl: _readAddrCtrl,
+                valueCtrl: _readValueCtrl,
+                readOnlyValue: true,
+                actionLabel: '读取',
+                onAction: _readDriverParam,
+                readStyle: true,
+              ),
+              const SizedBox(height: _rowGap),
+              _pairRow(
+                addrCtrl: _writeAddrCtrl,
+                valueCtrl: _writeValueCtrl,
+                actionLabel: '写入',
+                onAction: _writeDriverParam,
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _rwRow({
-    String? addrLabel,
-    TextEditingController? addrCtrl,
-    bool addrHex = false,
-    required String valueLabel,
-    required TextEditingController valueCtrl,
-    VoidCallback? onAction,
-    required String actionLabel,
-    bool readOnlyValue = false,
-    bool valueHex = false,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < _narrowBreak;
-        final addrPart = (addrLabel != null && addrCtrl != null)
-            ? _pairField(addrLabel, addrCtrl, hex: addrHex)
-            : null;
-        final valuePart = Row(
-          children: [
-            SizedBox(
-              width: 72,
-              child: Text(
-                valueLabel,
-                style: DriverUiStyle.controlLabelStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: SizedBox(
-                height: _inputH,
-                child: _inputBox(
-                  controller: valueCtrl,
-                  hex: valueHex,
-                  readOnly: readOnlyValue,
-                  expand: true,
-                ),
-              ),
-            ),
-            if (onAction != null) ...[
-              const SizedBox(width: 8),
-              _actionBtn(actionLabel, onAction),
-            ],
-          ],
-        );
-
-        if (narrow && addrPart != null) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _busSection() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 与参数控制左侧同 flex，地址框与轴号同宽同列。
+        Expanded(
+          flex: _leftFlex,
+          child: _labeledField('当前地址', _busAddrCtrl, expand: true),
+        ),
+        const SizedBox(width: _sideGap),
+        Expanded(
+          flex: _rightFlex,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              addrPart,
-              const SizedBox(height: 8),
-              valuePart,
+              _pairRow(
+                valueCtrl: _busReadCtrl,
+                readOnlyValue: true,
+                actionLabel: '读取',
+                onAction: _readBusData,
+                readStyle: true,
+              ),
+              const SizedBox(height: _rowGap),
+              _pairRow(
+                valueCtrl: _busWriteCtrl,
+                actionLabel: '写入',
+                onAction: _writeBusData,
+              ),
             ],
-          );
-        }
+          ),
+        ),
+      ],
+    );
+  }
 
-        if (addrPart == null) {
-          return valuePart;
-        }
+  Widget _sdoSection() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _sdoRow(
+          leftLabel: '轴号',
+          leftCtrl: _sdoAxisCtrl,
+          midLabel: 'index',
+          midCtrl: _sdoIndexCtrl,
+          midHex: true,
+          dataCtrl: _sdoReadDataCtrl,
+          dataReadOnly: true,
+          actionLabel: '读取',
+          onAction: _readSdo,
+          readStyle: true,
+        ),
+        const SizedBox(height: _rowGap),
+        _sdoRow(
+          leftLabel: 'size',
+          leftCtrl: _sdoSizeCtrl,
+          midLabel: 'subindex',
+          midCtrl: _sdoSubIndexCtrl,
+          midHex: true,
+          dataCtrl: _sdoWriteDataCtrl,
+          actionLabel: '写入',
+          onAction: _writeSdo,
+        ),
+      ],
+    );
+  }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            addrPart,
-            const SizedBox(width: 12),
-            Expanded(child: valuePart),
-          ],
-        );
-      },
+  /// 地址列 + 当前值列 1:1；总线无地址时用空列占位，保证「当前值」与上方对齐。
+  Widget _pairRow({
+    TextEditingController? addrCtrl,
+    required TextEditingController valueCtrl,
+    required String actionLabel,
+    required VoidCallback onAction,
+    bool readOnlyValue = false,
+    bool readStyle = false,
+  }) {
+    final fill = readStyle ? _readFill : null;
+    return Row(
+      children: [
+        Expanded(
+          child: addrCtrl == null
+              ? const SizedBox.shrink()
+              : _labeledField(
+                  '当前地址',
+                  addrCtrl,
+                  expand: true,
+                  fill: fill,
+                ),
+        ),
+        const SizedBox(width: _colGap),
+        Expanded(
+          child: _labeledField(
+            '当前值',
+            valueCtrl,
+            expand: true,
+            readOnly: readOnlyValue,
+            fill: fill,
+          ),
+        ),
+        const SizedBox(width: 12),
+        _actionBtn(actionLabel, onAction),
+      ],
+    );
+  }
+
+  Widget _sdoRow({
+    required String leftLabel,
+    required TextEditingController leftCtrl,
+    required String midLabel,
+    required TextEditingController midCtrl,
+    required TextEditingController dataCtrl,
+    required String actionLabel,
+    required VoidCallback onAction,
+    bool midHex = false,
+    bool dataReadOnly = false,
+    bool readStyle = false,
+  }) {
+    final fill = readStyle ? _readFill : null;
+    return Row(
+      children: [
+        Expanded(
+          child: _labeledField(
+            leftLabel,
+            leftCtrl,
+            expand: true,
+            labelWidth: _sdoLabelW,
+            fill: fill,
+          ),
+        ),
+        const SizedBox(width: _colGap),
+        Expanded(
+          child: _labeledField(
+            midLabel,
+            midCtrl,
+            hex: midHex,
+            expand: true,
+            labelWidth: _sdoLabelW,
+            fill: fill,
+          ),
+        ),
+        const SizedBox(width: _colGap),
+        Expanded(
+          child: _labeledField(
+            'data',
+            dataCtrl,
+            expand: true,
+            labelWidth: _sdoLabelW,
+            readOnly: dataReadOnly,
+            fill: fill,
+          ),
+        ),
+        const SizedBox(width: 12),
+        _actionBtn(actionLabel, onAction),
+      ],
+    );
+  }
+
+  Widget _labeledField(
+    String label,
+    TextEditingController controller, {
+    bool hex = false,
+    bool readOnly = false,
+    bool expand = false,
+    double labelWidth = _labelW,
+    Color? fill,
+  }) {
+    final field = SizedBox(
+      height: _inputH,
+      child: _inputBox(
+        controller: controller,
+        hex: hex,
+        readOnly: readOnly,
+        fill: fill,
+      ),
+    );
+    return Row(
+      children: [
+        SizedBox(
+          width: labelWidth,
+          child: Text(
+            label,
+            style: DriverUiStyle.controlLabelStyle.copyWith(fontSize: 13),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 6),
+        if (expand) Expanded(child: field) else field,
+      ],
     );
   }
 
@@ -435,42 +513,78 @@ class _DriverAddressDebugPageState extends State<DriverAddressDebugPage> {
     required TextEditingController controller,
     bool hex = false,
     bool readOnly = false,
-    bool expand = false,
+    Color? fill,
   }) {
-    final field = TextField(
+    return TextField(
       controller: controller,
       readOnly: readOnly,
       textAlign: TextAlign.center,
-      style: DriverUiStyle.fieldTextStyle,
+      style: DriverUiStyle.fieldTextStyle.copyWith(fontSize: 14),
       keyboardType: hex ? TextInputType.text : TextInputType.number,
       inputFormatters: readOnly
           ? null
           : hex
               ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Fa-f]*'))]
               : [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
-      decoration: DriverUiStyle.fieldDecoration(
-        compact: true,
-        enabled: !readOnly,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: fill ?? (readOnly ? _readFill : Colors.white),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: LpRobotColors.primary, width: 1.1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: LpRobotColors.primary, width: 1.1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: LpRobotColors.primary, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: LpRobotColors.primary.withValues(alpha: 0.55),
+            width: 1.1,
+          ),
+        ),
       ),
     );
-    if (expand) {
-      return field;
-    }
-    return field;
   }
 
   Widget _actionBtn(String label, VoidCallback onTap) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: LpRobotColors.primary,
-        side: const BorderSide(color: LpRobotColors.primary),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        minimumSize: const Size(52, _inputH),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    return SizedBox(
+      width: _btnW,
+      height: _inputH,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFF9A45), Color(0xFFFF7E1A)],
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(6),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      child: Text(label),
     );
   }
 }

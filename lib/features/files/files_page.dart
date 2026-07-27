@@ -582,6 +582,18 @@ class _FilesPageState extends State<FilesPage> {
         ? p.basename(_selectedLocal!.path)
         : null;
 
+    final primaryStyle = FilledButton.styleFrom(
+      backgroundColor: LpRobotColors.primary,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      minimumSize: const Size(0, 48),
+    );
+
+    final transferStyle = FilledButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      minimumSize: const Size(0, 48),
+    );
+
     return Material(
       color: LpRobotColors.surfaceWarm,
       child: Padding(
@@ -590,82 +602,114 @@ class _FilesPageState extends State<FilesPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (selectedName != null)
+              Text(
+                '已选中文件：$selectedName',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: LpRobotColors.primary,
+                ),
+              )
+            else
+              const Text(
+                '请在左侧选中要上传的文件',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: LpRobotColors.label,
+                ),
+              ),
+            const SizedBox(height: 2),
+            Text(
+              _remoteTagPath.isEmpty
+                  ? '请先在右侧驱控目录中进入目标文件夹'
+                  : _remoteTagPath,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: _remoteTagPath.isEmpty
+                    ? LpRobotColors.label
+                    : LpRobotColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // 图1：一键备份 | 一键恢复 | 上传 | 下载（同一行）；
+            // 三个小按钮仅落在「一键备份」正下方且等分其宽度。
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (selectedName != null)
-                        Text(
-                          '已选中文件：$selectedName',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: LpRobotColors.primary,
+                      FilledButton(
+                        onPressed:
+                            canEdit && !_transferring ? _startBackup : null,
+                        style: primaryStyle,
+                        child: const Text('一键备份'),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _localLoading || _transferring
+                                  ? null
+                                  : _localBack,
+                              icon: const Icon(Icons.arrow_back, size: 16),
+                              label: const Text('本地后退'),
+                            ),
                           ),
-                        )
-                      else
-                        const Text(
-                          '请在左侧选中要上传的文件',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: LpRobotColors.label,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _localLoading || _transferring
+                                  ? null
+                                  : _goProgramConfigDir,
+                              child: const Text('程序配置'),
+                            ),
                           ),
-                        ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _remoteTagPath.isEmpty
-                            ? '请先在右侧驱控目录中进入目标文件夹'
-                            : _remoteTagPath,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _remoteTagPath.isEmpty
-                              ? LpRobotColors.label
-                              : LpRobotColors.textDark,
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _localLoading || _transferring
+                                  ? null
+                                  : _goDownloadRoot,
+                              child: const Text('下载目录'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: canEdit && _canUpload ? _upload : null,
-                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                  label: const Text('上传到驱控'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
                 Expanded(
                   child: FilledButton(
-                    onPressed: canEdit && !_transferring ? _startBackup : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: LpRobotColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('一键备份'),
+                    onPressed:
+                        canEdit && !_transferring ? _startRestore : null,
+                    style: primaryStyle,
+                    child: const Text('一键恢复'),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: canEdit && !_transferring ? _startRestore : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: LpRobotColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('一键恢复'),
-                  ),
+                FilledButton.icon(
+                  onPressed: canEdit && _canUpload ? _upload : null,
+                  style: transferStyle,
+                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: const Text('上传到驱控'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _selectedRemote != null && !_transferring
+                      ? _downloadSelected
+                      : null,
+                  style: transferStyle,
+                  icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                  label: const Text('下载到本地'),
                 ),
               ],
             ),
@@ -680,37 +724,6 @@ class _FilesPageState extends State<FilesPage> {
                 style: const TextStyle(fontSize: 11, color: LpRobotColors.label),
               ),
             ],
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _localLoading || _transferring ? null : _localBack,
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('本地后退'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _localLoading || _transferring
-                      ? null
-                      : _goProgramConfigDir,
-                  child: const Text('程序配置'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed:
-                      _localLoading || _transferring ? null : _goDownloadRoot,
-                  child: const Text('下载目录'),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: _selectedRemote != null && !_transferring
-                      ? _downloadSelected
-                      : null,
-                  icon: const Icon(Icons.cloud_download_outlined, size: 18),
-                  label: const Text('下载到本地'),
-                ),
-              ],
-            ),
           ],
         ),
       ),

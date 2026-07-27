@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../lp_robot_colors.dart';
+import 'lp_page_background.dart';
 
 /// 顶栏 / 底栏与主内容之间的淡橙渐变，柔化硬边界。
 class LpShellEdgeFade extends StatelessWidget {
@@ -35,7 +36,7 @@ class LpShellEdgeFade extends StatelessWidget {
 
 enum LpShellEdge { top, bottom }
 
-/// 主页 / 操控主画布：浅暖渐变底 + 上下缘淡影。
+/// 主页 / 操控主画布：暖色底图 + 上下缘淡影。
 class LpShellContentFrame extends StatelessWidget {
   const LpShellContentFrame({
     super.key,
@@ -55,9 +56,7 @@ class LpShellContentFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LpRobotColors.controlCanvasGradient,
-      ),
+      decoration: LpPageBackground.decoration,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -90,3 +89,4 @@ class LpShellContentFrame extends StatelessWidget {
     );
   }
 }
+

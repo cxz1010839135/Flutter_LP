@@ -128,10 +128,13 @@ class RobotPaths {
     return null;
   }
 
-  /// 主页左侧导航贴图：优先 `config/imgs/`，不存在时返回 null（走内置 assets）。
+  /// 主页导航贴图：优先 `config/imgs/切图1/`，其次 `config/imgs/`。
   static Future<File?> findMainNavImageFile(String fileName) async {
-    final file = File(p.join(await imgsDir(), fileName));
-    if (await file.exists()) return file;
+    final root = await imgsDir();
+    for (final dir in [p.join(root, '切图1'), root]) {
+      final file = File(p.join(dir, fileName));
+      if (await file.exists()) return file;
+    }
     return null;
   }
 
