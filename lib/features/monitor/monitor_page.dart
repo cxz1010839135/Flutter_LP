@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../core/lp_status_log.dart';
@@ -24,12 +25,12 @@ class MonitorPage extends StatefulWidget {
 }
 
 class _MonitorPageState extends State<MonitorPage> {
-  static const _lineHeight = 28.0;
+  static const _lineHeight = 30.0;
 
   List<String> _lines = const [];
   bool _loading = true;
   String? _error;
-  double _fontSize = 14;
+  double _fontSize = 16;
   int _lastScrollTarget = -1;
   List<int> _lastHighlightLines = const [];
 
@@ -172,20 +173,31 @@ class _MonitorPageState extends State<MonitorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final clearTheme = Theme.of(context).copyWith(
+      textTheme: LpAppFonts.applyTo(
+        Theme.of(context).textTheme,
+        bodyColor: LpRobotColors.textDark,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          textStyle: LpAppFonts.style(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+
+    return Theme(
+      data: clearTheme,
+      child: Scaffold(
       backgroundColor: LpRobotColors.pageBackground,
       body: Column(
         children: [
           LpRobotPoseBar(
             pageTitle: '程序监控',
             onBack: () => Navigator.of(context).pop(),
-            trailing: IconButton(
-              tooltip: '刷新程序',
-              onPressed: _loading ? null : _loadProgram,
-              icon: const Icon(Icons.refresh, size: 20),
-              color: LpRobotColors.textDark,
-              visualDensity: VisualDensity.compact,
-            ),
           ),
           _Toolbar(
             onStart: _startAutoRun,
@@ -213,7 +225,7 @@ class _MonitorPageState extends State<MonitorPage> {
                             onFontIncrease: () =>
                                 setState(() => _fontSize += 1),
                             onFontDecrease: () => setState(
-                              () => _fontSize = (_fontSize - 1).clamp(10, 24),
+                              () => _fontSize = (_fontSize - 1).clamp(12, 28),
                             ),
                           ),
                         ),
@@ -236,6 +248,7 @@ class _MonitorPageState extends State<MonitorPage> {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -281,11 +294,11 @@ class _Toolbar extends StatelessWidget {
                     children: [
                       Text(
                         '${t.speedPercentValue}%',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                        style: LpAppFonts.style(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
                           color: LpRobotColors.primary,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                          tabular: true,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -313,21 +326,22 @@ class _Toolbar extends StatelessWidget {
                   ),
                 ),
                 if (moving)
-                  const Text(
+                  Text(
                     '运行中',
-                    style: TextStyle(
+                    style: LpAppFonts.style(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                       color: LpRobotColors.liveValue,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 Text(
                   t.motorAlarmDisplay,
-                  style: TextStyle(
+                  style: LpAppFonts.style(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: t.motorAlarm
                         ? LpRobotColors.alarm
                         : LpRobotColors.liveValue,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
                   ),
                 ),
               ],
@@ -393,9 +407,11 @@ class _ProgramPanel extends StatelessWidget {
                     child: Text(
                       '主程序 (main.rp4)',
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                         color: LpRobotColors.textDark,
+                        fontFamily: LpAppFonts.roboto,
+                        fontFamilyFallback: LpAppFonts.cjkFallback,
                       ),
                     ),
                   ),
@@ -476,14 +492,16 @@ class _ProgramPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      width: 36,
+                      width: 40,
                       child: Text(
                         '$index',
-                        style: TextStyle(
-                          fontSize: fontSize - 2,
+                        style: LpAppFonts.style(
+                          fontSize: fontSize - 1,
+                          fontWeight: FontWeight.w700,
                           color: active
                               ? LpRobotColors.primary
-                              : LpRobotColors.label,
+                              : LpRobotColors.textDark,
+                          tabular: true,
                         ),
                       ),
                     ),
@@ -492,13 +510,11 @@ class _ProgramPanel extends StatelessWidget {
                         lines[index],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: LpAppFonts.style(
                           fontSize: fontSize,
-                          color: active
-                              ? LpRobotColors.textDark
-                              : LpRobotColors.label,
                           fontWeight:
-                              active ? FontWeight.w600 : FontWeight.normal,
+                              active ? FontWeight.w800 : FontWeight.w600,
+                          color: LpRobotColors.textDark,
                         ),
                       ),
                     ),
@@ -534,9 +550,11 @@ class _PrintPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
               '状态窗口',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: LpAppFonts.style(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: LpRobotColors.textDark,
+              ),
             ),
           ),
           Expanded(
@@ -555,10 +573,14 @@ class _PrintPanel extends StatelessWidget {
                 ];
 
                 if (lines.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       '暂无打印信息',
-                      style: TextStyle(color: LpRobotColors.label),
+                      style: LpAppFonts.style(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: LpRobotColors.textDark,
+                      ),
                     ),
                   );
                 }
@@ -576,14 +598,15 @@ class _PrintPanel extends StatelessWidget {
                             : MonitorD9000Status.isBusy(value)
                                 ? LpRobotColors.primary
                                 : LpRobotColors.liveValue)
-                        : null;
+                        : LpRobotColors.textDark;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
                         line,
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: LpAppFonts.style(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                           color: color,
                         ),
                       ),

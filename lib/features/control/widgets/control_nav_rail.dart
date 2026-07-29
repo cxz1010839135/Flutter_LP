@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/robot_path_layout.dart';
+import '../../home/widgets/home_cut_icon_button.dart';
 import '../control_assets.dart';
 import '../control_section.dart';
-import 'control_image_tile.dart';
 
-/// 操控页左侧轴选择（X / Y / Z / I/O），贴图铺满每格。
+/// 操控页左侧轴选择（X / Y / Z / I/O），切图1 `main-lefticon*`。
 class ControlNavRail extends StatelessWidget {
   const ControlNavRail({
     super.key,
@@ -15,45 +16,57 @@ class ControlNavRail extends StatelessWidget {
   final ControlSection selected;
   final ValueChanged<ControlSection> onSelected;
 
+  static const _gapFactor = 0.03;
+
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Column(
-        children: [
-          for (var i = 0; i < ControlSection.leftNav.length; i++)
-            Expanded(
-              child: _LeftNavTile(
-                section: ControlSection.leftNav[i],
-                selected: selected == ControlSection.leftNav[i],
-                onTap: () => onSelected(ControlSection.leftNav[i]),
+    final items = ControlSection.leftNav;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = constraints.maxHeight * _gapFactor;
+        return Column(
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) SizedBox(height: gap),
+              Expanded(
+                child: HomeCutIconButton(
+                  configOffName: _configOff(items[i]),
+                  configOnName: _configOn(items[i]),
+                  assetOff: ControlAssets.leftNavAssets(items[i]).$1,
+                  assetOn: ControlAssets.leftNavAssets(items[i]).$2,
+                  label: _labelFor(items[i]),
+                  forceOn: selected == items[i],
+                  onTap: () => onSelected(items[i]),
+                ),
               ),
-            ),
-        ],
-      ),
+            ],
+          ],
+        );
+      },
     );
   }
-}
 
-class _LeftNavTile extends StatelessWidget {
-  const _LeftNavTile({
-    required this.section,
-    required this.selected,
-    required this.onTap,
-  });
+  static String _labelFor(ControlSection section) => switch (section) {
+        ControlSection.cartesianX => 'X',
+        ControlSection.cartesianY => 'Y',
+        ControlSection.cartesianZ => 'Z',
+        ControlSection.io => 'I/O',
+        _ => section.label,
+      };
 
-  final ControlSection section;
-  final bool selected;
-  final VoidCallback onTap;
+  static String _configOff(ControlSection section) => switch (section) {
+        ControlSection.cartesianX => RobotPathLayout.controlAxisXOff,
+        ControlSection.cartesianY => RobotPathLayout.controlAxisYOff,
+        ControlSection.cartesianZ => RobotPathLayout.controlAxisZOff,
+        ControlSection.io => RobotPathLayout.controlIoOff,
+        _ => RobotPathLayout.controlAxisXOff,
+      };
 
-  @override
-  Widget build(BuildContext context) {
-    final assets = ControlAssets.leftNavAssets(section);
-    return ControlImageTile(
-      assetOff: assets.$1,
-      assetOn: assets.$2,
-      selected: selected,
-      onTap: onTap,
-    );
-  }
+  static String _configOn(ControlSection section) => switch (section) {
+        ControlSection.cartesianX => RobotPathLayout.controlAxisXOn,
+        ControlSection.cartesianY => RobotPathLayout.controlAxisYOn,
+        ControlSection.cartesianZ => RobotPathLayout.controlAxisZOn,
+        ControlSection.io => RobotPathLayout.controlIoOn,
+        _ => RobotPathLayout.controlAxisXOn,
+      };
 }

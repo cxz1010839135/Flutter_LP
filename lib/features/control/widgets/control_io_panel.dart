@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/lp_robot_colors.dart';
 import '../../../core/lp_status_log.dart';
 import '../../../core/robot_io_state.dart';
+import '../../../core/robot_paths.dart';
 import '../../../core/robot_state.dart';
 import '../../../core/robot_telemetry.dart';
 import '../../../network/http_manager.dart';
@@ -20,6 +23,15 @@ class ControlIoPanel extends StatefulWidget {
 class _ControlIoPanelState extends State<ControlIoPanel> {
   int _moduleIndex = 0;
   bool _busy = false;
+  late final Future<({File? off, File? on})> _cellFilesFuture = _loadCellFiles();
+
+  Future<({File? off, File? on})> _loadCellFiles() async {
+    final off =
+        await RobotPaths.findMainNavImageFile(ControlAssets.ioCellOffName);
+    final on =
+        await RobotPaths.findMainNavImageFile(ControlAssets.ioCellOnName);
+    return (off: off, on: on);
+  }
 
   int get _moduleCount {
     return RobotTelemetry.instance.ioModuleCount.clamp(1, 32);
@@ -42,63 +54,84 @@ class _ControlIoPanelState extends State<ControlIoPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final moduleCount = _moduleCount;
-    final module = _moduleIndex.clamp(0, moduleCount - 1);
+    return FutureBuilder<({File? off, File? on})>(
+      future: _cellFilesFuture,
+      builder: (context, fileSnap) {
+        final cellFiles = fileSnap.data;
+        return ListenableBuilder(
+          listenable: Listenable.merge([
+            RobotTelemetry.instance,
+            RobotState.instance,
+          ]),
+          builder: (context, _) {
+            final moduleCount = _moduleCount;
+            final module = _moduleIndex.clamp(0, moduleCount - 1);
+            if (_moduleIndex != module) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (_moduleIndex != module) {
+                  setState(() => _moduleIndex = module);
+                }
+              });
+            }
+            final online = RobotState.instance.isConnected;
+            final t = RobotTelemetry.instance;
 
-    return ClipRect(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          ControlIoModulePicker(
-            moduleCount: moduleCount,
-            selectedIndex: module,
-            onChanged: (v) {
-              if (_moduleIndex != v) setState(() => _moduleIndex = v);
-            },
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ListenableBuilder(
-              listenable: Listenable.merge([
-                RobotTelemetry.instance,
-                RobotState.instance,
-              ]),
-              builder: (context, _) {
-                final online = RobotState.instance.isConnected;
-                final t = RobotTelemetry.instance;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(
-                    key: ValueKey<int>(module),
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _IoBank(
-                          isOutput: false,
-                          moduleIndex: module,
-                          online: online,
-                          telemetry: t,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: _IoBank(
-                          isOutput: true,
-                          moduleIndex: module,
-                          online: online,
-                          telemetry: t,
-                          onOutputTap: _toggleOutput,
-                          busy: _busy,
-                        ),
-                      ),
-                    ],
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 左侧模块滚轮：随模块数刷新，可拖动/滚轮切换扩展页。
+                SizedBox(
+                  width: 56,
+                  child: ControlIoModulePicker(
+                    key: ValueKey('io-mod-$moduleCount'),
+                    moduleCount: moduleCount,
+                    selectedIndex: module,
+                    onChanged: (v) {
+                      if (_moduleIndex != v) {
+                        setState(() => _moduleIndex = v);
+                      }
+                    },
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Column(
+                      key: ValueKey<int>(module),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _IoBank(
+                            isOutput: false,
+                            moduleIndex: module,
+                            online: online,
+                            telemetry: t,
+                            cellFiles: cellFiles,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: _IoBank(
+                            isOutput: true,
+                            moduleIndex: module,
+                            online: online,
+                            telemetry: t,
+                            onOutputTap: _toggleOutput,
+                            busy: _busy,
+                            cellFiles: cellFiles,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -111,6 +144,7 @@ class _IoBank extends StatelessWidget {
     required this.telemetry,
     this.onOutputTap,
     this.busy = false,
+    this.cellFiles,
   });
 
   final bool isOutput;
@@ -119,6 +153,7 @@ class _IoBank extends StatelessWidget {
   final RobotTelemetry telemetry;
   final Future<void> Function(int address)? onOutputTap;
   final bool busy;
+  final ({File? off, File? on})? cellFiles;
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +214,7 @@ class _IoBank extends StatelessWidget {
                             telemetry: telemetry,
                             onOutputTap: onOutputTap,
                             busy: busy,
+                            cellFiles: cellFiles,
                           ),
                         ),
                         const SizedBox(height: rowGap),
@@ -195,6 +231,7 @@ class _IoBank extends StatelessWidget {
                             telemetry: telemetry,
                             onOutputTap: onOutputTap,
                             busy: busy,
+                            cellFiles: cellFiles,
                           ),
                         ),
                       ],
@@ -222,6 +259,7 @@ class _IoLaneRow extends StatelessWidget {
     required this.telemetry,
     this.onOutputTap,
     this.busy = false,
+    this.cellFiles,
   });
 
   final int row;
@@ -234,6 +272,7 @@ class _IoLaneRow extends StatelessWidget {
   final RobotTelemetry telemetry;
   final Future<void> Function(int address)? onOutputTap;
   final bool busy;
+  final ({File? off, File? on})? cellFiles;
 
   @override
   Widget build(BuildContext context) {
@@ -254,6 +293,7 @@ class _IoLaneRow extends StatelessWidget {
                 telemetry: telemetry,
                 onTap: isOutput ? onOutputTap : null,
                 busy: busy,
+                cellFiles: cellFiles,
               ),
             ),
           ),
@@ -273,6 +313,7 @@ class _IoCell extends StatelessWidget {
     required this.telemetry,
     this.onTap,
     this.busy = false,
+    this.cellFiles,
   });
 
   final int lane;
@@ -284,6 +325,7 @@ class _IoCell extends StatelessWidget {
   final RobotTelemetry telemetry;
   final Future<void> Function(int address)? onTap;
   final bool busy;
+  final ({File? off, File? on})? cellFiles;
 
   @override
   Widget build(BuildContext context) {
@@ -295,15 +337,37 @@ class _IoCell extends StatelessWidget {
     final active = online &&
         (isOutput ? telemetry.outputAt(address) : telemetry.inputAt(address));
     final canTap = isOutput && onTap != null && online && !busy;
-    final asset = ControlAssets.ioCellAsset(lane, active: active);
+    final label = lane.toString().padLeft(2, '0');
+    final fontSize = (cellH * 0.28).clamp(10.0, 16.0);
+    final file = active ? (cellFiles?.on ?? cellFiles?.off) : cellFiles?.off;
+    final asset = ControlAssets.ioCellAsset(active: active);
+
+    final image = file != null
+        ? Image.file(file, fit: BoxFit.contain, gaplessPlayback: true)
+        : Image.asset(asset, fit: BoxFit.contain, gaplessPlayback: true);
 
     final cell = SizedBox(
       width: cellW,
       height: cellH,
-      child: Image.asset(
-        asset,
-        fit: BoxFit.contain,
-        gaplessPlayback: true,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          image,
+          Align(
+            alignment: const Alignment(0, 0.22),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w800,
+                color: active
+                    ? LpRobotColors.primary
+                    : const Color(0xFFB8A090),
+                height: 1.0,
+              ),
+            ),
+          ),
+        ],
       ),
     );
 

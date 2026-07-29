@@ -44,7 +44,6 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   static const double _frameMinWidth = 320;
   static const double _frameMaxWidth = 620;
   static const double _frameHeightRatio = 0.90;
-  static const int _rowFlex = 1;
   static const double _pickerWidth = 70;
   /// 模式四格高度占模式行比例（略矮，配合更大间距更接近图1）。
   static const double _modeTileHeightRatio = 0.72;
@@ -217,22 +216,37 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                 child: ControlFunctionFrame(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: _rowFlex,
-                          child: _buildParamRow(_maxSpeed(telemetry)),
-                        ),
-                        Expanded(
-                          flex: _rowFlex,
-                          child: _buildSpeedRow(speed),
-                        ),
-                        Expanded(
-                          flex: _rowFlex,
-                          child: _buildModeRow(),
-                        ),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, inner) {
+                        // 三行紧凑排布；整体略下移，白框内视觉居中。
+                        final rowH = (inner.maxHeight * 0.26)
+                            .clamp(72.0, 118.0);
+                        final gap = (inner.maxHeight * 0.04)
+                            .clamp(12.0, 24.0);
+                        return Align(
+                          alignment: const Alignment(0, 0.28),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                height: rowH,
+                                child: _buildParamRow(_maxSpeed(telemetry)),
+                              ),
+                              SizedBox(height: gap),
+                              SizedBox(
+                                height: rowH,
+                                child: _buildSpeedRow(speed),
+                              ),
+                              SizedBox(height: gap),
+                              SizedBox(
+                                height: rowH,
+                                child: _buildModeRow(),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -413,7 +427,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
         final tileH = constraints.maxHeight * _modeTileHeightRatio;
 
         return Align(
-          alignment: Alignment.centerLeft,
+          alignment: Alignment.center,
           child: SizedBox(
             width: constraints.maxWidth,
             height: tileH,

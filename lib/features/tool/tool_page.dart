@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/lp_app_assets.dart';
+import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
@@ -15,7 +17,9 @@ import '../driver/driver_tech_mode_gate.dart';
 import '../driver/driver_ui_style.dart';
 import '../files/files_page.dart';
 
-/// 维护页（对齐 Android [ToolActivity]：自动运行 / 调试开关 / 文件与驱动入口）。
+/// 配置页（对齐 Android [ToolActivity]：自动运行 / 调试开关 / 文件与驱动入口）。
+///
+/// 布局对齐图3：顶部标题栏不变；主区 main-daima-boxbg + 右侧竖排六键。
 class ToolPage extends StatefulWidget {
   const ToolPage({super.key});
 
@@ -155,125 +159,135 @@ class _ToolPageState extends State<ToolPage> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: RobotTelemetry.instance,
+      listenable: Listenable.merge([
+        RobotTelemetry.instance,
+        DriverTechModeGate.instance,
+      ]),
       builder: (context, _) {
         final stopped = MaintenanceEditGate.canEdit();
         final actionsEnabled = _online && !_busy && stopped;
+        final gateBusy = DriverTechModeGate.instance.transitionBusy ||
+            DriverTechModeGate.isControllerInitializing;
 
         return Scaffold(
-      backgroundColor: DriverUiStyle.pageBackground,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          LpRobotPoseBar(
-            pageTitle: '维护',
-            onBack: () => Navigator.of(context).pop(),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-              child: Column(
-                children: [
-                  _ToolButtonRow(
-                    left: _ToolActionButton(
-                      label: '设置机代码自动运行',
-                      primary: true,
-                      enabled: actionsEnabled,
-                      onPressed: () => _setAutoRun(true),
-                    ),
-                    right: _ToolActionButton(
-                      label: '取消机代码自动运行',
-                      primary: false,
-                      enabled: actionsEnabled,
-                      onPressed: () => _setAutoRun(false),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  _ToolButtonRow(
-                    left: _ToolActionButton(
-                      label: '打开调试模式',
-                      primary: true,
-                      enabled: actionsEnabled,
-                      onPressed: () => _setDebugMode(true),
-                    ),
-                    right: _ToolActionButton(
-                      label: '关闭调试模式',
-                      primary: false,
-                      enabled: actionsEnabled,
-                      onPressed: () => _setDebugMode(false),
-                    ),
-                  ),
-                  const Spacer(),
-                  _ToolButtonRow(
-                    left: _ToolEntryButton(
-                      label: '文件管理 >',
-                      enabled: !_busy,
-                      onPressed: _openFiles,
-                    ),
-                    right: ListenableBuilder(
-                      listenable: Listenable.merge([
-                        RobotTelemetry.instance,
-                        DriverTechModeGate.instance,
-                      ]),
-                      builder: (context, _) {
-                        final gateBusy =
-                            DriverTechModeGate.instance.transitionBusy ||
-                            DriverTechModeGate.isControllerInitializing;
-                        return _ToolEntryButton(
-                          label: gateBusy ? '驱动器参数…' : '驱动器参数',
-                          enabled: _canOpenDriver,
-                          onPressed: _openDriverDebug,
-                        );
-                      },
-                    ),
-                  ),
-                  if (_busy)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: LinearProgressIndicator(
-                        color: LpRobotColors.primary,
-                        backgroundColor: Color(0x22FF7E1A),
+          backgroundColor: DriverUiStyle.pageBackground,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 顶部保持不变：内页标题栏「配置」+ 返回。
+              LpRobotPoseBar(
+                pageTitle: '配置',
+                titleBarOnly: true,
+                onBack: () => Navigator.of(context).pop(),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(LpAppAssets.configDaimaBoxBg),
+                        fit: BoxFit.fill,
                       ),
                     ),
-                ],
+                    // 只用 boxbg 自带底图，不再叠一层 Logo。
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 20, 36, 20),
+                            child: SizedBox(
+                              width: 280,
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '设置机代码自动运行',
+                                      primary: true,
+                                      enabled: actionsEnabled,
+                                      onPressed: () => _setAutoRun(true),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '取消机代码自动运行',
+                                      primary: false,
+                                      enabled: actionsEnabled,
+                                      onPressed: () => _setAutoRun(false),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '打开调试模式',
+                                      primary: true,
+                                      enabled: actionsEnabled,
+                                      onPressed: () => _setDebugMode(true),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '关闭调试模式',
+                                      primary: false,
+                                      enabled: actionsEnabled,
+                                      onPressed: () => _setDebugMode(false),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '文件管理',
+                                      primary: true,
+                                      enabled: !_busy,
+                                      onPressed: _openFiles,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: gateBusy
+                                          ? '驱动器参数设置…'
+                                          : '驱动器参数设置',
+                                      primary: false,
+                                      enabled: _canOpenDriver,
+                                      onPressed: _openDriverDebug,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_busy)
+                          const Positioned(
+                            left: 24,
+                            right: 24,
+                            bottom: 16,
+                            child: LinearProgressIndicator(
+                              color: LpRobotColors.primary,
+                              backgroundColor: Color(0x22FF7E1A),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const LpStatusPanel(),
+            ],
           ),
-          const LpStatusPanel(),
-        ],
-      ),
-    );
+        );
       },
     );
   }
 }
 
-class _ToolButtonRow extends StatelessWidget {
-  const _ToolButtonRow({
-    required this.left,
-    required this.right,
-  });
-
-  final Widget left;
-  final Widget right;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: left),
-          const SizedBox(width: 16),
-          Expanded(child: right),
-        ],
-      ),
-    );
-  }
-}
-
-class _ToolActionButton extends StatelessWidget {
-  const _ToolActionButton({
+/// 配置页右侧按钮：主色 btn1bg / 次色 btn21bg。
+class _DaimaActionButton extends StatelessWidget {
+  const _DaimaActionButton({
     required this.label,
     required this.primary,
     required this.enabled,
@@ -287,80 +301,39 @@ class _ToolActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      color: enabled
-          ? (primary ? LpRobotColors.primary : LpRobotColors.textDark)
-          : Colors.grey,
-    );
+    final asset = primary
+        ? LpAppAssets.configDaimaBtnPrimary
+        : LpAppAssets.configDaimaBtnSecondary;
+    final textColor = !enabled
+        ? Colors.grey
+        : (primary ? Colors.white : LpRobotColors.textDark);
 
-    return Material(
-      color: DriverUiStyle.panelBackground,
-      elevation: enabled ? 2 : 0,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(10),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: enabled
-                  ? LpRobotColors.borderWarm.withValues(alpha: primary ? 0.85 : 0.55)
-                  : Colors.grey.shade300,
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onPressed : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              image: DecorationImage(
+                image: AssetImage(asset),
+                fit: BoxFit.fill,
+              ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
-          child: Center(
-            child: Text(label, textAlign: TextAlign.center, style: style),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 底部功能入口（文件管理 / 驱动调试），样式略浅以区分上方指令按钮。
-class _ToolEntryButton extends StatelessWidget {
-  const _ToolEntryButton({
-    required this.label,
-    required this.enabled,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool enabled;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: DriverUiStyle.panelBackground,
-      elevation: enabled ? 1 : 0,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(10),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: enabled
-                  ? LpRobotColors.borderWarm.withValues(alpha: 0.65)
-                  : Colors.grey.shade300,
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: enabled ? LpRobotColors.textDark : Colors.grey,
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: LpAppFonts.style(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
               ),
             ),
           ),

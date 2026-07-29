@@ -30,6 +30,7 @@ double MonitorScaleFactor(HMONITOR monitor) {
 }
 
 /// Fit logical window size into the monitor work area (DPI aware).
+/// Keeps 16:9 (design) aspect so UI neither stretches nor letterboxes.
 Win32Window::Size FitWindowSize(const RECT& work_area, HMONITOR monitor,
                                 unsigned int logical_width,
                                 unsigned int logical_height) {
@@ -37,15 +38,13 @@ Win32Window::Size FitWindowSize(const RECT& work_area, HMONITOR monitor,
   const int area_w = work_area.right - work_area.left;
   const int area_h = work_area.bottom - work_area.top;
 
-  int phys_w = static_cast<int>(logical_width * scale);
-  int phys_h = static_cast<int>(logical_height * scale);
-  phys_w = std::min(phys_w, area_w);
-  phys_h = std::min(phys_h, area_h);
-
+  const double want_w = logical_width * scale;
+  const double want_h = logical_height * scale;
+  const double fit = std::min(1.0, std::min(area_w / want_w, area_h / want_h));
   const unsigned int fitted_w =
-      std::max(1u, static_cast<unsigned int>(phys_w / scale));
+      std::max(1u, static_cast<unsigned int>(want_w * fit / scale));
   const unsigned int fitted_h =
-      std::max(1u, static_cast<unsigned int>(phys_h / scale));
+      std::max(1u, static_cast<unsigned int>(want_h * fit / scale));
   return Win32Window::Size(fitted_w, fitted_h);
 }
 

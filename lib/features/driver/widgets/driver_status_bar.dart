@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../app/lp_robot_colors.dart';
 import '../../../core/robot_state.dart';
 import '../driver_params_model.dart';
 import '../driver_ui_style.dart';
+import 'driver_adaptive_value_field.dart';
 
-/// 驱动器实时状态栏（对齐 activity_driver.xml 顶部监测区）。
+/// 驱动器顶部监测区（1280×720 设计稿）。
 class DriverStatusBar extends StatelessWidget {
   const DriverStatusBar({
     super.key,
@@ -29,298 +29,381 @@ class DriverStatusBar extends StatelessWidget {
   final ValueChanged<String> onPosErrMaxLimitChanged;
   final VoidCallback? onAddressDebug;
 
-  static const _rowHeight = 26.0;
-  static const _limitBoxWidth = 68.0;
-  static const _valueMinHeight = 22.0;
+  static const double _boxWF = 0.0580;
+  static const double _boxHF = 0.0400;
+  static const double _encBoxWF = 0.0720;
+  static const double _labelBoxGapF = 0.0100;
+  static const double _rowGap1F = 0.0140;
+  static const double _rowGap2F = 0.0150;
+  static const double _padVF = 0.0040;
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width;
+    final h = size.height;
+
+    final boxW = w * _boxWF;
+    final encBoxW = w * _encBoxWF;
+    final boxH = h * _boxHF;
+    final labelGap = w * _labelBoxGapF;
+    final colGap = DriverUiStyle.pageColGap(w);
+    final rowGap1 = h * _rowGap1F;
+    final rowGap2 = h * _rowGap2F;
+    final sideW = DriverUiStyle.pageSideW(w);
+    final padH = DriverUiStyle.pagePadH(w);
+    final padV = h * _padVF;
+
+    final row1 = [
+      _GridCell.read('指令位置', '${live.posRef}'),
+      _GridCell.read('指令电流', '${live.currentRef}'),
+      _GridCell.read('指令速度', '${live.speedRef}'),
+      _GridCell.read('报警代码', '${live.servoState}'),
+      _GridCell.read('母线电压', '${live.busVoltage}'),
+      _GridCell.read('epwm周期', '${live.epwmTime}'),
+    ];
+    final row2 = [
+      _GridCell.read('反馈位置', '${live.posFdb}'),
+      _GridCell.read('反馈电流', '${live.currentFdb}'),
+      _GridCell.read('反馈速度', '${live.speedFdb}'),
+      _GridCell.read('指令偏差', '${live.posErr}'),
+      _GridCell.read('校验计数', '${live.checkCount}'),
+      _GridCell.read('速度观测', '${live.speedWatch}'),
+    ];
+    final row3Limits = [
+      _GridCell.edit('电流上限(A)', currentMaxLimit, onCurrentMaxLimitChanged),
+      _GridCell.edit('速度上限(r/min)', speedMaxLimit, onSpeedMaxLimitChanged),
+      _GridCell.edit('偏差上限', posErrMaxLimit, onPosErrMaxLimitChanged),
+    ];
+    final row3Encoders = [
+      _GridCell.read('单圈编码器值', '${live.encSingle}'),
+      _GridCell.read('多圈编码器值', '${live.encMulti}'),
+    ];
+
     final model = RobotState.instance.robotModel;
-    return Container(
-      color: DriverUiStyle.pageBackground,
-      padding: const EdgeInsets.fromLTRB(6, 3, 6, 5),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: _rowHeight * 2 + 4,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 50,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: _rowHeight,
-                        child: _monitorRow([
-                          _MonitorCell(
-                            label: '指令位置',
-                            value: '${live.posRef}',
-                            columnFlex: 11,
-                            valueFlex: 13,
-                          ),
-                          _MonitorCell(label: '指令电流', value: '${live.currentRef}'),
-                          _MonitorCell(label: '指令速度', value: '${live.speedRef}'),
-                          _MonitorCell(label: '报警代码', value: '${live.servoState}'),
-                          _MonitorCell(label: '母线电压', value: '${live.busVoltage}'),
-                          _MonitorCell(label: 'epwm周期', value: '${live.epwmTime}'),
-                        ]),
-                      ),
-                      const SizedBox(height: 4),
-                      SizedBox(
-                        height: _rowHeight,
-                        child: _monitorRow([
-                          _MonitorCell(
-                            label: '反馈位置',
-                            value: '${live.posFdb}',
-                            columnFlex: 11,
-                            valueFlex: 13,
-                          ),
-                          _MonitorCell(label: '反馈电流', value: '${live.currentFdb}'),
-                          _MonitorCell(label: '反馈速度', value: '${live.speedFdb}'),
-                          _MonitorCell(label: '指令偏差', value: '${live.posErr}'),
-                          _MonitorCell(label: '校验计数', value: '${live.checkCount}'),
-                          _MonitorCell(label: '速度观测', value: '${live.speedWatch}'),
-                        ]),
-                      ),
-                    ],
-                  ),
+    final addrW = (sideW * 0.88).clamp(88.0, 140.0);
+
+    Widget buildUniformRow(List<_GridCell> cells) {
+      return SizedBox(
+        height: boxH,
+        child: Row(
+          children: [
+            for (var i = 0; i < cells.length; i++) ...[
+              if (i > 0) SizedBox(width: colGap),
+              Expanded(
+                child: _GridCellView(
+                  cell: cells[i],
+                  labelGap: labelGap,
+                  boxW: boxW,
+                  boxH: boxH,
                 ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 88,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            model.isEmpty ? '—' : model,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: DriverUiStyle.statusLabelStyle,
-                          ),
-                        ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    /// 第 3 行：前三列同网格；单圈框右缘=校验计数框右缘；多圈左缘=速度观测，框右缘=地址参数按钮右缘。
+    Widget buildRow3(double gridW) {
+      final colW = (gridW - colGap * 5) / 6;
+      double colLeft(int i) => i * (colW + colGap);
+      double colRight(int i) => colLeft(i) + colW;
+
+      final singleW = colRight(4) - colLeft(3);
+      final multiW = gridW + colGap + (sideW + addrW) / 2 - colLeft(5);
+      // 与普通列相同的标签区宽，使编码器框左缘对齐指令偏差/速度观测框左缘。
+      final encLabelW = (colW - labelGap - boxW).clamp(24.0, colW);
+
+      return SizedBox(
+        height: boxH,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) SizedBox(width: colGap),
+              SizedBox(
+                width: colW,
+                child: _GridCellView(
+                  cell: row3Limits[i],
+                  labelGap: labelGap,
+                  boxW: boxW,
+                  boxH: boxH,
+                ),
+              ),
+            ],
+            SizedBox(width: colGap),
+            SizedBox(
+              width: singleW,
+              child: _GridCellView(
+                cell: row3Encoders[0],
+                labelGap: labelGap,
+                boxW: encBoxW,
+                boxH: boxH,
+                compactLabel: true,
+                expandValueBox: true,
+                labelWidth: encLabelW,
+              ),
+            ),
+            SizedBox(width: colGap),
+            SizedBox(
+              width: multiW,
+              child: _GridCellView(
+                cell: row3Encoders[1],
+                labelGap: labelGap,
+                boxW: encBoxW,
+                boxH: boxH,
+                compactLabel: true,
+                expandValueBox: true,
+                labelWidth: encLabelW,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildSideColumn() {
+      return SizedBox(
+        width: sideW,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: boxH,
+              child: Center(
+                child: Text(
+                  model.isEmpty ? '—' : model,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: DriverUiStyle.statusModelStyle,
+                ),
+              ),
+            ),
+            SizedBox(height: rowGap1),
+            SizedBox(
+              height: boxH,
+              child: Center(
+                child: SizedBox(
+                  width: addrW,
+                  height: boxH,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onAddressDebug,
+                      borderRadius: BorderRadius.circular(
+                        DriverUiStyle.actionBtnRadius,
                       ),
-                      SizedBox(
-                        height: 24,
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: onAddressDebug,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: LpRobotColors.primary,
-                            side: const BorderSide(color: LpRobotColors.primary),
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            textStyle: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                      child: Ink(
+                        decoration: DriverUiStyle.actionBtnDecoration(),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '地址参数',
+                              style: DriverUiStyle.statusAddressBtnStyle.copyWith(
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                          child: const Text('地址参数'),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(padH, padV, padH, padV),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    buildUniformRow(row1),
+                    SizedBox(height: rowGap1),
+                    buildUniformRow(row2),
+                  ],
+                ),
+              ),
+              SizedBox(width: colGap),
+              buildSideColumn(),
+            ],
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: _rowHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(width: 12),
-                _limitField(
-                  '电流上限(A)',
-                  currentMaxLimit,
-                  onCurrentMaxLimitChanged,
-                ),
-                const SizedBox(width: 20),
-                _limitField(
-                  '速度上限(r/min)',
-                  speedMaxLimit,
-                  onSpeedMaxLimitChanged,
-                ),
-                const SizedBox(width: 20),
-                _limitField(
-                  '偏差上限',
-                  posErrMaxLimit,
-                  onPosErrMaxLimitChanged,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _monitorRow([
-                    _MonitorCell(
-                      label: '单圈编码器值',
-                      value: '${live.encSingle}',
-                      columnFlex: 12,
-                      valueFlex: 10,
-                    ),
-                    _MonitorCell(
-                      label: '多圈编码器值',
-                      value: '${live.encMulti}',
-                      columnFlex: 12,
-                      valueFlex: 10,
-                    ),
-                  ]),
-                ),
-              ],
-            ),
+          SizedBox(height: rowGap2),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final gridW = constraints.maxWidth - colGap - sideW;
+              return buildRow3(gridW);
+            },
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _monitorRow(List<_MonitorCell> cells) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < cells.length; i++)
-          Expanded(
-            flex: cells[i].columnFlex,
-            child: Padding(
-              padding: EdgeInsets.only(left: i == 0 ? 0 : 3, right: 3),
-              child: _MonitorCellWidget(cell: cells[i]),
-            ),
-          ),
-      ],
-    );
-  }
+class _GridCell {
+  const _GridCell._({
+    required this.label,
+    required this.value,
+    this.onChanged,
+  });
 
-  Widget _limitField(
+  factory _GridCell.read(String label, String value) =>
+      _GridCell._(label: label, value: value);
+
+  factory _GridCell.edit(
     String label,
     String value,
     ValueChanged<String> onChanged,
-  ) {
+  ) =>
+      _GridCell._(label: label, value: value, onChanged: onChanged);
+
+  final String label;
+  final String value;
+  final ValueChanged<String>? onChanged;
+
+  bool get editable => onChanged != null;
+}
+
+/// 普通列：与第 1/2 行同格式。
+class _GridCellView extends StatelessWidget {
+  const _GridCellView({
+    required this.cell,
+    required this.labelGap,
+    required this.boxW,
+    required this.boxH,
+    this.compactLabel = false,
+    this.expandValueBox = false,
+    this.labelWidth,
+  });
+
+  final _GridCell cell;
+  final double labelGap;
+  final double boxW;
+  final double boxH;
+  final bool compactLabel;
+  final bool expandValueBox;
+
+  /// 固定标签宽：用于编码器行，使数值框左缘与上方同列输入框对齐。
+  final double? labelWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelStyle = compactLabel
+        ? DriverUiStyle.statusLabelStyle.copyWith(fontSize: 12, height: 1.05)
+        : DriverUiStyle.statusLabelStyle;
+
+    final valueBox = SizedBox(
+      height: boxH,
+      child: _ValueBox(cell: cell),
+    );
+
+    final labelChild = Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          cell.label,
+          maxLines: 1,
+          softWrap: false,
+          textAlign: TextAlign.left,
+          style: labelStyle,
+        ),
+      ),
+    );
+
     return Row(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label, style: DriverUiStyle.statusLabelStyle),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: _limitBoxWidth,
-          height: _valueMinHeight,
-          child: _StatusLimitField(value: value, onChanged: onChanged),
-        ),
+        if (labelWidth != null)
+          SizedBox(width: labelWidth, child: labelChild)
+        else
+          Expanded(child: labelChild),
+        SizedBox(width: labelGap),
+        if (expandValueBox)
+          Expanded(child: valueBox)
+        else
+          SizedBox(width: boxW, child: valueBox),
       ],
     );
   }
 }
 
-class _MonitorCell {
-  const _MonitorCell({
-    required this.label,
-    required this.value,
-    this.columnFlex = 10,
-    this.valueFlex = 10,
-  });
+class _ValueBox extends StatelessWidget {
+  const _ValueBox({required this.cell});
 
-  final String label;
-  final String value;
-  final int columnFlex;
-  final int valueFlex;
-}
-
-class _MonitorCellWidget extends StatelessWidget {
-  const _MonitorCellWidget({required this.cell});
-
-  final _MonitorCell cell;
+  final _GridCell cell;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          flex: 10,
-          child: Text(
-            cell.label,
-            textAlign: TextAlign.end,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DriverUiStyle.statusLabelStyle,
+    if (cell.editable) {
+      return DriverAdaptiveValueField(
+        value: cell.value,
+        onChanged: cell.onChanged!,
+        signed: true,
+        decimal: true,
+        style: DriverUiStyle.statusValueStyle,
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
+            borderSide: const BorderSide(
+              color: DriverUiStyle.boxBorderStrong,
+              width: DriverUiStyle.boxBorderWidth,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
+            borderSide: const BorderSide(
+              color: DriverUiStyle.boxBorderStrong,
+              width: DriverUiStyle.boxBorderWidth,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
+            borderSide: const BorderSide(
+              color: LpRobotColors.primary,
+              width: 1.3,
+            ),
           ),
         ),
-        const SizedBox(width: 3),
-        Expanded(
-          flex: cell.valueFlex,
-          child: Container(
-            alignment: Alignment.center,
-            height: DriverStatusBar._valueMinHeight,
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: DriverUiStyle.valueBoxDecoration(),
+      );
+    }
+
+    return DecoratedBox(
+      decoration: DriverUiStyle.statusValueBoxDecoration(),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
             child: Text(
               cell.value,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              softWrap: false,
               style: DriverUiStyle.statusValueStyle,
             ),
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _StatusLimitField extends StatefulWidget {
-  const _StatusLimitField({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_StatusLimitField> createState() => _StatusLimitFieldState();
-}
-
-class _StatusLimitFieldState extends State<_StatusLimitField> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.value);
-  }
-
-  @override
-  void didUpdateWidget(covariant _StatusLimitField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value && _controller.text != widget.value) {
-      _controller.text = widget.value;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: _controller,
-      onChanged: widget.onChanged,
-      keyboardType: const TextInputType.numberWithOptions(
-        signed: true,
-        decimal: true,
       ),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
-      ],
-      textAlign: TextAlign.center,
-      style: DriverUiStyle.statusValueStyle,
-      decoration: DriverUiStyle.fieldDecoration(compact: true),
     );
   }
 }

@@ -28,35 +28,41 @@ abstract final class ControlAssets {
   static const ioInputLabel = '$_base/io_input.png';
   static const ioOutputLabel = '$_base/io_output.png';
 
-  /// 操控页 IO 格贴图（对齐 Android [ControlIOs]：`io_g_*` 亮 / `io_o_*` 灭）。
-  static String ioCellAsset(int lane, {required bool active}) {
-    final suffix = lane == 15 ? '15_e' : '$lane';
-    final prefix = active ? 'io_g_' : 'io_o_';
-    return '$_base/$prefix$suffix.png';
-  }
+  /// 切图1 操控侧栏 / IO 格；优先 `config/imgs/切图1/`。
+  static const _cut1 = '$_base/cut1';
+
+  /// 操控页 IO 格：切图1 `mainin-box1` 灭 / `mainin-box2` 亮。
+  static const ioCellOff = '$_cut1/mainin-box1.png';
+  static const ioCellOn = '$_cut1/mainin-box2.png';
+  static const ioCellOffName = 'mainin-box1.png';
+  static const ioCellOnName = 'mainin-box2.png';
+
+  /// 操控页 IO 格贴图（对齐切图1：灭 / 亮）。
+  static String ioCellAsset({required bool active}) =>
+      active ? ioCellOn : ioCellOff;
 
   /// 圆角与 Android `bg_input` / `bg_button` 一致。
   static const double fieldRadius = 10;
 
-  static const axisXOff = '$_base/control_left_x1.png';
-  static const axisXOn = '$_base/control_left_x2.png';
-  static const axisYOff = '$_base/control_left_y1.png';
-  static const axisYOn = '$_base/control_left_y2.png';
-  static const axisZOff = '$_base/control_left_z1.png';
-  static const axisZOn = '$_base/control_left_z2.png';
-  static const ioOff = '$_base/control_left_io1.png';
-  static const ioOn = '$_base/control_left_io2.png';
+  static const axisXOff = '$_cut1/main-lefticon1-1.png';
+  static const axisXOn = '$_cut1/main-lefticon1-2.png';
+  static const axisYOff = '$_cut1/main-lefticon2-1.png';
+  static const axisYOn = '$_cut1/main-lefticon2-2.png';
+  static const axisZOff = '$_cut1/main-lefticon3-1.png';
+  static const axisZOn = '$_cut1/main-lefticon3-2.png';
+  static const ioOff = '$_cut1/main-lefticon4-1.png';
+  static const ioOn = '$_cut1/main-lefticon4-2.png';
 
-  static const jointOn = '$_base/ctrlbtn_right1_pressed.png';
-  static const jointOff = '$_base/ctrlbtn_right1_unpressed.png';
-  static const gantryOn = '$_base/ctrlbtn_right2_pressed.png';
-  static const gantryOff = '$_base/ctrlbtn_right2_unpressed.png';
-  static const linearOn = '$_base/ctrlbtn_right3_pressed.png';
-  static const linearOff = '$_base/ctrlbtn_right3_unpressed.png';
-  static const pointEditOn = '$_base/ctrlbtn_right4_pressed.png';
-  static const pointEditOff = '$_base/ctrlbtn_right4_unpressed.png';
-  static const clearUiOn = '$_base/ctrlbtn_right5_pressed.png';
-  static const clearUiOff = '$_base/ctrlbtn_right5_unpressed.png';
+  static const jointOff = '$_cut1/main-righticon1-1.png';
+  static const jointOn = '$_cut1/main-righticon1-2.png';
+  static const gantryOff = '$_cut1/main-righticon2-1.png';
+  static const gantryOn = '$_cut1/main-righticon2-2.png';
+  static const linearOff = '$_cut1/main-righticon3-1.png';
+  static const linearOn = '$_cut1/main-righticon3-2.png';
+  static const pointEditOff = '$_cut1/main-righticon4-1.png';
+  static const pointEditOn = '$_cut1/main-righticon4-2.png';
+  static const clearUiOff = '$_cut1/main-righticon5-1.png';
+  static const clearUiOn = '$_cut1/main-righticon5-2.png';
 
   static (String on, String off) modeAssets(ControlJogMode mode) =>
       switch (mode) {

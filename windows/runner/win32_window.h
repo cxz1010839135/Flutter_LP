@@ -90,6 +90,9 @@ class Win32Window {
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
 
+  // Enlarge to max 16:9 in work area; second click restores startup/previous size.
+  void ToggleDesignAspectZoom(HWND hwnd);
+
   bool quit_on_close_ = false;
 
   // window handle for top level window.
@@ -97,6 +100,10 @@ class Win32Window {
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
+
+  // Saved outer rect before custom zoom; used to restore startup-like size.
+  RECT zoom_restore_rect_{};
+  bool design_aspect_zoomed_ = false;
 };
 
 #endif  // RUNNER_WIN32_WINDOW_H_

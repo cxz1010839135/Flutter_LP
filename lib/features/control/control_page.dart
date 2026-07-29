@@ -91,11 +91,11 @@ class _ControlPageState extends State<ControlPage> {
                           ),
                           const SizedBox(height: 4),
                           const SizedBox(
-                            height: 58,
+                            height: 100,
                             child: LpRobotFootBar(
                               canvasColor: Colors.transparent,
                               ioLayout: IoPanelLayout.horizontalSplit,
-                              showStatus: false,
+                              showStatus: true,
                             ),
                           ),
                         ],

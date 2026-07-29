@@ -1,10 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../lp_robot_colors.dart';
 
-/// 全应用等比视口：1280×720 设计稿，完整缩放进窗口，四边不裁切、不溢出。
+/// 设计稿视口：默认 [BoxFit.fill] 铺满窗口（与驱动器参数页一致，无外圈留白）。
+/// 窗口保持 16:9 时等价于等比放大；勿再在页面内嵌套一层。
 class LpUniformAppViewport extends StatelessWidget {
   const LpUniformAppViewport({
     super.key,
@@ -12,12 +11,18 @@ class LpUniformAppViewport extends StatelessWidget {
     required this.designHeight,
     required this.child,
     this.backgroundColor,
+    this.fit = BoxFit.fill,
   });
 
   final double designWidth;
   final double designHeight;
   final Widget child;
   final Color? backgroundColor;
+
+  /// [BoxFit.fill]：铺满窗口，无外圈留白（全应用默认）。
+  /// [BoxFit.contain]：等比完整显示，可能留边。
+  /// [BoxFit.cover]：等比铺满，可能裁切边缘。
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +34,14 @@ class LpUniformAppViewport extends StatelessWidget {
         builder: (context, constraints) {
           final maxW = constraints.maxWidth;
           final maxH = constraints.maxHeight;
-          final scale = math.min(
-            maxW / designWidth,
-            maxH / designHeight,
-          );
 
-          return Center(
-            child: Transform.scale(
-              scale: scale,
+          return SizedBox(
+            width: maxW,
+            height: maxH,
+            child: FittedBox(
+              fit: fit,
               alignment: Alignment.center,
+              clipBehavior: Clip.hardEdge,
               child: SizedBox(
                 width: designWidth,
                 height: designHeight,

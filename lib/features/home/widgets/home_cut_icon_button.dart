@@ -73,6 +73,8 @@ class _HomeCutIconButtonState extends State<HomeCutIconButton> {
                   ? (files?.on ?? files?.off)
                   : files?.off;
               final asset = useOn ? widget.assetOn : widget.assetOff;
+              final labelColor =
+                  useOn ? Colors.white : LpRobotColors.primary;
 
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -105,7 +107,7 @@ class _HomeCutIconButtonState extends State<HomeCutIconButton> {
                                 style: TextStyle(
                                   fontSize: (h * 0.13).clamp(11.0, 16.0),
                                   fontWeight: FontWeight.w700,
-                                  color: LpRobotColors.primary,
+                                  color: labelColor,
                                   height: 1.0,
                                 ),
                               ),

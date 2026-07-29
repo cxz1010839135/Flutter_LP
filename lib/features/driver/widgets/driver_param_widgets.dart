@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../app/lp_robot_colors.dart';
 import '../driver_params_defs.dart';
 import '../driver_params_model.dart';
 import '../driver_ui_style.dart';
+import 'driver_adaptive_value_field.dart';
+import 'driver_canshu_section.dart';
 
 class DriverTabChip extends StatelessWidget {
   const DriverTabChip({
@@ -21,28 +22,26 @@ class DriverTabChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? LpRobotColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+      color: selected
+          ? const Color(0xFFFFE0C2)
+          : LpRobotColors.primary.withValues(alpha: 0.92),
       borderRadius: BorderRadius.circular(4),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(4),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: selected ? LpRobotColors.primary : DriverUiStyle.boxBorder,
-              width: DriverUiStyle.boxBorderWidth,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: selected ? LpRobotColors.primary : LpRobotColors.textDark,
+        child: SizedBox(
+          width: 26,
+          height: 26,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: DriverUiStyle.fontFamily,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected ? LpRobotColors.primary : Colors.white,
+                height: 1,
+              ),
             ),
           ),
         ),
@@ -51,7 +50,7 @@ class DriverTabChip extends StatelessWidget {
   }
 }
 
-class DriverParamField extends StatefulWidget {
+class DriverParamField extends StatelessWidget {
   const DriverParamField({
     super.key,
     required this.def,
@@ -65,20 +64,13 @@ class DriverParamField extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final bool enabled;
 
-  @override
-  State<DriverParamField> createState() => _DriverParamFieldState();
-}
-
-class _DriverParamFieldState extends State<DriverParamField> {
-  late final TextEditingController _controller;
-
-  void _showHelp() {
-    final help = DriverParamsDefs.helpOf(widget.def.key);
+  void _showHelp(BuildContext context) {
+    final help = DriverParamsDefs.helpOf(def.key);
     if (help == null || help.isEmpty) return;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(widget.def.label),
+        title: Text(def.label),
         content: Text(help),
         actions: [
           FilledButton(
@@ -91,67 +83,72 @@ class _DriverParamFieldState extends State<DriverParamField> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.value);
-  }
-
-  @override
-  void didUpdateWidget(covariant DriverParamField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value && _controller.text != widget.value) {
-      _controller.text = widget.value;
-    }
-    if (oldWidget.enabled != widget.enabled && !widget.enabled) {
-      _controller.text = widget.value;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 11,
-            child: InkWell(
-              onTap: _showHelp,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  widget.def.label,
-                  textAlign: TextAlign.end,
-                  style: DriverUiStyle.labelStyle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 行内标签略收，输入框更宽；在 1280 下加高行高。
+        final labelW =
+            (constraints.maxWidth * 0.58).clamp(40.0, constraints.maxWidth * 0.66);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: labelW,
+                child: InkWell(
+                  onTap: () => _showHelp(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        def.label,
+                        maxLines: 2,
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                        style: DriverUiStyle.labelStyle.copyWith(
+                          fontSize: 13,
+                          height: 1.15,
+                          color: LpRobotColors.textDark,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: SizedBox(
+                  height: 32,
+                  child: DriverAdaptiveValueField(
+                    value: value,
+                    enabled: enabled,
+                    onChanged: onChanged,
+                    signed: true,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            flex: 12,
-            child: TextField(
-              enabled: widget.enabled,
-              controller: _controller,
-              onChanged: widget.onChanged,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'-?\d*')),
-              ],
-              style: DriverUiStyle.fieldTextStyle,
-              decoration: DriverUiStyle.fieldDecoration(enabled: widget.enabled),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
+}
+
+/// 将字段按奇偶分到左右两列（对齐目标图双列排布）。
+List<List<DriverFieldDef>> _splitDualColumns(List<DriverFieldDef> fields) {
+  final left = <DriverFieldDef>[];
+  final right = <DriverFieldDef>[];
+  for (var i = 0; i < fields.length; i++) {
+    if (i.isEven) {
+      left.add(fields[i]);
+    } else {
+      right.add(fields[i]);
+    }
+  }
+  return [left, right];
 }
 
 class DriverParamColumn extends StatelessWidget {
@@ -180,50 +177,48 @@ class DriverParamColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fields = tabIndex < fieldGroups.length ? fieldGroups[tabIndex] : const <DriverFieldDef>[];
-    return DecoratedBox(
-      decoration: DriverUiStyle.panelDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: DriverUiStyle.sectionTitleStyle,
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < tabLabels.length; i++) ...[
-                if (i > 0) const SizedBox(width: 4),
-                DriverTabChip(
-                  label: tabLabels[i],
-                  selected: tabIndex == i,
-                  onTap: () => onTabChanged(i),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    final fields =
+        tabIndex < fieldGroups.length ? fieldGroups[tabIndex] : const <DriverFieldDef>[];
+    final cols = _splitDualColumns(fields);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DriverCanshuPanelHeader(
+          title: title,
+          tabLabels: tabLabels,
+          tabIndex: tabIndex,
+          onTabChanged: onTabChanged,
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final def in fields)
-                  DriverParamField(
-                    def: def,
-                    value: model.get(def.key),
-                    onChanged: (v) => onFieldChanged(def.key, v),
-                    enabled: !busy,
-                  ),
+                Expanded(child: _fieldList(cols[0])),
+                const SizedBox(width: 2),
+                Expanded(child: _fieldList(cols[1])),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fieldList(List<DriverFieldDef> defs) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        for (final def in defs)
+          DriverParamField(
+            def: def,
+            value: model.get(def.key),
+            onChanged: (v) => onFieldChanged(def.key, v),
+            enabled: !busy,
+          ),
+      ],
     );
   }
 }
@@ -246,131 +241,51 @@ class DriverGainColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (tabIndex == 1) {
-      return DecoratedBox(
-        decoration: DriverUiStyle.panelDecoration(),
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: Text('增益调整', style: DriverUiStyle.sectionTitleStyle),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                DriverTabChip(
-                  label: '1',
-                  selected: false,
-                  onTap: () => onTabChanged(0),
-                ),
-                const SizedBox(width: 4),
-                DriverTabChip(
-                  label: '2',
-                  selected: true,
-                  onTap: () => onTabChanged(1),
-                ),
-              ],
-            ),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(4),
-                      children: [
-                        for (final def in DriverParamsDefs.gainTab2Left)
-                          DriverParamField(
-                            def: def,
-                            value: model.get(def.key),
-                            onChanged: (v) => onFieldChanged(def.key, v),
-                            enabled: !busy,
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(4),
-                      children: [
-                        for (final def in DriverParamsDefs.gainTab2Right)
-                          DriverParamField(
-                            def: def,
-                            value: model.get(def.key),
-                            onChanged: (v) => onFieldChanged(def.key, v),
-                            enabled: !busy,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    final left = tabIndex == 1
+        ? DriverParamsDefs.gainTab2Left
+        : DriverParamsDefs.gainTab1Left;
+    final right = tabIndex == 1
+        ? DriverParamsDefs.gainTab2Right
+        : DriverParamsDefs.gainTab1Right;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DriverCanshuPanelHeader(
+          title: '增益调整',
+          tabLabels: const ['1', '2'],
+          tabIndex: tabIndex,
+          onTabChanged: onTabChanged,
         ),
-      );
-    }
-    return DecoratedBox(
-      decoration: DriverUiStyle.panelDecoration(),
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text('增益调整', style: DriverUiStyle.sectionTitleStyle),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              DriverTabChip(
-                label: '1',
-                selected: true,
-                onTap: () => onTabChanged(0),
-              ),
-              const SizedBox(width: 4),
-              DriverTabChip(
-                label: '2',
-                selected: false,
-                onTap: () => onTabChanged(1),
-              ),
-            ],
-          ),
-          Expanded(
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(4),
-                    children: [
-                      for (final def in DriverParamsDefs.gainTab1Left)
-                        DriverParamField(
-                          def: def,
-                          value: model.get(def.key),
-                          onChanged: (v) => onFieldChanged(def.key, v),
-                          enabled: !busy,
-                        ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(4),
-                    children: [
-                      for (final def in DriverParamsDefs.gainTab1Right)
-                        DriverParamField(
-                          def: def,
-                          value: model.get(def.key),
-                          onChanged: (v) => onFieldChanged(def.key, v),
-                          enabled: !busy,
-                        ),
-                    ],
-                  ),
-                ),
+                Expanded(child: _fieldList(left)),
+                const SizedBox(width: 2),
+                Expanded(child: _fieldList(right)),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fieldList(List<DriverFieldDef> defs) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        for (final def in defs)
+          DriverParamField(
+            def: def,
+            value: model.get(def.key),
+            onChanged: (v) => onFieldChanged(def.key, v),
+            enabled: !busy,
+          ),
+      ],
     );
   }
 }

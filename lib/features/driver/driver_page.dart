@@ -13,6 +13,7 @@ import 'driver_params_model.dart';
 import 'driver_params_service.dart';
 import 'driver_tech_mode_gate.dart';
 import 'driver_ui_style.dart';
+import 'widgets/driver_canshu_section.dart';
 import 'widgets/driver_params_panel.dart';
 import 'widgets/driver_status_bar.dart';
 import 'widgets/driver_title_bar.dart';
@@ -57,6 +58,13 @@ class _DriverPageState extends State<DriverPage>
   bool _findPhaseRunning = false;
   bool _findPhaseCancelled = false;
   bool _loopSessionActive = false;
+
+  /// 区域2（参数三列）相对区域2+3可用高度的占比；拖动分割条可调。
+  double _midBottomSplit = 0.5;
+  bool _splitDragging = false;
+  double _splitDragOriginY = 0;
+  double _splitDragOriginFrac = 0.5;
+  double _splitUsableH = 1;
 
   late List<AxisDebugRow> _axisRows;
   Map<String, List<double>> _waveSeries = const {};
@@ -593,124 +601,241 @@ class _DriverPageState extends State<DriverPage>
       },
       child: Scaffold(
         backgroundColor: DriverUiStyle.pageBackground,
-        body: Column(
+        // 缩放由 MaterialApp 全局 LpUniformAppViewport 统一处理。
+        body: DefaultTextStyle.merge(
+          style: DriverUiStyle.pageLabelStyle,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DriverTitleBar(
+                title: _tabTitles[_tabController.index],
+                onBack: _exitPage,
+              ),
+              DriverStatusBar(
+                live: _live,
+                currentMaxLimit: _currentMaxLimit,
+                speedMaxLimit: _speedMaxLimit,
+                posErrMaxLimit: _posErrMaxLimit,
+                onCurrentMaxLimitChanged: (v) => _currentMaxLimit = v,
+                onSpeedMaxLimitChanged: (v) => _speedMaxLimit = v,
+                onPosErrMaxLimitChanged: (v) => _posErrMaxLimit = v,
+                onAddressDebug: _openAddressDebug,
+              ),
+              Expanded(
+                child: IgnorePointer(
+                  ignoring: _busy || _exiting,
+                  child: Builder(
+                    builder: (context) {
+                      final size = MediaQuery.sizeOf(context);
+                      final padH = DriverUiStyle.pagePadH(size.width);
+                      final padV = size.height * 0.004;
+                      final showParams = _tabController.index == 0;
+                      return Padding(
+                        padding: EdgeInsets.fromLTRB(padH, 2, padH, padV),
+                        child: showParams
+                            ? _buildResizableMidBottom()
+                            : DriverCanshuSection(
+                                tabIndex: _tabController.index,
+                                tabsEnabled: !_busy && !_exiting,
+                                onTabChanged: (i) {
+                                  if (_tabController.index == i) return;
+                                  _tabController.animateTo(i);
+                                  setState(() {});
+                                },
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  physics: (_busy || _exiting)
+                                      ? const NeverScrollableScrollPhysics()
+                                      : null,
+                                  children: [
+                                    DriverParamsMidColumns(
+                                      model: _model,
+                                      motorTab: _motorTab,
+                                      gainTab: _gainTab,
+                                      safeTab: _safeTab,
+                                      busy: _busy,
+                                      onMotorTabChanged: (v) =>
+                                          setState(() => _motorTab = v),
+                                      onGainTabChanged: (v) =>
+                                          setState(() => _gainTab = v),
+                                      onSafeTabChanged: (v) =>
+                                          setState(() => _safeTab = v),
+                                      onFieldChanged: _onParamFieldChanged,
+                                    ),
+                                    DriverWaveformPanel(
+                                      series: _waveSeries,
+                                      loading: _waveLoading,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 区域2 / 区域3 可上下拖动拉伸。
+  Widget _buildResizableMidBottom() {
+    // 命中区略高，视觉条仍细，跟手用按下时的全局坐标绝对换算。
+    const handleH = 14.0;
+    const minFrac = 0.28;
+    const maxFrac = 0.72;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final total = constraints.maxHeight;
+        final usable = (total - handleH).clamp(1.0, double.infinity);
+        _splitUsableH = usable;
+        final frac = _midBottomSplit.clamp(minFrac, maxFrac);
+        final topH = usable * frac;
+        final bottomH = usable - topH;
+
+        void applySplitFromGlobalY(double globalY) {
+          final dy = globalY - _splitDragOriginY;
+          final next =
+              (_splitDragOriginFrac + dy / _splitUsableH).clamp(minFrac, maxFrac);
+          if ((next - _midBottomSplit).abs() < 0.0001) return;
+          setState(() => _midBottomSplit = next);
+        }
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DriverTitleBar(
-              title: _tabTitles[_tabController.index],
-              onBack: _exitPage,
-            ),
-            DriverStatusBar(
-              live: _live,
-              currentMaxLimit: _currentMaxLimit,
-              speedMaxLimit: _speedMaxLimit,
-              posErrMaxLimit: _posErrMaxLimit,
-              onCurrentMaxLimitChanged: (v) => _currentMaxLimit = v,
-              onSpeedMaxLimitChanged: (v) => _speedMaxLimit = v,
-              onPosErrMaxLimitChanged: (v) => _posErrMaxLimit = v,
-              onAddressDebug: _openAddressDebug,
-            ),
-            IgnorePointer(
-              ignoring: _busy || _exiting,
-              child: Material(
-                color: DriverUiStyle.pageBackground,
-                child: TabBar(
+            SizedBox(
+              height: topH,
+              child: DriverCanshuSection(
+                tabIndex: _tabController.index,
+                tabsEnabled: !_busy && !_exiting,
+                onTabChanged: (i) {
+                  if (_tabController.index == i) return;
+                  _tabController.animateTo(i);
+                  setState(() {});
+                },
+                child: TabBarView(
                   controller: _tabController,
-                  labelColor: LpRobotColors.primary,
-                  unselectedLabelColor: LpRobotColors.textDark,
-                  labelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  indicatorColor: LpRobotColors.primary,
-                  tabs: const [
-                    Tab(text: '驱动器参数'),
-                    Tab(text: '波形观测'),
+                  physics: (_busy || _exiting)
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  children: [
+                    DriverParamsMidColumns(
+                      model: _model,
+                      motorTab: _motorTab,
+                      gainTab: _gainTab,
+                      safeTab: _safeTab,
+                      busy: _busy,
+                      onMotorTabChanged: (v) =>
+                          setState(() => _motorTab = v),
+                      onGainTabChanged: (v) =>
+                          setState(() => _gainTab = v),
+                      onSafeTabChanged: (v) =>
+                          setState(() => _safeTab = v),
+                      onFieldChanged: _onParamFieldChanged,
+                    ),
+                    DriverWaveformPanel(
+                      series: _waveSeries,
+                      loading: _waveLoading,
+                    ),
                   ],
                 ),
               ),
             ),
-            if (_busy)
-              const LinearProgressIndicator(
-                color: LpRobotColors.primary,
-                backgroundColor: Color(0x22FF7E1A),
-              ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: (_busy || _exiting)
-                    ? const NeverScrollableScrollPhysics()
-                    : null,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: DriverParamsPanel(
-                      model: _model,
-                      curAxis: _curAxis,
-                      axisCount: _service.totalAxisNum,
-                      axisRows: _axisRows,
-                      motorTab: _motorTab,
-                      gainTab: _gainTab,
-                      safeTab: _safeTab,
-                      controlMode: _modelField('control_mode'),
-                      jogSpeed: _modelField('speed_jog', fallback: '500'),
-                      sampleCount: _sampleCount,
-                      delayMs: _delayMs,
-                      jerk: _jerk,
-                      refreshChart: _refreshChart,
-                      roundTrip: _roundTrip,
-                      loopMove: _loopMove,
-                      busy: _busy,
-                      onAxisChanged: _onAxisChanged,
-                      onMotorTabChanged: (v) => setState(() => _motorTab = v),
-                      onGainTabChanged: (v) => setState(() => _gainTab = v),
-                      onSafeTabChanged: (v) => setState(() => _safeTab = v),
-                      onFieldChanged: _onParamFieldChanged,
-                      onControlModeChanged: (v) =>
-                          _onParamFieldChanged('control_mode', v),
-                      onJogSpeedChanged: (v) =>
-                          _onParamFieldChanged('speed_jog', v),
-                      onSampleCountChanged: (v) => _sampleCount = v,
-                      onDelayChanged: (v) => _delayMs = v,
-                      onJerkChanged: (v) => _jerk = v,
-                      onRefreshChartChanged: (v) =>
-                          setState(() => _refreshChart = v),
-                      onRoundTripChanged: (v) => setState(() => _roundTrip = v),
-                      onLoopChanged: _onLoopChanged,
-                      onAxisMotionFieldChanged: _onAxisMotionFieldChanged,
-                      onAxisServoChanged: _onAxisServoChanged,
-                      onAxisMotionChanged: _onAxisMotionChanged,
-                      onReadDriver: _readDriver,
-                      onWriteDriver: _writeDriver,
-                      onWriteFile: _writeFile,
-                      onPosRef: _posRef,
-                      onSample: _sampleWaveform,
-                      findPhaseActive:
-                          _findPhaseRunning || _live.findPhaseFlag == 1,
-                      findPhaseButtonLabel: _findPhaseRunning || _live.findPhaseFlag == 1
-                          ? '电机寻相中'
-                          : '电机寻相',
-                      onFindPhase: _findPhase,
-                      onSoftReset: _softReset,
-                      onListSingleAxisDir: _listSingleAxisDir,
-                      onLoadSingleAxisFile: _loadSingleAxisFile,
-                      onSaveSingleAxisFile: _saveSingleAxisFile,
+            MouseRegion(
+              cursor: SystemMouseCursors.resizeUpDown,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragStart: (d) {
+                  _splitDragging = true;
+                  _splitDragOriginY = d.globalPosition.dy;
+                  _splitDragOriginFrac = frac;
+                },
+                onVerticalDragUpdate: (d) {
+                  if (!_splitDragging) return;
+                  applySplitFromGlobalY(d.globalPosition.dy);
+                },
+                onVerticalDragEnd: (_) => _splitDragging = false,
+                onVerticalDragCancel: () => _splitDragging = false,
+                child: SizedBox(
+                  height: handleH,
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: LpRobotColors.borderWarm.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  DriverWaveformPanel(
-                    series: _waveSeries,
-                    loading: _waveLoading,
-                  ),
-                ],
+                ),
+              ),
+            ),
+            SizedBox(
+              height: bottomH,
+              child: DriverParamsPanel(
+                model: _model,
+                curAxis: _curAxis,
+                axisCount: _service.totalAxisNum,
+                axisRows: _axisRows,
+                motorTab: _motorTab,
+                gainTab: _gainTab,
+                safeTab: _safeTab,
+                controlMode: _modelField('control_mode'),
+                jogSpeed: _modelField('speed_jog', fallback: '500'),
+                sampleCount: _sampleCount,
+                delayMs: _delayMs,
+                jerk: _jerk,
+                refreshChart: _refreshChart,
+                roundTrip: _roundTrip,
+                loopMove: _loopMove,
+                busy: _busy,
+                onAxisChanged: _onAxisChanged,
+                onMotorTabChanged: (v) => setState(() => _motorTab = v),
+                onGainTabChanged: (v) => setState(() => _gainTab = v),
+                onSafeTabChanged: (v) => setState(() => _safeTab = v),
+                onFieldChanged: _onParamFieldChanged,
+                onControlModeChanged: (v) =>
+                    _onParamFieldChanged('control_mode', v),
+                onJogSpeedChanged: (v) =>
+                    _onParamFieldChanged('speed_jog', v),
+                onSampleCountChanged: (v) => _sampleCount = v,
+                onDelayChanged: (v) => _delayMs = v,
+                onJerkChanged: (v) => _jerk = v,
+                onRefreshChartChanged: (v) =>
+                    setState(() => _refreshChart = v),
+                onRoundTripChanged: (v) =>
+                    setState(() => _roundTrip = v),
+                onLoopChanged: _onLoopChanged,
+                onAxisMotionFieldChanged: _onAxisMotionFieldChanged,
+                onAxisServoChanged: _onAxisServoChanged,
+                onAxisMotionChanged: _onAxisMotionChanged,
+                onReadDriver: _readDriver,
+                onWriteDriver: _writeDriver,
+                onWriteFile: _writeFile,
+                onPosRef: _posRef,
+                onSample: _sampleWaveform,
+                findPhaseActive:
+                    _findPhaseRunning || _live.findPhaseFlag == 1,
+                findPhaseButtonLabel:
+                    _findPhaseRunning || _live.findPhaseFlag == 1
+                        ? '电机寻相中'
+                        : '电机寻相',
+                onFindPhase: _findPhase,
+                onSoftReset: _softReset,
+                onListSingleAxisDir: _listSingleAxisDir,
+                onLoadSingleAxisFile: _loadSingleAxisFile,
+                onSaveSingleAxisFile: _saveSingleAxisFile,
               ),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

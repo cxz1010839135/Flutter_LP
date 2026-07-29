@@ -75,8 +75,16 @@ class RobotTelemetry extends ChangeNotifier {
   static const int controlIoRowWidth = RobotIoState.controlRowWidth;
 
   /// IO 模块滚轮项数（对齐 Android `Num_EtherCat_IO + 1`，显示 0…N）。
+  /// 若仅有 [extendIoNum]，按每模块 [RobotApiConstants.ioBase] 路推算（含本体 0）。
   int get ioModuleCount {
     if (etherCatIoNum > 0) return etherCatIoNum + 1;
+    if (extendIoNum > 0) {
+      final extModules =
+          ((extendIoNum + RobotApiConstants.ioBase - 1) ~/
+                  RobotApiConstants.ioBase)
+              .clamp(1, 31);
+      return extModules + 1;
+    }
     return 1;
   }
 

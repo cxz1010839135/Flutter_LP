@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../app/lp_app_fonts.dart';
 import '../../../app/lp_robot_colors.dart';
 import '../../../core/robot_state.dart';
 import '../../../network/http_manager.dart';
@@ -446,15 +447,17 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               labelColor: LpRobotColors.primary,
-              unselectedLabelColor: LpRobotColors.label,
+              unselectedLabelColor: LpRobotColors.textDark,
               indicatorColor: LpRobotColors.primary,
-              labelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+              labelStyle: LpAppFonts.style(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: LpRobotColors.primary,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+              unselectedLabelStyle: LpAppFonts.style(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: LpRobotColors.textDark,
               ),
               tabs: [
                 for (final kind in PlcRegisterKind.values)
@@ -536,9 +539,9 @@ class _Toolbar extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text(
                       '寄存器监视 $total/$maxEntries',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                      style: LpAppFonts.style(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                         color: LpRobotColors.textDark,
                       ),
                     ),
@@ -577,7 +580,14 @@ class _Toolbar extends StatelessWidget {
             runSpacing: 0,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('自动刷新', style: TextStyle(fontSize: 12)),
+              Text(
+                '自动刷新',
+                style: LpAppFonts.style(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: LpRobotColors.textDark,
+                ),
+              ),
               Switch(
                 value: autoRefresh,
                 onChanged: onAutoRefreshChanged,
@@ -586,8 +596,9 @@ class _Toolbar extends StatelessWidget {
               DropdownButton<int>(
                 value: intervalOptions.contains(intervalMs) ? intervalMs : 500,
                 isDense: true,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: LpAppFonts.style(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: LpRobotColors.textDark,
                 ),
                 items: intervalOptions
@@ -632,9 +643,10 @@ class _KindTabLabel extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+              style: LpAppFonts.style(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: LpRobotColors.primary,
               ),
             ),
           ),
@@ -672,9 +684,10 @@ class _KindWatchPage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 11,
-              color: LpRobotColors.label,
+            style: LpAppFonts.style(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: LpRobotColors.textDark,
             ),
           ),
         ),
@@ -684,10 +697,11 @@ class _KindWatchPage extends StatelessWidget {
                   child: Text(
                     '暂无 ${kind.label} 监视\n点击下方添加',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: LpRobotColors.label,
-                      height: 1.4,
+                    style: LpAppFonts.style(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: LpRobotColors.textDark,
+                      height: 1.45,
                     ),
                   ),
                 )
@@ -716,6 +730,11 @@ class _KindWatchPage extends StatelessWidget {
               label: Text(maxed ? '总数已满' : '添加 ${kind.label}'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: LpRobotColors.primary,
+                textStyle: LpAppFonts.style(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: LpRobotColors.primary,
+                ),
                 side: BorderSide(
                   color: LpRobotColors.primary.withValues(alpha: 0.5),
                 ),
@@ -774,17 +793,18 @@ class _WatchRow extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                      style: LpAppFonts.style(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                         color: LpRobotColors.textDark,
                       ),
                     ),
                     Text(
                       entry.displayAddress,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: LpRobotColors.label,
+                      style: LpAppFonts.style(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: LpRobotColors.textDark,
                       ),
                     ),
                   ],
@@ -793,9 +813,9 @@ class _WatchRow extends StatelessWidget {
             ),
             Text(
               valueText,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+              style: LpAppFonts.style(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
                 color: entry.error
                     ? LpRobotColors.alarm
                     : entry.changed

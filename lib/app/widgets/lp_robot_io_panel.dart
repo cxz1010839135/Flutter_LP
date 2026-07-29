@@ -21,7 +21,9 @@ abstract final class _IoPanelLayout {
 
   /// 操控页横向 IO（Windows 桌面需比 Android 30dp 更高、更大格）。
   static const double horizontalHeaderHeight = 18;
-  static const double horizontalLabelWidth = 58;
+  /// 胶囊模式下组号更贴近格子。
+  static const double horizontalHeaderHeightTight = 16;
+  static const double horizontalLabelWidth = 64;
   static const double horizontalLedMin = 16;
   static const double horizontalLedMax = 28;
   static const double horizontalSectionGap = 12;
@@ -113,7 +115,8 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
             final uiScale = LpUiScale.clampFactor(h / 68);
             final tight = widget.tightLedSpacing;
             final labelColW = tight
-                ? (48.0 * uiScale).clamp(40.0, 56.0)
+                // OUTPUT 需约 58–64，过窄会换行溢出（OUTPU / T）。
+                ? (64.0 * uiScale).clamp(56.0, 72.0)
                 : (_IoPanelLayout.labelColWidth * uiScale).clamp(36.0, w * 0.12);
             final pickerW = (_IoPanelLayout.pickerWidth * uiScale).clamp(
               tight ? 36.0 : 24.0,
@@ -189,13 +192,20 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            'INPUT',
-                            style: TextStyle(
-                              fontSize: (led * 0.58).clamp(11.0, 16.0),
-                              fontWeight: FontWeight.w600,
-                              color: LpRobotColors.label,
-                              letterSpacing: 0.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'INPUT',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: (led * 0.52).clamp(11.0, 15.0),
+                                fontWeight: FontWeight.w700,
+                                color: LpRobotColors.label,
+                                letterSpacing: 0,
+                                height: 1.0,
+                              ),
                             ),
                           ),
                         ),
@@ -204,13 +214,20 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
                       Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            'OUTPUT',
-                            style: TextStyle(
-                              fontSize: (led * 0.58).clamp(11.0, 16.0),
-                              fontWeight: FontWeight.w600,
-                              color: LpRobotColors.label,
-                              letterSpacing: 0.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'OUTPUT',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: (led * 0.52).clamp(11.0, 15.0),
+                                fontWeight: FontWeight.w700,
+                                color: LpRobotColors.label,
+                                letterSpacing: 0,
+                                height: 1.0,
+                              ),
                             ),
                           ),
                         ),
@@ -246,26 +263,31 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
     required bool online,
     required RobotTelemetry telemetry,
   }) {
-    const padH = 6.0;
-    const padV = 4.0;
+    const padH = 4.0;
+    final tight = widget.tightLedSpacing;
+    // 胶囊贴底时不再额外垫高，方便与报警胶囊下边沿对齐。
+    final padV = tight ? 0.0 : 2.0;
     final availH = constraints.maxHeight - padV * 2;
     final availW = constraints.maxWidth - padH * 2;
     final sectionW =
         (availW - _IoPanelLayout.horizontalSectionGap) / 2;
     final gridW = sectionW - _IoPanelLayout.horizontalLabelWidth;
     final groupW = gridW / 4;
-    final cellW = (groupW - 6) / 4;
-    final rowH = availH -
-        _IoPanelLayout.horizontalHeaderHeight -
-        2;
-    final led = (cellW < rowH ? cellW : rowH) * 0.92;
+    final cellW = (groupW - (tight ? 4 : 6)) / 4;
+    final headerH = tight
+        ? _IoPanelLayout.horizontalHeaderHeightTight
+        : _IoPanelLayout.horizontalHeaderHeight;
+    final headerGap = tight ? 0.0 : 2.0;
+    final rowH = availH - headerH - headerGap;
+    // 胶囊模式：报警区缩短后，IO 胶囊/字号整体再放大约 50%。
+    final led = (cellW < rowH ? cellW : rowH) * (tight ? 1.41 : 0.92);
     final ledSize = led.clamp(
-      _IoPanelLayout.horizontalLedMin,
-      _IoPanelLayout.horizontalLedMax,
+      tight ? 20.0 : _IoPanelLayout.horizontalLedMin,
+      tight ? 42.0 : _IoPanelLayout.horizontalLedMax,
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(padH, padV, padH, padV),
+      padding: EdgeInsets.fromLTRB(padH, padV, padH, padV),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -277,6 +299,7 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
               ledSize: ledSize,
               online: online,
               telemetry: telemetry,
+              tight: tight,
             ),
           ),
           SizedBox(width: _IoPanelLayout.horizontalSectionGap),
@@ -288,6 +311,7 @@ class _LpRobotIoPanelState extends State<LpRobotIoPanel> {
               ledSize: ledSize,
               online: online,
               telemetry: telemetry,
+              tight: tight,
             ),
           ),
         ],
@@ -305,6 +329,7 @@ class _HorizontalIoSection extends StatelessWidget {
     required this.ledSize,
     required this.online,
     required this.telemetry,
+    this.tight = false,
   });
 
   final String title;
@@ -313,63 +338,110 @@ class _HorizontalIoSection extends StatelessWidget {
   final double ledSize;
   final bool online;
   final RobotTelemetry telemetry;
+  final bool tight;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final headerH = tight
+        ? _IoPanelLayout.horizontalHeaderHeightTight
+        : _IoPanelLayout.horizontalHeaderHeight;
+
+    final bitRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          height: _IoPanelLayout.horizontalHeaderHeight,
-          child: _IoHeaderRow(
-            labelWidth: _IoPanelLayout.horizontalLabelWidth,
-            ledSize: ledSize,
+          width: _IoPanelLayout.horizontalLabelWidth,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: (ledSize * (tight ? 0.5 : 0.48)).clamp(
+                    tight ? 12.0 : 11.0,
+                    tight ? 16.0 : 14.0,
+                  ),
+                  fontWeight: FontWeight.w700,
+                  color: LpRobotColors.primary,
+                  letterSpacing: 0,
+                  height: 1.0,
+                ),
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 2),
         Expanded(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: _IoPanelLayout.horizontalLabelWidth,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: (ledSize * 0.48).clamp(11.0, 14.0),
-                      fontWeight: FontWeight.w700,
-                      color: LpRobotColors.primary,
-                      letterSpacing: 0.2,
-                      height: 1.0,
-                    ),
+              for (var group = 0; group < 4; group++) ...[
+                if (tight && group > 0) SizedBox(width: ledSize * 0.2),
+                Expanded(
+                  child: _IoBitRow(
+                    ledSize: ledSize,
+                    online: online,
+                    telemetry: telemetry,
+                    groupIndex: group,
+                    baseAddress: moduleIndex * RobotApiConstants.ioBase,
+                    isOutput: isOutput,
+                    emphasized: true,
+                    tight: tight,
                   ),
                 ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    for (var group = 0; group < 4; group++)
-                      Expanded(
-                        child: _IoBitRow(
-                          ledSize: ledSize,
-                          online: online,
-                          telemetry: telemetry,
-                          groupIndex: group,
-                          baseAddress:
-                              moduleIndex * RobotApiConstants.ioBase,
-                          isOutput: isOutput,
-                          emphasized: true,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              ],
             ],
           ),
         ),
+      ],
+    );
+
+    final header = SizedBox(
+      height: headerH,
+      child: _IoHeaderRow(
+        labelWidth: _IoPanelLayout.horizontalLabelWidth,
+        ledSize: ledSize,
+        tight: tight,
+      ),
+    );
+
+    // 胶囊模式：组号贴紧胶囊，整块贴底与报警胶囊下边沿对齐。
+    if (tight) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final gridW =
+              constraints.maxWidth - _IoPanelLayout.horizontalLabelWidth;
+          final groupGaps = ledSize * 0.2 * 3;
+          final groupAvailW = ((gridW - groupGaps) / 4).clamp(1.0, gridW);
+          // 按胶囊底图比例估高，避免格子在过高区域内垂直居中产生空隙。
+          const groupBgAspect = 149 / 56;
+          final naturalCapsuleH = groupAvailW / groupBgAspect;
+          final capsuleH = math
+              .min(constraints.maxHeight - headerH, naturalCapsuleH)
+              .clamp(ledSize * 1.4, constraints.maxHeight - headerH);
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                SizedBox(height: capsuleH, child: bitRow),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        const SizedBox(height: 2),
+        Expanded(child: bitRow),
       ],
     );
   }
@@ -379,28 +451,34 @@ class _IoHeaderRow extends StatelessWidget {
   const _IoHeaderRow({
     required this.labelWidth,
     required this.ledSize,
+    this.tight = false,
   });
 
   final double labelWidth;
   final double ledSize;
+  final bool tight;
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = (ledSize * 0.55).clamp(12.0, 18.0);
+    final fontSize = tight
+        ? (ledSize * 0.48).clamp(12.0, 18.0)
+        : (ledSize * 0.55).clamp(12.0, 18.0);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         SizedBox(width: labelWidth),
         Expanded(
           child: Row(
             children: [
-              for (var group = 0; group < 4; group++)
+              for (var group = 0; group < 4; group++) ...[
+                if (tight && group > 0)
+                  SizedBox(width: ledSize * 0.2),
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(left: group == 0 ? 0 : 2),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Center(
+                  child: tight
+                      ? Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 2),
                             child: Text(
                               '${RobotIoState.columnGroupLabels[group]}',
                               style: TextStyle(
@@ -411,12 +489,30 @@ class _IoHeaderRow extends StatelessWidget {
                               ),
                             ),
                           ),
+                        )
+                      : Padding(
+                          padding: EdgeInsets.only(left: group == 0 ? 0 : 2),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    '${RobotIoState.columnGroupLabels[group]}',
+                                    style: TextStyle(
+                                      fontSize: fontSize,
+                                      fontWeight: FontWeight.w700,
+                                      color: LpRobotColors.primary,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Spacer(flex: 3),
+                            ],
+                          ),
                         ),
-                        const Spacer(flex: 3),
-                      ],
-                    ),
-                  ),
                 ),
+              ],
             ],
           ),
         ),
@@ -426,7 +522,7 @@ class _IoHeaderRow extends StatelessWidget {
 }
 
 /// 底栏 IO 模块滚轮（对齐操控区 `ControlIoModulePicker`，高度自适应）。
-class _FootIoModulePicker extends StatelessWidget {
+class _FootIoModulePicker extends StatefulWidget {
   const _FootIoModulePicker({
     required this.width,
     required this.moduleCount,
@@ -447,21 +543,76 @@ class _FootIoModulePicker extends StatelessWidget {
   final bool largeType;
 
   @override
+  State<_FootIoModulePicker> createState() => _FootIoModulePickerState();
+}
+
+class _FootIoModulePickerState extends State<_FootIoModulePicker> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+  }
+
+  @override
+  void didUpdateWidget(covariant _FootIoModulePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onScroll);
+      widget.controller.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (mounted) setState(() {});
+  }
+
+  void _onPointerScroll(PointerScrollEvent event) {
+    final count = widget.moduleCount.clamp(1, 32);
+    if (count <= 1 || !widget.controller.hasClients) return;
+    final delta = event.scrollDelta.dy;
+    if (delta == 0) return;
+    final cur = widget.controller.selectedItem;
+    final next = (delta > 0 ? cur + 1 : cur - 1).clamp(0, count - 1);
+    if (next == cur) return;
+    widget.controller.animateToItem(
+      next,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// 透明底时不画外框，避免左侧多出一条竖线；有底色时保留完整描边。
+  static BoxBorder? _outlineBorder(Color surfaceColor) {
+    final side = BorderSide(
+      color: LpRobotColors.borderWarm.withValues(alpha: 0.45),
+    );
+    if (surfaceColor.a == 0) return null;
+    return Border.fromBorderSide(side);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final outline = _outlineBorder(surfaceColor);
-    final singleSize = largeType ? 22.0 : 14.0;
-    final selectedSize = largeType ? 20.0 : 15.0;
-    final idleSize = largeType ? 15.0 : 12.0;
+    final outline = _outlineBorder(widget.surfaceColor);
+    final singleSize = widget.largeType ? 22.0 : 14.0;
+    final selectedSize = widget.largeType ? 20.0 : 15.0;
+    final idleSize = widget.largeType ? 15.0 : 12.0;
+    final count = widget.moduleCount.clamp(1, 32);
 
     return SizedBox(
-      width: width,
+      width: widget.width,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: surfaceColor.a == 0 ? null : surfaceColor,
+          color: widget.surfaceColor.a == 0 ? null : widget.surfaceColor,
           borderRadius: BorderRadius.circular(4),
           border: outline,
         ),
-        child: moduleCount <= 1
+        child: count <= 1
             ? Center(
                 child: Text(
                   '0',
@@ -477,86 +628,91 @@ class _FootIoModulePicker extends StatelessWidget {
             : LayoutBuilder(
                 builder: (context, constraints) {
                   final h = constraints.maxHeight;
-                  final itemExtent =
-                      (h / 3).clamp(largeType ? 22.0 : 18.0, largeType ? 32.0 : 28.0);
+                  // 底栏偏矮：itemExtent 不超过可用高度的 1/3，保证能滚。
+                  final itemExtent = (h / 3).clamp(
+                    widget.largeType ? 14.0 : 12.0,
+                    widget.largeType ? 28.0 : 24.0,
+                  );
+                  final selected = widget.controller.hasClients
+                      ? widget.controller.selectedItem
+                      : widget.selectedIndex;
 
-                  return ScrollConfiguration(
-                    behavior: const _FootIoPickerScrollBehavior(),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ListWheelScrollView.useDelegate(
-                          controller: controller,
-                          itemExtent: itemExtent,
-                          diameterRatio: 1.4,
-                          perspective: 0.003,
-                          physics: const FixedExtentScrollPhysics(),
-                          onSelectedItemChanged: onChanged,
-                          childDelegate: ListWheelChildBuilderDelegate(
-                            childCount: moduleCount,
-                            builder: (context, index) {
-                              final selected = controller.hasClients
-                                  ? controller.selectedItem == index
-                                  : selectedIndex == index;
-                              return Center(
-                                child: Text(
-                                  '$index',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize:
-                                        selected ? selectedSize : idleSize,
-                                    fontWeight: selected
-                                        ? FontWeight.w800
-                                        : FontWeight.w500,
-                                    color: selected
-                                        ? LpRobotColors.primary
-                                        : LpRobotColors.label,
-                                    height: 1.0,
+                  return Listener(
+                    onPointerSignal: (signal) {
+                      if (signal is PointerScrollEvent) {
+                        _onPointerScroll(signal);
+                      }
+                    },
+                    child: ScrollConfiguration(
+                      behavior: const _FootIoPickerScrollBehavior(),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ListWheelScrollView.useDelegate(
+                            key: ValueKey('foot-io-mod-$count'),
+                            controller: widget.controller,
+                            itemExtent: itemExtent,
+                            diameterRatio: 1.4,
+                            perspective: 0.003,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: widget.onChanged,
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: count,
+                              builder: (context, index) {
+                                final isSelected = selected == index;
+                                return Center(
+                                  child: Text(
+                                    '$index',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: isSelected
+                                          ? selectedSize
+                                          : idleSize,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? LpRobotColors.primary
+                                          : LpRobotColors.label,
+                                      height: 1.0,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        IgnorePointer(
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                              height: itemExtent,
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: LpRobotColors.primary
-                                        .withValues(alpha: 0.5),
-                                    width: 1.2,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: LpRobotColors.primary
-                                        .withValues(alpha: 0.5),
-                                    width: 1.2,
+                          IgnorePointer(
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Container(
+                                height: itemExtent,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 2),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(
+                                      color: LpRobotColors.primary
+                                          .withValues(alpha: 0.5),
+                                      width: 1.2,
+                                    ),
+                                    bottom: BorderSide(
+                                      color: LpRobotColors.primary
+                                          .withValues(alpha: 0.5),
+                                      width: 1.2,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
               ),
       ),
     );
-  }
-
-  /// 透明底时不画外框，避免左侧多出一条竖线；有底色时保留完整描边。
-  static BoxBorder? _outlineBorder(Color surfaceColor) {
-    final side = BorderSide(
-      color: LpRobotColors.borderWarm.withValues(alpha: 0.45),
-    );
-    if (surfaceColor.a == 0) return null;
-    return Border.fromBorderSide(side);
   }
 }
 
@@ -841,7 +997,7 @@ class _IoBitRow extends StatelessWidget {
           );
 
           return Align(
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.bottomLeft,
             child: SizedBox(
               width: contentW,
               height: contentH,

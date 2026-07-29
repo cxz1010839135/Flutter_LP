@@ -22,8 +22,8 @@ class ControlIoModulePicker extends StatefulWidget {
 }
 
 class _ControlIoModulePickerState extends State<ControlIoModulePicker> {
-  static const double _height = 220;
-  static const double _visibleItems = 3;
+  static const double _minHeight = 180;
+  static const int _visibleItems = 3;
 
   late FixedExtentScrollController _controller;
   int _highlight = 0;
@@ -35,6 +35,12 @@ class _ControlIoModulePickerState extends State<ControlIoModulePicker> {
     super.initState();
     _highlight = _clampIndex(widget.selectedIndex);
     _controller = FixedExtentScrollController(initialItem: _highlight);
+    _controller.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   int _clampIndex(int index) {
@@ -47,6 +53,8 @@ class _ControlIoModulePickerState extends State<ControlIoModulePicker> {
     final next = _clampIndex(widget.selectedIndex);
     _highlight = next;
     if (!_controller.hasClients) return;
+    final scrolling = _controller.position.isScrollingNotifier.value;
+    if (scrolling) return;
     if (widget.moduleCount != oldWidget.moduleCount ||
         next != _controller.selectedItem) {
       _controller.jumpToItem(next);
@@ -55,78 +63,112 @@ class _ControlIoModulePickerState extends State<ControlIoModulePicker> {
 
   @override
   void dispose() {
+    _controller.removeListener(_onScroll);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onPointerScroll(PointerScrollEvent event) {
+    if (_safeCount <= 1 || !_controller.hasClients) return;
+    final delta = event.scrollDelta.dy;
+    if (delta == 0) return;
+    final cur = _controller.selectedItem;
+    final next = (delta > 0 ? cur + 1 : cur - 1).clamp(0, _safeCount - 1);
+    if (next == cur) return;
+    _controller.animateToItem(
+      next,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final count = _safeCount;
-    final itemExtent = _height / _visibleItems;
 
-    if (count <= 1) {
-      return SizedBox(
-        height: _height,
-        width: 56,
-        child: _PickerChrome(
-          itemExtent: itemExtent,
-          child: Center(
-            child: Text(
-              '0',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: LpRobotColors.primary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight.isFinite &&
+                constraints.maxHeight > 0
+            ? constraints.maxHeight.clamp(_minHeight, 420.0)
+            : _minHeight;
+        final itemExtent = height / _visibleItems;
 
-    return SizedBox(
-      height: _height,
-      width: 56,
-      child: ClipRect(
-        child: _PickerChrome(
-          itemExtent: itemExtent,
-          child: ScrollConfiguration(
-            behavior: const _IoPickerScrollBehavior(),
-            child: ListWheelScrollView.useDelegate(
-              controller: _controller,
+        if (count <= 1) {
+          return SizedBox(
+            height: height,
+            width: 56,
+            child: _PickerChrome(
               itemExtent: itemExtent,
-              diameterRatio: 1.35,
-              perspective: 0.003,
-              physics: const FixedExtentScrollPhysics(),
-              onSelectedItemChanged: (index) {
-                _highlight = index;
-                widget.onChanged(index);
-              },
-              childDelegate: ListWheelChildBuilderDelegate(
-                childCount: count,
-                builder: (context, index) {
-                  final selected = _controller.hasClients
-                      ? _controller.selectedItem == index
-                      : _highlight == index;
-                  return Center(
-                    child: Text(
-                      '$index',
-                      style: TextStyle(
-                        fontSize: selected ? 22 : 18,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected
-                            ? LpRobotColors.primary
-                            : LpRobotColors.label,
-                      ),
-                    ),
-                  );
+              child: const Center(
+                child: Text(
+                  '0',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: LpRobotColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final selected = _controller.hasClients
+            ? _controller.selectedItem
+            : _highlight;
+
+        return SizedBox(
+          height: height,
+          width: 56,
+          child: ClipRect(
+            child: _PickerChrome(
+              itemExtent: itemExtent,
+              child: Listener(
+                onPointerSignal: (signal) {
+                  if (signal is PointerScrollEvent) {
+                    _onPointerScroll(signal);
+                  }
                 },
+                child: ScrollConfiguration(
+                  behavior: const _IoPickerScrollBehavior(),
+                  child: ListWheelScrollView.useDelegate(
+                    controller: _controller,
+                    itemExtent: itemExtent,
+                    diameterRatio: 1.35,
+                    perspective: 0.003,
+                    physics: const FixedExtentScrollPhysics(),
+                    onSelectedItemChanged: (index) {
+                      _highlight = index;
+                      widget.onChanged(index);
+                    },
+                    childDelegate: ListWheelChildBuilderDelegate(
+                      childCount: count,
+                      builder: (context, index) {
+                        final isSelected = selected == index;
+                        return Center(
+                          child: Text(
+                            '$index',
+                            style: TextStyle(
+                              fontSize: isSelected ? 22 : 18,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? LpRobotColors.primary
+                                  : LpRobotColors.label,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

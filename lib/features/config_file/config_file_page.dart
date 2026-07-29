@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/lp_app_assets.dart';
+import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
@@ -506,96 +508,134 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
         return Theme(
           data: DriverUiStyle.configFilePageTheme(Theme.of(context)),
           child: Scaffold(
-          backgroundColor: DriverUiStyle.pageBackground,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LpRobotPoseBar(
-                pageTitle: '文件配置',
-                titleBarOnly: true,
-                onBack: () => Navigator.of(context).pop(),
-              ),
-              Expanded(
-                child: _showDriverPanel
-                    ? _buildDriverPanel()
-                    : _buildStepPanel(),
-              ),
-              _buildBottomBar(initBusy: initBusy, canEdit: canEdit),
-              const LpStatusPanel(),
-            ],
+            backgroundColor: DriverUiStyle.pageBackground,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LpRobotPoseBar(
+                  pageTitle: '文件配置',
+                  titleBarOnly: true,
+                  onBack: () => Navigator.of(context).pop(),
+                ),
+                Expanded(
+                  child: _showDriverPanel
+                      ? _buildDriverPanel()
+                      : _buildStepPanel(),
+                ),
+                _buildBottomBar(initBusy: initBusy, canEdit: canEdit),
+                const LpStatusPanel(),
+              ],
+            ),
           ),
-        ),
         );
       },
     );
   }
 
   Widget _buildStepPanel() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          width: 280,
-          margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.all(12),
-          decoration: DriverUiStyle.panelDecoration(),
-          child: SingleChildScrollView(
-            child: Text(
-              _step.tips.isEmpty ? ' ' : _step.tips,
-              style: DriverUiStyle.configBodyStyle.copyWith(height: 1.65),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(0, 8, 8, 8),
-            decoration: DriverUiStyle.panelDecoration(),
-            child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                child: Text(
-                  _step.title,
-                  style: DriverUiStyle.configTitleStyle,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 左侧说明：wenjian-leftbox-bg
+          SizedBox(
+            width: 260,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(LpAppAssets.configLeftBoxBg),
+                  fit: BoxFit.fill,
                 ),
               ),
-              Expanded(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : !_fileExists
-                        ? const Center(
-                            child: Text(
-                              '文件不存在',
-                              style: DriverUiStyle.configPlaceholderStyle,
-                            ),
-                          )
-                        : _buildTable(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 10, 12),
+                child: _buildTipsList(_step.tips),
               ),
-              if (_fileExists && _step.allowAdd && MaintenanceEditGate.canEdit())
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: _addRow,
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('添加条目'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // 主内容：wenjian-main-boxbg（含左上角页签位）
+          Expanded(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(LpAppAssets.configMainBoxBg),
+                  fit: BoxFit.fill,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
+                    child: Text(
+                      _step.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: LpAppFonts.style(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: LpRobotColors.textDark,
                       ),
-                      if (_step.allowRemove)
-                        TextButton.icon(
-                          onPressed: _removeRow,
-                          icon: const Icon(Icons.remove, size: 18),
-                          label: const Text('删除条目'),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-            ],
+                  Expanded(
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : !_fileExists
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.asset(
+                                      LpAppAssets.configMainBoxIcon,
+                                      width: 88,
+                                      height: 72,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.medium,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      '文件不存在',
+                                      style: LpAppFonts.style(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xCC3F260F),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : _buildTable(),
+                  ),
+                  if (_fileExists &&
+                      _step.allowAdd &&
+                      MaintenanceEditGate.canEdit())
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: _addRow,
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('添加条目'),
+                          ),
+                          if (_step.allowRemove)
+                            TextButton.icon(
+                              onPressed: _removeRow,
+                              icon: const Icon(Icons.remove, size: 18),
+                              label: const Text('删除条目'),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -643,44 +683,75 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   }
 
   Widget _buildDriverPanel() {
-    return Container(
-      margin: const EdgeInsets.all(8),
-      decoration: DriverUiStyle.panelDecoration(),
-      child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            '驱控文件参数(保存后请重启驱控) · 当前 $_driverAxisCount 轴',
-            textAlign: TextAlign.center,
-            style: DriverUiStyle.configTitleStyle,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(LpAppAssets.configMainBoxBg),
+            fit: BoxFit.fill,
           ),
         ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : !_driverExists
-                  ? const Center(
-                      child: Text(
-                        '该文件不存在',
-                        style: DriverUiStyle.configPlaceholderStyle,
-                      ),
-                    )
-                  : _buildDriverTable(),
-        ),
-        if (_driverExists && MaintenanceEditGate.canEdit())
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: _loading ? null : _saveDriverFile,
-                child: const Text('保存文件'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
+              child: Text(
+                '驱控文件参数(保存后请重启驱控) · 当前 $_driverAxisCount 轴',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: LpAppFonts.style(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: LpRobotColors.textDark,
+                ),
               ),
             ),
-          ),
-      ],
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : !_driverExists
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                LpAppAssets.configMainBoxIcon,
+                                width: 88,
+                                height: 72,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '该文件不存在',
+                                style: LpAppFonts.style(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xCC3F260F),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildDriverTable(),
+            ),
+            if (_driverExists && MaintenanceEditGate.canEdit())
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _WenjianFootButton(
+                    label: '保存文件',
+                    primary: true,
+                    enabled: !_loading,
+                    onPressed: _saveDriverFile,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -737,86 +808,309 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   }
 
   Widget _buildBottomBar({required bool initBusy, required bool canEdit}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: DriverUiStyle.panelBackground,
-        border: Border(
-          top: BorderSide(color: LpRobotColors.borderWarm.withValues(alpha: 0.65)),
+    final nextEnabled = !_loading;
+    final createEnabled = !_loading && canEdit;
+
+    return SizedBox(
+      height: 64,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(LpAppAssets.configFootBg),
+            fit: BoxFit.fill,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              _navLink('文件管理', () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute(builder: (_) => const FilesPage()),
+                );
+              }),
+              _navDivider(),
+              // 「版本」改为「配置」，仍进入原版本/维护页。
+              _navLink('配置', () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute(builder: (_) => const ToolPage()),
+                );
+              }),
+              _navDivider(),
+              if (initBusy || DriverTechModeGate.instance.transitionBusy)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                _navLink(
+                  '调试模式',
+                  canEdit && DriverTechModeGate.instance.canEnterDriverPage
+                      ? _openDebugMode
+                      : null,
+                ),
+              const Spacer(),
+              if (!_showDriverPanel && !_fileExists && canEdit) ...[
+                _WenjianFootButton(
+                  label: '创建该文件',
+                  primary: true,
+                  enabled: createEnabled,
+                  onPressed: _createFile,
+                ),
+                const SizedBox(width: 10),
+              ],
+              if (!_showDriverPanel &&
+                  _fileExists &&
+                  !_step.hideSave &&
+                  canEdit) ...[
+                _WenjianFootButton(
+                  label: '保存文件',
+                  primary: true,
+                  enabled: !_loading,
+                  onPressed: _saveFile,
+                ),
+                const SizedBox(width: 10),
+              ],
+              if (!_showDriverPanel &&
+                  _fileExists &&
+                  _step.showEtherCatButton &&
+                  canEdit) ...[
+                _WenjianFootButton(
+                  label: '配置扩展',
+                  primary: true,
+                  enabled: !_loading,
+                  onPressed: _applyEtherCat,
+                ),
+                const SizedBox(width: 10),
+              ],
+              if (_showDriverPanel || prevConfigNavIndex(_stepIndex) != null) ...[
+                _WenjianFootButton(
+                  label: _showDriverPanel ? '上一页' : '上一步',
+                  primary: false,
+                  highlightOnHover: true,
+                  enabled: !_loading,
+                  onPressed: _goBack,
+                ),
+                const SizedBox(width: 10),
+              ],
+              _WenjianFootButton(
+                label: _showDriverPanel ? '完成' : '下一步',
+                primary: false,
+                highlightOnHover: true,
+                enabled: nextEnabled,
+                onPressed: _showDriverPanel
+                    ? () => Navigator.of(context).pop()
+                    : _goNext,
+              ),
+            ],
+          ),
         ),
       ),
-      child: Row(
-        children: [
-          TextButton(
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(builder: (_) => const FilesPage()),
+    );
+  }
+
+  Widget _navDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Container(
+        width: 1,
+        height: 18,
+        color: LpRobotColors.primary.withValues(alpha: 0.45),
+      ),
+    );
+  }
+
+  Widget _navLink(String label, VoidCallback? onPressed, {bool selected = false}) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: LpRobotColors.primary,
+        disabledForegroundColor: selected
+            ? LpRobotColors.primary
+            : LpRobotColors.primary.withValues(alpha: 0.4),
+        textStyle: LpAppFonts.style(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: LpRobotColors.primary,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(label),
+    );
+  }
+
+  /// 左侧说明：数字叠在六边形切图上（图2底 + 图3标号）。
+  Widget _buildTipsList(String tips) {
+    final items = _parseTipItems(tips);
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset(
+                    LpAppAssets.configLeftBoxTt,
+                    width: 26,
+                    height: 26,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                  Text(
+                    '${item.number}',
+                    style: LpAppFonts.style(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Text('文件管理 >'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.text,
+                style: LpAppFonts.style(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: LpRobotColors.textDark,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<_TipItem> _parseTipItems(String tips) {
+    final raw = tips.trim();
+    if (raw.isEmpty) return const [];
+    final lines = raw.split(RegExp(r'\r?\n'));
+    final items = <_TipItem>[];
+    final numbered = RegExp(r'^(\d+)[、．.．]\s*(.*)$');
+    for (final line in lines) {
+      final t = line.trim();
+      if (t.isEmpty) continue;
+      final m = numbered.firstMatch(t);
+      if (m != null) {
+        items.add(_TipItem(
+          number: int.tryParse(m.group(1)!) ?? (items.length + 1),
+          text: m.group(2) ?? '',
+        ));
+      } else if (items.isNotEmpty) {
+        final last = items.removeLast();
+        items.add(_TipItem(number: last.number, text: '${last.text}\n$t'));
+      } else {
+        items.add(_TipItem(number: items.length + 1, text: t));
+      }
+    }
+    return items;
+  }
+}
+
+class _TipItem {
+  const _TipItem({required this.number, required this.text});
+  final int number;
+  final String text;
+}
+
+/// 底部操作按钮：切图 wenjian-foot-btn1（主色）/ btn2（次色）。
+/// [highlightOnHover]：上下页默认次色，鼠标悬停/焦点才变主色。
+class _WenjianFootButton extends StatefulWidget {
+  const _WenjianFootButton({
+    required this.label,
+    required this.primary,
+    required this.enabled,
+    required this.onPressed,
+    this.highlightOnHover = false,
+  });
+
+  final String label;
+  final bool primary;
+  final bool enabled;
+  final VoidCallback onPressed;
+  final bool highlightOnHover;
+
+  @override
+  State<_WenjianFootButton> createState() => _WenjianFootButtonState();
+}
+
+class _WenjianFootButtonState extends State<_WenjianFootButton> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hot = widget.highlightOnHover && (_hovered || _focused);
+    final usePrimary = widget.enabled && (widget.primary || hot);
+    final asset =
+        usePrimary ? LpAppAssets.configFootBtn1 : LpAppAssets.configFootBtn2;
+    final textColor = usePrimary
+        ? Colors.white
+        : LpRobotColors.textDark.withValues(alpha: widget.enabled ? 0.85 : 0.45);
+
+    return Opacity(
+      opacity: widget.enabled ? 1 : 0.85,
+      child: Focus(
+        canRequestFocus: widget.enabled,
+        onFocusChange: (v) {
+          if (_focused == v) return;
+          setState(() => _focused = v);
+        },
+        child: MouseRegion(
+          cursor: widget.enabled
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          onEnter: (_) {
+            if (!widget.enabled || _hovered) return;
+            setState(() => _hovered = true);
+          },
+          onExit: (_) {
+            if (!_hovered) return;
+            setState(() => _hovered = false);
+          },
+          child: GestureDetector(
+            onTap: widget.enabled ? widget.onPressed : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: 132,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                image: DecorationImage(
+                  image: AssetImage(asset),
+                  fit: BoxFit.fill,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.label,
+                style: LpAppFonts.style(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(builder: (_) => const ToolPage()),
-            ),
-            child: const Text('版本'),
-          ),
-          if (initBusy || DriverTechModeGate.instance.transitionBusy)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: canEdit && DriverTechModeGate.instance.canEnterDriverPage
-                  ? _openDebugMode
-                  : null,
-              child: const Text('调试模式'),
-            ),
-          const Spacer(),
-          if (!_showDriverPanel && !_fileExists && canEdit)
-            FilledButton(
-              onPressed: _loading ? null : _createFile,
-              child: const Text('创建该文件'),
-            ),
-          if (!_showDriverPanel && _fileExists && !_step.hideSave && canEdit)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: FilledButton(
-                onPressed: _loading ? null : _saveFile,
-                child: const Text('保存文件'),
-              ),
-            ),
-          if (!_showDriverPanel && _fileExists && _step.showEtherCatButton && canEdit)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: FilledButton(
-                onPressed: _loading ? null : _applyEtherCat,
-                child: const Text('配置扩展'),
-              ),
-            ),
-          if (_showDriverPanel || prevConfigNavIndex(_stepIndex) != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: OutlinedButton(
-                onPressed: _loading ? null : _goBack,
-                child: Text(_showDriverPanel ? '上一页' : '上一步'),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: FilledButton(
-              onPressed: _loading
-                  ? null
-                  : _showDriverPanel
-                      ? () => Navigator.of(context).pop()
-                      : _goNext,
-              child: Text(_showDriverPanel ? '完成' : '下一步'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

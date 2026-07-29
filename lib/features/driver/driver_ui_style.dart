@@ -15,73 +15,148 @@ abstract final class DriverUiStyle {
   static const double boxRadius = 4;
   static const double boxBorderWidth = 1.2;
 
+  /// 1280×720 设计稿：微软雅黑 Bold 15px（等同 1920 下约 22px）
+  static const String fontFamily = 'Microsoft YaHei';
+  static const Color labelInk = Color(0xFF614F41);
+  static const Color valueInk = Color(0xFFE25401);
+  static const double labelFontSize = 15;
+
+  static const TextStyle pageLabelStyle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: labelInk,
+    height: 1.05,
+    letterSpacing: 0,
+  );
+
+  static const TextStyle pageValueStyle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: valueInk,
+    height: 1.05,
+    letterSpacing: 0,
+  );
+
   static const TextStyle labelStyle = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
-    height: 1.1,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: labelInk,
+    height: 1.05,
   );
 
   static const TextStyle valueStyle = TextStyle(
-    fontSize: 16,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
     fontWeight: FontWeight.w700,
-    color: LpRobotColors.textDark,
-    height: 1.1,
+    color: valueInk,
+    height: 1.05,
   );
 
   static const TextStyle fieldTextStyle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
-    height: 1.2,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: valueInk,
+    height: 1.05,
   );
 
   static const TextStyle sectionTitleStyle = TextStyle(
-    fontSize: 15,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
     fontWeight: FontWeight.w700,
     color: LpRobotColors.primary,
   );
 
   static const TextStyle controlLabelStyle = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
-  );
-
-  /// 顶部状态栏（紧凑）
-  static const TextStyle statusLabelStyle = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
-    height: 1.0,
-  );
-
-  static const TextStyle statusValueStyle = TextStyle(
-    fontSize: 13,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
     fontWeight: FontWeight.w700,
-    color: LpRobotColors.textDark,
-    height: 1.0,
+    color: labelInk,
   );
+
+  /// 顶部监测区标签 / 数值
+  static const TextStyle statusLabelStyle = pageLabelStyle;
+  static const TextStyle statusValueStyle = pageValueStyle;
+
+  static const TextStyle statusModelStyle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: labelInk,
+    height: 1.05,
+  );
+
+  static const TextStyle statusAddressBtnStyle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: LpRobotColors.primary,
+    height: 1.05,
+  );
+
+  static BoxDecoration statusValueBoxDecoration() {
+    return BoxDecoration(
+      color: valueBoxFill,
+      borderRadius: BorderRadius.circular(boxRadius),
+      border: Border.all(color: boxBorderStrong, width: boxBorderWidth),
+    );
+  }
 
   static const TextStyle compactControlLabelStyle = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: labelInk,
   );
 
   static const TextStyle compactFieldTextStyle = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w600,
-    color: LpRobotColors.textDark,
-    height: 1.1,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
+    fontWeight: FontWeight.w700,
+    color: valueInk,
+    height: 1.05,
   );
 
   /// 底部工具栏（轴号 + 读写按钮）
   static const TextStyle toolbarLabelStyle = TextStyle(
-    fontSize: 14,
+    fontFamily: fontFamily,
+    fontSize: labelFontSize,
     fontWeight: FontWeight.w700,
-    color: LpRobotColors.textDark,
+    color: labelInk,
   );
+
+  /// 工具栏操作按钮（蓝湖标注 1920 下 140×50，换算到 1280 设计稿）。
+  static const Color actionBtnOrangeStart = Color(0xFFFB6401);
+  static const Color actionBtnOrangeEnd = Color(0xFFFD8831);
+  static const double actionBtnWidth = 93;
+  static const double actionBtnHeight = 34;
+  static const double actionBtnRadius = 5.5;
+
+  static const LinearGradient actionBtnGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [actionBtnOrangeStart, actionBtnOrangeEnd],
+  );
+
+  static BoxDecoration actionBtnDecoration({bool enabled = true}) {
+    return BoxDecoration(
+      gradient: enabled
+          ? actionBtnGradient
+          : LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                actionBtnOrangeStart.withValues(alpha: 0.45),
+                actionBtnOrangeEnd.withValues(alpha: 0.45),
+              ],
+            ),
+      borderRadius: BorderRadius.circular(actionBtnRadius),
+      border: Border.all(color: actionBtnOrangeStart, width: 1),
+    );
+  }
 
   /// 文件配置页：步骤标题、面板标题
   static const TextStyle configTitleStyle = TextStyle(
@@ -109,8 +184,16 @@ abstract final class DriverUiStyle {
 
   /// 文件配置页：底部导航与操作按钮
   static const TextStyle configButtonTextStyle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+  );
+
+  /// 文件配置页：底部「文件管理 / 版本 / 调试模式」链接
+  static const TextStyle configNavLinkStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: LpRobotColors.primary,
     height: 1.2,
   );
 
@@ -205,8 +288,8 @@ abstract final class DriverUiStyle {
       filled: true,
       fillColor: enabled ? valueBoxFill : panelBackground,
       contentPadding: compact
-          ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4)
-          : const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+          : const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       border: _fieldBorder(borderColor),
       enabledBorder: _fieldBorder(borderColor),
       focusedBorder: _fieldBorder(LpRobotColors.primary),
@@ -223,4 +306,12 @@ abstract final class DriverUiStyle {
       ),
     );
   }
+
+  /// 与顶部监测区一致的横向间距（1280×720 设计稿）。
+  static double pagePadH(double width) => width * 0.006;
+  static double pageColGap(double width) => width * 0.012;
+  static double pageSideW(double width) => width * 0.118;
+
+  /// 参数区标签固定宽，保证三列「字对齐」。
+  static double paramLabelW(double width) => (width * 0.078).clamp(70.0, 96.0);
 }

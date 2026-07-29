@@ -42,6 +42,38 @@ class RobotPathLayout {
   static const String runResetOff = 'right-icon4-1.png';
   static const String runResetOn = 'right-icon4-2.png';
 
+  /// 操控页左侧四键（优先 `config/imgs/切图1/main-lefticon*`）。
+  static const String controlAxisXOff = 'main-lefticon1-1.png';
+  static const String controlAxisXOn = 'main-lefticon1-2.png';
+  static const String controlAxisYOff = 'main-lefticon2-1.png';
+  static const String controlAxisYOn = 'main-lefticon2-2.png';
+  static const String controlAxisZOff = 'main-lefticon3-1.png';
+  static const String controlAxisZOn = 'main-lefticon3-2.png';
+  static const String controlIoOff = 'main-lefticon4-1.png';
+  static const String controlIoOn = 'main-lefticon4-2.png';
+
+  /// 操控页右侧五键（优先 `config/imgs/切图1/main-righticon*`）。
+  static const String controlJointOff = 'main-righticon1-1.png';
+  static const String controlJointOn = 'main-righticon1-2.png';
+  static const String controlGantryOff = 'main-righticon2-1.png';
+  static const String controlGantryOn = 'main-righticon2-2.png';
+  static const String controlLinearOff = 'main-righticon3-1.png';
+  static const String controlLinearOn = 'main-righticon3-2.png';
+  static const String controlPointEditOff = 'main-righticon4-1.png';
+  static const String controlPointEditOn = 'main-righticon4-2.png';
+  static const String controlClearUiOff = 'main-righticon5-1.png';
+  static const String controlClearUiOn = 'main-righticon5-2.png';
+
+  /// 点库右侧四键（优先 `config/imgs/切图1/edit-right*`）。
+  static const String pointLibAddOff = 'edit-right1-1.png';
+  static const String pointLibAddOn = 'edit-right1-2.png';
+  static const String pointLibEditOff = 'edit-right2-1.png';
+  static const String pointLibEditOn = 'edit-right2-2.png';
+  static const String pointLibRefreshOff = 'edit-right3-1.png';
+  static const String pointLibRefreshOn = 'edit-right3-2.png';
+  static const String pointLibDeleteOff = 'edit-right4-1.png';
+  static const String pointLibDeleteOn = 'edit-right4-2.png';
+
   /// 控制器侧程序配置：`config/server/{name}.xml`、`.rp4`
   static const String serverDir = 'config/server';
 

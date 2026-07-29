@@ -18,6 +18,7 @@ class LpRobotPoseBar extends StatelessWidget {
   const LpRobotPoseBar({
     super.key,
     this.pageTitle,
+    this.brandTitle,
     this.onBack,
     this.trailing,
     this.showPoseRows = true,
@@ -29,6 +30,8 @@ class LpRobotPoseBar extends StatelessWidget {
   });
 
   final String? pageTitle;
+  /// 左侧橙色区文字（有值时替代 Logo 图，如配置页显示「配置」）。
+  final String? brandTitle;
   final VoidCallback? onBack;
   final Widget? trailing;
   final bool showPoseRows;
@@ -70,6 +73,7 @@ class LpRobotPoseBar extends StatelessWidget {
             height: _barHeight,
             showBrand: true,
             showPoseRows: true,
+            brandTitle: brandTitle,
             trailing: _ConnectionAction(
               connected: data.connected,
               onDisconnect: onDisconnect,
@@ -91,7 +95,8 @@ class LpRobotPoseBar extends StatelessWidget {
           data: data,
           height: _barHeight,
           showBrand: true,
-          showPoseRows: true,
+          showPoseRows: showPoseRows,
+          brandTitle: brandTitle,
           trailing: _SubpageTrailing(onBack: onBack, extra: trailing),
         );
       },
@@ -255,39 +260,59 @@ class _PageTitleBar extends StatelessWidget {
       );
     }
 
-    const sideWidth = 40.0;
     return SizedBox(
       height: height,
-      child: _MenuBg(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              const SizedBox(width: sideWidth),
-              Expanded(
-                child: title.isEmpty
-                    ? const SizedBox.shrink()
-                    : Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: LpRobotColors.primary,
-                        ),
-                      ),
-              ),
-              SizedBox(
-                width: sideWidth,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: _SubpageTrailing(onBack: onBack, extra: trailing),
-                ),
-              ),
-            ],
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(LpAppAssets.neiyeTopBg),
+            fit: BoxFit.fill,
           ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 三区：左空位 / 中标题 / 右返回（与主页分栏比例一致）。
+            final trailingW =
+                (constraints.maxWidth * LpRobotPoseBar._trailingWidthFactor)
+                    .clamp(120.0, 168.0);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: trailingW),
+                Expanded(
+                  child: title.isEmpty
+                      ? const SizedBox.shrink()
+                      : Center(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: LpAppFonts.style(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: LpRobotColors.textDark,
+                            ),
+                          ),
+                        ),
+                ),
+                SizedBox(
+                  width: trailingW,
+                  child: onBack == null && trailing == null
+                      ? const SizedBox.shrink()
+                      : trailing != null
+                          ? Align(
+                              alignment: Alignment.centerRight,
+                              child: _SubpageTrailing(
+                                onBack: onBack,
+                                extra: trailing,
+                              ),
+                            )
+                          : _NeiyePageBackButton(onTap: onBack!),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -302,6 +327,7 @@ class _UnifiedTopBar extends StatelessWidget {
     required this.showBrand,
     required this.showPoseRows,
     required this.trailing,
+    this.brandTitle,
   });
 
   final _PoseBarData data;
@@ -309,6 +335,7 @@ class _UnifiedTopBar extends StatelessWidget {
   final bool showBrand;
   final bool showPoseRows;
   final Widget trailing;
+  final String? brandTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +367,7 @@ class _UnifiedTopBar extends StatelessWidget {
                           subtitle: data.subtitle,
                           connected: data.connected,
                           linkKind: data.linkKind,
+                          brandTitle: brandTitle,
                         ),
                       ),
                     ),
@@ -353,7 +381,9 @@ class _UnifiedTopBar extends StatelessWidget {
                           live: data.connected && data.hasData,
                         ),
                       ),
-                    ),
+                    )
+                  else
+                    const Spacer(),
                   SizedBox(
                     width: trailingW,
                     child: trailing,
@@ -423,11 +453,13 @@ class _BrandColumn extends StatelessWidget {
     required this.subtitle,
     required this.connected,
     required this.linkKind,
+    this.brandTitle,
   });
 
   final String subtitle;
   final bool connected;
   final RobotLinkKind linkKind;
+  final String? brandTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +469,8 @@ class _BrandColumn extends StatelessWidget {
         final h = constraints.maxHeight;
         final logoW = w * LpRobotPoseBar._logoInBrandWidthFactor;
         final logoH = h * LpRobotPoseBar._logoInBrandHeightFactor;
+        final title = brandTitle?.trim();
+        final showTitle = title != null && title.isNotEmpty;
         final showLinkRow = connected &&
             linkKind != RobotLinkKind.ethernet &&
             linkKind != RobotLinkKind.unknown;
@@ -444,19 +478,38 @@ class _BrandColumn extends StatelessWidget {
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            // 整块 logo 在橙色区内水平垂直居中。
+            // 有 brandTitle 时显示页名；否则整块 logo 居中。
             Center(
-              child: SizedBox(
-                width: logoW,
-                height: logoH,
-                child: Image.asset(
-                  LpAppAssets.homeTopLogo,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.center,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, e, st) => const SizedBox.shrink(),
-                ),
-              ),
+              child: showTitle
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: w * 0.06),
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: (h * 0.34).clamp(16.0, 26.0),
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    )
+                  : SizedBox(
+                      width: logoW,
+                      height: logoH,
+                      child: Image.asset(
+                        LpAppAssets.homeTopLogo,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.center,
+                        filterQuality: FilterQuality.medium,
+                        errorBuilder: (_, e, st) => const SizedBox.shrink(),
+                      ),
+                    ),
             ),
             if (showLinkRow)
               Positioned(
@@ -716,6 +769,9 @@ class _PoseInlineCell extends StatelessWidget {
   /// 切图1 top-X-BG.png 原始比例 169×48。
   static const _bgAspect = 169 / 48;
 
+  /// 底图左侧深色标题区约占内容宽 30%（对齐切图像素分界）。
+  static const _labelZoneFactor = 0.30;
+
   @override
   Widget build(BuildContext context) {
     final valueColor =
@@ -753,35 +809,191 @@ class _PoseInlineCell extends StatelessWidget {
           cellW = cellH * _bgAspect;
         }
 
+        final labelW = cellW * _labelZoneFactor;
+
         return Center(
           child: SizedBox(
             width: cellW,
             height: cellH,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                const _PoseAxisCellBg(),
-                Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(text: label, style: labelStyle),
-                          TextSpan(text: value, style: valueStyle),
-                        ],
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  const _PoseAxisCellBg(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: labelW,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              // 平行四边形左边略内收，标题落在深色块内。
+                              padding: EdgeInsets.only(left: cellW * 0.04),
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.clip,
+                                style: labelStyle,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      softWrap: false,
-                      textAlign: TextAlign.center,
-                    ),
+                      Expanded(
+                        child: Padding(
+                          // 数值靠右：左边多留空，右边给平行四边形收边。
+                          padding: EdgeInsets.only(
+                            left: cellW * 0.06,
+                            right: cellW * 0.08,
+                          ),
+                          child: _HoverMarqueeValue(
+                            text: value,
+                            style: valueStyle,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// 数值超长时默认右对齐裁切；鼠标悬停来回滚动。
+class _HoverMarqueeValue extends StatefulWidget {
+  const _HoverMarqueeValue({
+    required this.text,
+    required this.style,
+  });
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_HoverMarqueeValue> createState() => _HoverMarqueeValueState();
+}
+
+class _HoverMarqueeValueState extends State<_HoverMarqueeValue>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  double _viewportW = 0;
+  double _textW = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HoverMarqueeValue oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _controller.stop();
+      _controller.value = 0;
+      _textW = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startMarquee() {
+    final overflow = (_textW - _viewportW).clamp(0.0, double.infinity);
+    if (overflow <= 1) return;
+    final seconds = (overflow / 40).clamp(1.0, 10.0);
+    _controller.duration = Duration(milliseconds: (seconds * 1000).round());
+    _controller.repeat(reverse: true);
+  }
+
+  void _stopMarquee() {
+    _controller.stop();
+    _controller.animateTo(0, duration: const Duration(milliseconds: 180));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _startMarquee(),
+      onExit: (_) => _stopMarquee(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          final maxH = constraints.maxHeight;
+          if (!maxW.isFinite || maxW <= 0) {
+            return const SizedBox.shrink();
+          }
+
+          final painter = TextPainter(
+            text: TextSpan(text: widget.text, style: widget.style),
+            maxLines: 1,
+            textDirection: TextDirection.ltr,
+          )..layout();
+          _viewportW = maxW;
+          _textW = painter.width;
+          final overflow =
+              (_textW - _viewportW).clamp(0.0, double.infinity);
+
+          // 固定视口宽高，避免 UnconstrainedBox 把父级撑爆。
+          return SizedBox(
+            width: maxW,
+            height: maxH.isFinite ? maxH : null,
+            child: ClipRect(
+              child: overflow <= 0
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        widget.text,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.clip,
+                        style: widget.style,
+                      ),
+                    )
+                  : AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) {
+                        final dx = -overflow * _controller.value;
+                        return Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            Positioned(
+                              left: dx,
+                              top: 0,
+                              bottom: 0,
+                              width: _textW,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  widget.text,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.clip,
+                                  style: widget.style,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -825,6 +1037,75 @@ class _PoseAxisCellBgState extends State<_PoseAxisCellBg> {
       filterQuality: FilterQuality.medium,
       gaplessPlayback: true,
       errorBuilder: (_, error, stackTrace) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// 内页（文件配置等）顶栏返回：箭头与「返回」紧挨，不影响主页/操控顶栏间距。
+class _NeiyePageBackButton extends StatefulWidget {
+  const _NeiyePageBackButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_NeiyePageBackButton> createState() => _NeiyePageBackButtonState();
+}
+
+class _NeiyePageBackButtonState extends State<_NeiyePageBackButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight;
+        if (!h.isFinite || h <= 0) return const SizedBox.shrink();
+
+        final iconSize = (h * 0.44).clamp(16.0, 22.0);
+        final fontSize = (h * 0.36).clamp(13.0, 17.0);
+
+        return Semantics(
+          button: true,
+          label: '返回',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            },
+            onTapCancel: () => setState(() => _pressed = false),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    _pressed
+                        ? LpAppAssets.homeTopBackPressed
+                        : LpAppAssets.homeTopBack,
+                    width: iconSize,
+                    height: iconSize,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '返回',
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w700,
+                      color: LpRobotColors.textDark,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

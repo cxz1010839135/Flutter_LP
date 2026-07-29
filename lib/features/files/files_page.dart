@@ -543,13 +543,58 @@ class _FilesPageState extends State<FilesPage> {
   }
 
   Widget _buildScaffold({required bool canEdit}) {
-    return Scaffold(
+    final base = Theme.of(context);
+    final clearTheme = base.copyWith(
+      textTheme: LpAppFonts.applyTo(
+        base.textTheme,
+        bodyColor: LpRobotColors.textDark,
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: LpRobotColors.textDark,
+        iconColor: LpRobotColors.primary,
+        titleTextStyle: LpAppFonts.style(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: LpRobotColors.textDark,
+        ),
+        subtitleTextStyle: LpAppFonts.style(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: LpRobotColors.label,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: LpRobotColors.primary,
+          side: const BorderSide(color: LpRobotColors.primary, width: 1.4),
+          textStyle: LpAppFonts.style(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: LpRobotColors.primary,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          textStyle: LpAppFonts.style(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+
+    return Theme(
+      data: clearTheme,
+      child: Scaffold(
       backgroundColor: LpRobotColors.background,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LpRobotPoseBar(
             pageTitle: '文件管理',
+            titleBarOnly: true,
             onBack: () => Navigator.of(context).pop(),
           ),
           Expanded(
@@ -574,6 +619,7 @@ class _FilesPageState extends State<FilesPage> {
           const LpStatusPanel(),
         ],
       ),
+    ),
     );
   }
 
@@ -587,11 +633,20 @@ class _FilesPageState extends State<FilesPage> {
       foregroundColor: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 14),
       minimumSize: const Size(0, 48),
+      textStyle: LpAppFonts.style(
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        color: Colors.white,
+      ),
     );
 
     final transferStyle = FilledButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       minimumSize: const Size(0, 48),
+      textStyle: LpAppFonts.style(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
     );
 
     return Material(
@@ -607,18 +662,19 @@ class _FilesPageState extends State<FilesPage> {
                 '已选中文件：$selectedName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                style: LpAppFonts.style(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                   color: LpRobotColors.primary,
                 ),
               )
             else
-              const Text(
+              Text(
                 '请在左侧选中要上传的文件',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: LpRobotColors.label,
+                style: LpAppFonts.style(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: LpRobotColors.textDark,
                 ),
               ),
             const SizedBox(height: 2),
@@ -628,11 +684,12 @@ class _FilesPageState extends State<FilesPage> {
                   : _remoteTagPath,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
+              style: LpAppFonts.style(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: _remoteTagPath.isEmpty
-                    ? LpRobotColors.label
-                    : LpRobotColors.textDark,
+                    ? LpRobotColors.textDark
+                    : LpRobotColors.primary,
               ),
             ),
             const SizedBox(height: 8),
@@ -721,7 +778,11 @@ class _FilesPageState extends State<FilesPage> {
                     : _batchProgressMessage!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: LpRobotColors.label),
+                style: LpAppFonts.style(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: LpRobotColors.textDark,
+                ),
               ),
             ],
           ],
@@ -742,7 +803,11 @@ class _FilesPageState extends State<FilesPage> {
             _localBrowsingDrives ? '此电脑' : (dir?.path ?? ''),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: LpRobotColors.label),
+            style: LpAppFonts.style(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: LpRobotColors.textDark,
+            ),
           ),
         ),
         Expanded(child: _buildLocalList()),
@@ -764,16 +829,24 @@ class _FilesPageState extends State<FilesPage> {
               const Text(
                 '当前文件夹为空',
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: LpRobotColors.label,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: LpRobotColors.textDark,
+                  fontFamily: LpAppFonts.roboto,
+                  fontFamilyFallback: LpAppFonts.cjkFallback,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
                 '可点「程序配置」「下载目录」，或用「本地后退」进入其它磁盘',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: LpRobotColors.label),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: LpRobotColors.textDark,
+                  fontFamily: LpAppFonts.roboto,
+                  fontFamilyFallback: LpAppFonts.cjkFallback,
+                ),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -827,7 +900,16 @@ class _FilesPageState extends State<FilesPage> {
             isDir ? Icons.folder_outlined : Icons.insert_drive_file_outlined,
             color: LpRobotColors.primary,
           ),
-          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: LpAppFonts.style(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: LpRobotColors.textDark,
+            ),
+          ),
           trailing: isDir ? const Icon(Icons.chevron_right, size: 20) : null,
           onTap: () {
             if (entity is Directory) {
@@ -876,14 +958,14 @@ class _FilesPageState extends State<FilesPage> {
                               onTap: () => _jumpRemoteCrumb(i),
                               child: Text(
                                 RemoteFilePath.crumbLabel(_remoteDirStack[i]),
-                                style: TextStyle(
-                                  fontSize: 13,
+                                style: LpAppFonts.style(
+                                  fontSize: 14,
                                   fontWeight: i == _remoteDirStack.length - 1
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
                                   color: i == _remoteDirStack.length - 1
                                       ? LpRobotColors.primary
-                                      : LpRobotColors.label,
+                                      : LpRobotColors.textDark,
                                 ),
                               ),
                             ),
@@ -911,9 +993,10 @@ class _FilesPageState extends State<FilesPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
                     '上传前请进入子目录（如 home → cxz720）',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: LpRobotColors.primary.withValues(alpha: 0.9),
+                    style: LpAppFonts.style(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: LpRobotColors.primary,
                     ),
                   ),
                 ),
@@ -934,13 +1017,24 @@ class _FilesPageState extends State<FilesPage> {
       return Center(
         child: Text(
           _remoteError!,
-          style: const TextStyle(color: LpRobotColors.label),
+          style: LpAppFonts.style(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: LpRobotColors.textDark,
+          ),
         ),
       );
     }
     if (_remoteEntries.isEmpty) {
-      return const Center(
-        child: Text('目录为空', style: TextStyle(color: LpRobotColors.label)),
+      return Center(
+        child: Text(
+          '目录为空',
+          style: LpAppFonts.style(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: LpRobotColors.textDark,
+          ),
+        ),
       );
     }
 
@@ -960,8 +1054,24 @@ class _FilesPageState extends State<FilesPage> {
             item.isDir ? Icons.folder_outlined : Icons.insert_drive_file_outlined,
             color: LpRobotColors.primary,
           ),
-          title: Text(item.name),
-          subtitle: item.size != null ? Text('${item.size} B') : null,
+          title: Text(
+            item.name,
+            style: LpAppFonts.style(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: LpRobotColors.textDark,
+            ),
+          ),
+          subtitle: item.size != null
+              ? Text(
+                  '${item.size} B',
+                  style: LpAppFonts.style(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: LpRobotColors.label,
+                  ),
+                )
+              : null,
           trailing:
               item.isDir ? const Icon(Icons.chevron_right, size: 20) : null,
           onTap: () {
@@ -996,10 +1106,10 @@ class _PanelTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: accent ? LpRobotColors.primary : LpRobotColors.label,
+        style: LpAppFonts.style(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: accent ? LpRobotColors.primary : LpRobotColors.textDark,
         ),
       ),
     );

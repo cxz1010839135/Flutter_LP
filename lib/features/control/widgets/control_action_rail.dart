@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/lp_robot_colors.dart';
+import '../../../core/robot_path_layout.dart';
+import '../../home/widgets/home_cut_icon_button.dart';
 import '../control_assets.dart';
 import '../control_section.dart';
 
-/// 操控页右侧五键等分：贴图背景 + 底部文字（对齐 Android CheckBox text）。
+/// 操控页右侧五键：切图1 `main-righticon*` + 底部文字。
 class ControlActionRail extends StatelessWidget {
   const ControlActionRail({
     super.key,
@@ -19,40 +20,61 @@ class ControlActionRail extends StatelessWidget {
   final VoidCallback? onPointEdit;
   final VoidCallback? onClearUi;
 
+  static const _gapFactor = 0.02;
+
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Column(
-        children: [
-          for (final section in ControlSection.rightNav)
-            Expanded(
-              child: _RightActionTile(
-                label: _labelFor(section),
-                assetOff: ControlAssets.rightNavAssets(section).$1,
-                assetOn: ControlAssets.rightNavAssets(section).$2,
-                selected: selected == section,
-                onTap: () => onSectionSelected(section),
-              ),
-            ),
-          Expanded(
-            child: _RightActionTile(
-              label: '点位编辑',
-              assetOff: ControlAssets.pointEditOff,
-              assetOn: ControlAssets.pointEditOn,
-              onTap: onPointEdit,
-            ),
-          ),
-          Expanded(
-            child: _RightActionTile(
-              label: '界面清零',
-              assetOff: ControlAssets.clearUiOff,
-              assetOn: ControlAssets.clearUiOn,
-              onTap: onClearUi,
-            ),
-          ),
-        ],
+    final tiles = <_RightTileSpec>[
+      for (final section in ControlSection.rightNav)
+        _RightTileSpec(
+          label: _labelFor(section),
+          configOff: _configOff(section),
+          configOn: _configOn(section),
+          assetOff: ControlAssets.rightNavAssets(section).$1,
+          assetOn: ControlAssets.rightNavAssets(section).$2,
+          selected: selected == section,
+          onTap: () => onSectionSelected(section),
+        ),
+      _RightTileSpec(
+        label: '点位编辑',
+        configOff: RobotPathLayout.controlPointEditOff,
+        configOn: RobotPathLayout.controlPointEditOn,
+        assetOff: ControlAssets.pointEditOff,
+        assetOn: ControlAssets.pointEditOn,
+        onTap: onPointEdit,
       ),
+      _RightTileSpec(
+        label: '界面清零',
+        configOff: RobotPathLayout.controlClearUiOff,
+        configOn: RobotPathLayout.controlClearUiOn,
+        assetOff: ControlAssets.clearUiOff,
+        assetOn: ControlAssets.clearUiOn,
+        onTap: onClearUi,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = constraints.maxHeight * _gapFactor;
+        return Column(
+          children: [
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0) SizedBox(height: gap),
+              Expanded(
+                child: HomeCutIconButton(
+                  configOffName: tiles[i].configOff,
+                  configOnName: tiles[i].configOn,
+                  assetOff: tiles[i].assetOff,
+                  assetOn: tiles[i].assetOn,
+                  label: tiles[i].label,
+                  forceOn: tiles[i].selected,
+                  onTap: tiles[i].onTap,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -62,11 +84,27 @@ class ControlActionRail extends StatelessWidget {
         ControlSection.linear => '直线',
         _ => section.label,
       };
+
+  static String _configOff(ControlSection section) => switch (section) {
+        ControlSection.joint => RobotPathLayout.controlJointOff,
+        ControlSection.gantry => RobotPathLayout.controlGantryOff,
+        ControlSection.linear => RobotPathLayout.controlLinearOff,
+        _ => RobotPathLayout.controlJointOff,
+      };
+
+  static String _configOn(ControlSection section) => switch (section) {
+        ControlSection.joint => RobotPathLayout.controlJointOn,
+        ControlSection.gantry => RobotPathLayout.controlGantryOn,
+        ControlSection.linear => RobotPathLayout.controlLinearOn,
+        _ => RobotPathLayout.controlJointOn,
+      };
 }
 
-class _RightActionTile extends StatefulWidget {
-  const _RightActionTile({
+class _RightTileSpec {
+  const _RightTileSpec({
     required this.label,
+    required this.configOff,
+    required this.configOn,
     required this.assetOff,
     required this.assetOn,
     required this.onTap,
@@ -74,65 +112,10 @@ class _RightActionTile extends StatefulWidget {
   });
 
   final String label;
+  final String configOff;
+  final String configOn;
   final String assetOff;
   final String assetOn;
   final VoidCallback? onTap;
   final bool selected;
-
-  @override
-  State<_RightActionTile> createState() => _RightActionTileState();
-}
-
-class _RightActionTileState extends State<_RightActionTile> {
-  bool _pressed = false;
-
-  bool get _highlight => widget.selected || _pressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onTap,
-        onHighlightChanged: enabled
-            ? (v) => setState(() => _pressed = v)
-            : null,
-        child: Ink(
-          width: double.infinity,
-          height: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                _highlight ? widget.assetOn : widget.assetOff,
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-              ),
-              Positioned(
-                left: 2,
-                right: 2,
-                bottom: 10,
-                child: Text(
-                  widget.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.15,
-                    fontWeight: FontWeight.w600,
-                    color: _highlight
-                        ? Colors.white
-                        : LpRobotColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -3,6 +3,8 @@
 #include <dwmapi.h>
 #include <flutter_windows.h>
 
+#include <algorithm>
+
 #include "resource.h"
 
 namespace {
@@ -55,6 +57,76 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
 
 constexpr int kMinWindowWidth = 960;
 constexpr int kMinWindowHeight = 540;
+/// Client area aspect locked to design 1280x720.
+constexpr double kDesignAspect = 1280.0 / 720.0;
+
+/// Adjust outer window rect during drag-resize so client stays 16:9.
+void ConstrainSizingToDesignAspect(HWND hwnd, WPARAM edge, RECT* rect) {
+  RECT window_rect{};
+  RECT client_rect{};
+  if (!::GetWindowRect(hwnd, &window_rect) ||
+      !::GetClientRect(hwnd, &client_rect)) {
+    return;
+  }
+  const int nc_w = (window_rect.right - window_rect.left) -
+                   (client_rect.right - client_rect.left);
+  const int nc_h = (window_rect.bottom - window_rect.top) -
+                   (client_rect.bottom - client_rect.top);
+
+  int outer_w = rect->right - rect->left;
+  int outer_h = rect->bottom - rect->top;
+  int client_w = std::max(1, outer_w - nc_w);
+  int client_h = std::max(1, outer_h - nc_h);
+
+  if (edge == WMSZ_LEFT || edge == WMSZ_RIGHT) {
+    client_h = static_cast<int>(client_w / kDesignAspect + 0.5);
+  } else if (edge == WMSZ_TOP || edge == WMSZ_BOTTOM) {
+    client_w = static_cast<int>(client_h * kDesignAspect + 0.5);
+  } else {
+    // Corner drag: width-driven.
+    client_h = static_cast<int>(client_w / kDesignAspect + 0.5);
+  }
+
+  outer_w = client_w + nc_w;
+  outer_h = client_h + nc_h;
+
+  switch (edge) {
+    case WMSZ_LEFT:
+      rect->left = rect->right - outer_w;
+      rect->bottom = rect->top + outer_h;
+      break;
+    case WMSZ_RIGHT:
+      rect->right = rect->left + outer_w;
+      rect->bottom = rect->top + outer_h;
+      break;
+    case WMSZ_TOP:
+      rect->top = rect->bottom - outer_h;
+      rect->right = rect->left + outer_w;
+      break;
+    case WMSZ_BOTTOM:
+      rect->bottom = rect->top + outer_h;
+      rect->right = rect->left + outer_w;
+      break;
+    case WMSZ_TOPLEFT:
+      rect->left = rect->right - outer_w;
+      rect->top = rect->bottom - outer_h;
+      break;
+    case WMSZ_TOPRIGHT:
+      rect->right = rect->left + outer_w;
+      rect->top = rect->bottom - outer_h;
+      break;
+    case WMSZ_BOTTOMLEFT:
+      rect->left = rect->right - outer_w;
+      rect->bottom = rect->top + outer_h;
+      break;
+    case WMSZ_BOTTOMRIGHT:
+      rect->right = rect->left + outer_w;
+      rect->bottom = rect->top + outer_h;
+      break;
+    default:
+      break;
+  }
+}
 
 }  // namespace
 
@@ -223,6 +295,26 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
     }
 
+    case WM_SIZING: {
+      auto* rect = reinterpret_cast<RECT*>(lparam);
+      ConstrainSizingToDesignAspect(hwnd, wparam, rect);
+      // Manual resize cancels custom zoom so maximize can enlarge again.
+      design_aspect_zoomed_ = false;
+      return TRUE;
+    }
+
+    case WM_SYSCOMMAND: {
+      const WPARAM cmd = wparam & 0xFFF0;
+      // Custom zoom keeps 16:9. Maximize toggles; only intercept restore when zoomed
+      // so minimize/restore from taskbar still works.
+      if (cmd == SC_MAXIMIZE ||
+          (cmd == SC_RESTORE && design_aspect_zoomed_)) {
+        ToggleDesignAspectZoom(hwnd);
+        return 0;
+      }
+      break;
+    }
+
     case WM_ACTIVATE:
       if (child_content_ != nullptr) {
         SetFocus(child_content_);
@@ -235,6 +327,55 @@ Win32Window::MessageHandler(HWND hwnd,
   }
 
   return DefWindowProc(window_handle_, message, wparam, lparam);
+}
+
+void Win32Window::ToggleDesignAspectZoom(HWND hwnd) {
+  if (design_aspect_zoomed_) {
+    ::SetWindowPos(hwnd, nullptr, zoom_restore_rect_.left, zoom_restore_rect_.top,
+                   zoom_restore_rect_.right - zoom_restore_rect_.left,
+                   zoom_restore_rect_.bottom - zoom_restore_rect_.top,
+                   SWP_NOZORDER | SWP_NOACTIVATE);
+    design_aspect_zoomed_ = false;
+    return;
+  }
+
+  RECT window_rect{};
+  if (!::GetWindowRect(hwnd, &window_rect)) {
+    return;
+  }
+  zoom_restore_rect_ = window_rect;
+
+  MONITORINFO mi{};
+  mi.cbSize = sizeof(mi);
+  HMONITOR monitor = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (!::GetMonitorInfo(monitor, &mi)) {
+    return;
+  }
+
+  const RECT& work = mi.rcWork;
+  const int area_w = work.right - work.left;
+  const int area_h = work.bottom - work.top;
+  RECT client_rect{};
+  ::GetClientRect(hwnd, &client_rect);
+  const int nc_w =
+      (window_rect.right - window_rect.left) - (client_rect.right - client_rect.left);
+  const int nc_h =
+      (window_rect.bottom - window_rect.top) - (client_rect.bottom - client_rect.top);
+
+  int client_w = area_w - nc_w;
+  int client_h = area_h - nc_h;
+  if (client_w > static_cast<int>(client_h * kDesignAspect + 0.5)) {
+    client_w = static_cast<int>(client_h * kDesignAspect + 0.5);
+  } else {
+    client_h = static_cast<int>(client_w / kDesignAspect + 0.5);
+  }
+  const int outer_w = client_w + nc_w;
+  const int outer_h = client_h + nc_h;
+  const int x = work.left + (area_w - outer_w) / 2;
+  const int y = work.top + (area_h - outer_h) / 2;
+  ::SetWindowPos(hwnd, nullptr, x, y, outer_w, outer_h,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+  design_aspect_zoomed_ = true;
 }
 
 void Win32Window::Destroy() {

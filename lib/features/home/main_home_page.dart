@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/lp_robot_colors.dart';
 import '../../app/lp_ui_scale.dart';
+import '../../app/widgets/lp_app_navigator.dart';
 import '../../app/widgets/lp_page_background.dart';
 import '../../app/widgets/lp_shell_edge.dart';
 import '../../app/widgets/lp_robot_foot_bar.dart';
@@ -74,7 +75,11 @@ class _MainHomePageState extends State<MainHomePage> {
 
   Future<void> _openBlockly() async {
     final message = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const BlocklyDemoPage()),
+      MaterialPageRoute<String>(
+        // 与 v1.8.9 一致的编程页；route name 供跳过 UniformAppViewport。
+        settings: const RouteSettings(name: lpBlocklyRouteName),
+        builder: (_) => const BlocklyDemoPage(),
+      ),
     );
     if (message != null && message.isNotEmpty && mounted) {
       LpStatusLog.instance.success(message);

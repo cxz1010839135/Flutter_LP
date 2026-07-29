@@ -76,11 +76,13 @@ class LpRobotFootBar extends StatelessWidget {
             );
 
             final flat = canvasColor != null;
+            final useCapsuleIo = compactStatus ||
+                ioLayout == IoPanelLayout.horizontalSplit;
             final ioCore = LpRobotIoPanel(
               surfaceColor: ioSurfaceColor,
               layout: ioLayout,
-              // 主页：保留模块滚轮，灯位紧凑排布。
-              tightLedSpacing: compactStatus,
+              // 主页 / 操控底栏：IO 组用胶囊底。
+              tightLedSpacing: useCapsuleIo,
             );
 
             final Widget ioArea = Padding(
@@ -105,6 +107,24 @@ class LpRobotFootBar extends StatelessWidget {
                 initText: initText,
                 initOk: initOk,
                 alarmText: alarmText,
+                motorAlarm: t.motorAlarm,
+              );
+            } else if (ioLayout == IoPanelLayout.horizontalSplit && !narrow) {
+              child = _buildControlFootRow(
+                constraints: constraints,
+                ioArea: ioArea,
+                statusScale: statusScale,
+                online: online,
+                initText: online
+                    ? RobotAlarmInfo.formatHomeFootInitStatus(t.initStatus)
+                    : '—',
+                initOk: initOk,
+                alarmText: online
+                    ? RobotAlarmInfo.formatHomeFootMotorAlarm(
+                        motorAlarm: t.motorAlarm,
+                        alarmCode: t.motorAlarmCode,
+                      )
+                    : '—',
                 motorAlarm: t.motorAlarm,
               );
             } else if (narrow) {
@@ -204,6 +224,58 @@ class LpRobotFootBar extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  /// 操控页底栏：横向 INPUT/OUTPUT 胶囊格 + 主页同款报警胶囊（高度适配）。
+  Widget _buildControlFootRow({
+    required BoxConstraints constraints,
+    required Widget ioArea,
+    required double statusScale,
+    required bool online,
+    required String initText,
+    required bool initOk,
+    required String alarmText,
+    required bool motorAlarm,
+  }) {
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+    const statusBgAspect = 438 / 56;
+    // 操控页：报警区单独缩短约 30%，腾出宽度给 IO 胶囊放大。
+    final statusH = (h * 0.55).clamp(28.0, 40.0);
+    final statusW =
+        ((statusH * statusBgAspect).clamp(160.0, w * 0.36)) * 0.70;
+    final adaptedScale = (statusScale * 0.78).clamp(0.55, 0.88);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: h - 2,
+              child: ioArea,
+            ),
+          ),
+          SizedBox(width: (w * 0.012).clamp(6.0, 12.0)),
+          SizedBox(
+            width: statusW,
+            height: statusH,
+            child: _StatusBubble(
+              compact: true,
+              scale: adaptedScale,
+              expanded: true,
+              useFootBg: true,
+              online: online,
+              initText: initText,
+              initOk: initOk,
+              alarmText: alarmText,
+              motorAlarm: motorAlarm,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

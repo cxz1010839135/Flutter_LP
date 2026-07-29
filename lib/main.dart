@@ -6,7 +6,9 @@ import 'package:webview_win_floating/webview_win_floating.dart';
 
 import 'app/lp_robot_colors.dart';
 import 'app/lp_robot_theme.dart';
+import 'app/lp_ui_scale.dart';
 import 'app/widgets/lp_app_navigator.dart';
+import 'app/widgets/lp_uniform_app_viewport.dart';
 import 'app/widgets/robot_connection_guard.dart';
 import 'core/app_info.dart';
 import 'core/robot_paths.dart';
@@ -104,10 +106,27 @@ class LpRobotApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lpRobotTheme(),
       navigatorKey: lpRootNavigatorKey,
+      navigatorObservers: [lpBlocklyRouteObserver],
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
-        return RobotConnectionGuard(
-          child: LpEscapeBackShortcuts(child: child),
+        // Blockly 页与 v1.8.9 一致：不套设计稿 FittedBox，原生 WebView 跟真实窗口尺寸。
+        // 注意：builder 的 context 在 Navigator 之上，不能用 ModalRoute.of 判断栈顶。
+        return ValueListenableBuilder<bool>(
+          valueListenable: lpBlocklyRouteActive,
+          builder: (context, isBlockly, _) {
+            final viewport = isBlockly
+                ? child
+                : LpUniformAppViewport(
+                    designWidth: LpUiScale.designWidth,
+                    designHeight: LpUiScale.designHeight,
+                    backgroundColor: LpRobotColors.pageBackground,
+                    fit: BoxFit.fill,
+                    child: child,
+                  );
+            return RobotConnectionGuard(
+              child: LpEscapeBackShortcuts(child: viewport),
+            );
+          },
         );
       },
       home: const ConnectPage(),

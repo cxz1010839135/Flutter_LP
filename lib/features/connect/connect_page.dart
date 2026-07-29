@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/lp_app_assets.dart';
+import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
-import '../../app/widgets/lp_brand_logo.dart';
-import '../../app/widgets/lp_page_background.dart';
 import '../../core/app_info.dart';
 import '../../core/robot_connection_monitor.dart';
 import '../../core/local_app_settings.dart';
@@ -14,7 +14,7 @@ import '../../core/robot_state_poller.dart';
 import '../../network/http_manager.dart';
 import '../home/main_home_page.dart';
 
-/// 连接页（对齐 Android ConnectActivity 最小流程）
+/// 连接页（切图1 login1，对齐设计稿橙色卡片）
 class ConnectPage extends StatefulWidget {
   const ConnectPage({super.key});
 
@@ -24,6 +24,35 @@ class ConnectPage extends StatefulWidget {
 
 class _ConnectPageState extends State<ConnectPage> {
   static const _defaultIp = LocalAppSettings.defaultIp;
+
+  /// 设计稿卡片相对 1280×720 视口占比（约 36%×43%），纯色 #FB6401。
+  static const double _cardW = 1280 * 0.3604; // ≈461
+  static const double _cardH = 720 * 0.4296; // ≈309
+  static const double _cardRadius = 20;
+  static const Color _cardColor = Color(0xFFFB6401);
+
+  /// 内部布局比例（相对卡片宽/高）。
+  static const double _padH = 0.1387;
+  static const double _btnW = 0.3367;
+  static const double _btnH = 0.145;
+  static const double _btnGap = 0.0491;
+  /// Logo → 「控制器IP」标签间距（图示：放大 3 倍）。
+  static const double _logoToForm = 0.035 * 3;
+  /// 标签 → 输入框间距（图示 2 倍后再加 1 倍）。
+  static const double _labelToInputGap = 0.012 * 4;
+  /// 输入框 → 按钮间距（图示：放大 2 倍）。
+  static const double _inputToBtnGap = 0.04 * 2;
+  /// login/logo.png 原图比例，避免被压扁。
+  static const double _logoAspect = 257 / 58;
+  /// Logo 宽度占内容区比例（再缩小 30%）。
+  static const double _logoWidthRatio = 0.68 * 0.7;
+  /// 卡片内整体内容下移（相对卡片高）。
+  static const double _contentOffsetY = 0.08;
+  /// 输入框高度：原 0.125 再加高约 1/3。
+  static const double _inputH = 0.125 * 4 / 3;
+  /// 输入框 / 按钮：四圆角矩形（非胶囊）。
+  static const double _fieldRadius = 10;
+  static const double _ipFontSize = 22;
 
   final _ipController = TextEditingController();
   final _ipFocus = FocusNode();
@@ -272,41 +301,147 @@ class _ConnectPageState extends State<ConnectPage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.transparent,
-      body: LpPageBackground(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0xFFFFF5EE),
+          image: DecorationImage(
+            image: AssetImage(LpAppAssets.loginBg),
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          ),
+        ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: 420,
-                  minHeight: MediaQuery.sizeOf(context).height -
-                      MediaQuery.paddingOf(context).vertical -
-                      bottomInset -
-                      48,
+          child: Stack(
+            children: [
+              Align(
+                alignment: const Alignment(0, -0.3),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 48 + bottomInset),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: _buildCard(context),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const LpBrandLogo(height: 96, maxWidth: 380, bundledOnly: true),
-                    const SizedBox(height: 14),
-                    Text(
-                      AppInfo.displayTitle,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: LpRobotColors.label,
-                          ),
-                    ),
-                    const SizedBox(height: 40),
-                    TextField(
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 10,
+                child: Text(
+                  '${AppInfo.productName}  V${AppInfo.version}',
+                  textAlign: TextAlign.center,
+                  style: LpAppFonts.style(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFFB0A8A0),
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
+    const w = _cardW;
+    const h = _cardH;
+    final padH = w * _padH;
+    final btnW = w * _btnW;
+    final btnH = h * _btnH;
+    final btnGap = w * _btnGap;
+    final inputH = h * _inputH;
+    final inputToBtn = h * _inputToBtnGap;
+    final contentW = w - padH * 2;
+    final contentYOffset = h * _contentOffsetY;
+    final logoTop = h * 0.07 + contentYOffset;
+    final logoW = contentW * _logoWidthRatio;
+    final logoH = logoW / _logoAspect;
+    final labelSize = (h * 0.045).clamp(12.0, 15.0);
+    final labelGap = h * _labelToInputGap;
+
+    // 自上而下：Logo → 标签 → 输入框 → 按钮（间距按图示倍数）。
+    final labelTop = logoTop + logoH + h * _logoToForm;
+    final inputTop = labelTop + labelSize + labelGap;
+    final btnTop = inputTop + inputH + inputToBtn;
+
+    return SizedBox(
+      width: w,
+      height: h,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(_cardRadius),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: logoTop,
+              left: padH,
+              right: padH,
+              child: Center(
+                child: Image.asset(
+                  LpAppAssets.loginLogo,
+                  width: logoW,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ),
+            Positioned(
+              top: labelTop,
+              left: padH,
+              width: contentW,
+              child: Text(
+                '控制器IP',
+                style: LpAppFonts.style(
+                  fontSize: labelSize,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+            ),
+            Positioned(
+              top: inputTop,
+              left: padH,
+              width: contentW,
+              height: inputH,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(_fieldRadius),
+                child: ColoredBox(
+                  color: Colors.white,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextField(
                       controller: _ipController,
                       focusNode: _ipFocus,
                       autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: '控制器 IP',
+                      textAlign: TextAlign.left,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: LpAppFonts.style(
+                        fontSize: _ipFontSize,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFE25401),
+                        height: 1.0,
+                      ),
+                      cursorColor: const Color(0xFFE25401),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         hintText: _defaultIp,
+                        hintStyle: LpAppFonts.style(
+                          fontSize: _ipFontSize,
+                          fontWeight: FontWeight.w400,
+                          color:
+                              const Color(0xFFE25401).withValues(alpha: 0.45),
+                          height: 1.0,
+                        ),
+                        // 少左内边距，靠左；垂直由 Align 居中。
+                        contentPadding: const EdgeInsets.only(left: 10, right: 10),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -322,42 +457,209 @@ class _ConnectPageState extends State<ConnectPage> {
                       enabled: !_connecting,
                       onSubmitted: (_) => _onConnect(),
                     ),
-                    const SizedBox(height: 24),
-                    if (_connectStatus != null) ...[
-                      Text(
-                        _connectStatus!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: LpRobotColors.label,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: FilledButton(
-                        onPressed: _connecting ? null : _onConnect,
-                        child: _connecting
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text('连接'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _connecting ? null : _openOfflineHome,
-                      child: const Text('跳过连接（仅本地 Blockly）'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
+            ),
+            if (_connectStatus != null)
+              Positioned(
+                top: inputTop + inputH + h * 0.008,
+                left: padH,
+                width: contentW,
+                child: Text(
+                  _connectStatus!,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: LpAppFonts.style(
+                    fontSize: labelSize * 0.9,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ),
+            Positioned(
+              top: btnTop,
+              left: padH,
+              width: contentW,
+              height: btnH,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: btnW,
+                    height: btnH,
+                    child: _ConnectActionButton(
+                      height: btnH,
+                      radius: _fieldRadius,
+                      enabled: !_connecting,
+                      onPressed: _onConnect,
+                      child: _connecting
+                          ? SizedBox(
+                              width: btnH * 0.36,
+                              height: btnH * 0.36,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Color(0xFFFB6401),
+                              ),
+                            )
+                          : null,
+                      labelBuilder: (focused) => Text(
+                        '连接',
+                        style: LpAppFonts.style(
+                          fontSize: (btnH * 0.34).clamp(15.0, 22.0),
+                          fontWeight: FontWeight.w700,
+                          color: focused
+                              ? const Color(0xFFFB6401)
+                              : Colors.white,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: btnGap),
+                  SizedBox(
+                    width: btnW,
+                    height: btnH,
+                    child: _ConnectActionButton(
+                      height: btnH,
+                      radius: _fieldRadius,
+                      enabled: !_connecting,
+                      onPressed: _openOfflineHome,
+                      labelBuilder: (focused) {
+                        final color =
+                            focused ? const Color(0xFFFB6401) : Colors.white;
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '跳过连接',
+                                style: LpAppFonts.style(
+                                  fontSize: (btnH * 0.28).clamp(13.0, 18.0),
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                  height: 1.2,
+                                ),
+                              ),
+                              SizedBox(height: btnH * 0.04),
+                              Text(
+                                '(仅本地 Blockly)',
+                                style: LpAppFonts.style(
+                                  fontSize: (btnH * 0.20).clamp(10.0, 13.0),
+                                  fontWeight: FontWeight.w500,
+                                  color: color.withValues(
+                                    alpha: focused ? 1 : 0.95,
+                                  ),
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 未焦点：浅色半透明；焦点 / 悬停：白底。
+class _ConnectActionButton extends StatefulWidget {
+  const _ConnectActionButton({
+    required this.height,
+    required this.radius,
+    required this.enabled,
+    required this.onPressed,
+    required this.labelBuilder,
+    this.child,
+  });
+
+  final double height;
+  final double radius;
+  final bool enabled;
+  final VoidCallback onPressed;
+  final Widget Function(bool focused) labelBuilder;
+  final Widget? child;
+
+  @override
+  State<_ConnectActionButton> createState() => _ConnectActionButtonState();
+}
+
+class _ConnectActionButtonState extends State<_ConnectActionButton> {
+  final FocusNode _focusNode = FocusNode();
+  bool _hovered = false;
+
+  bool get _lit => _focusNode.hasFocus || _hovered;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(widget.radius);
+    final lit = _lit;
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: (node, event) {
+        if (!widget.enabled || event is! KeyDownEvent) {
+          return KeyEventResult.ignored;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.numpadEnter ||
+            event.logicalKey == LogicalKeyboardKey.space) {
+          widget.onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        cursor: widget.enabled
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.enabled
+              ? () {
+                  _focusNode.requestFocus();
+                  widget.onPressed();
+                }
+              : null,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 120),
+            opacity: widget.enabled ? 1 : 0.65,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              decoration: BoxDecoration(
+                color: lit
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.22),
+                borderRadius: borderRadius,
+              ),
+              alignment: Alignment.center,
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.height * 0.08,
+                vertical: widget.height * 0.06,
+              ),
+              child: widget.child ?? widget.labelBuilder(lit),
             ),
           ),
         ),

@@ -175,8 +175,20 @@ class _PointLibraryPageState extends State<PointLibraryPage> {
     }
   }
 
+  Future<void> _onRenameSelected() async {
+    final point = _selectedPoint;
+    if (point == null) {
+      LpStatusLog.instance.warning('请先选中一个点位');
+      return;
+    }
+    await _onRename(point);
+  }
+
   Future<void> _onRename(RobotPoint point) async {
-    if (!RobotState.instance.isConnected) return;
+    if (!RobotState.instance.isConnected) {
+      LpStatusLog.instance.warning('请先连接控制器');
+      return;
+    }
 
     final controller = TextEditingController(text: point.label);
     final newLabel = await showDialog<String>(
@@ -208,6 +220,11 @@ class _PointLibraryPageState extends State<PointLibraryPage> {
     );
     controller.dispose();
     if (newLabel == null || !mounted) return;
+    if (newLabel.isEmpty) {
+      LpStatusLog.instance.warning('名称不能为空');
+      return;
+    }
+    if (newLabel == point.label) return;
 
     setState(() => _busy = true);
     try {
@@ -268,13 +285,14 @@ class _PointLibraryPageState extends State<PointLibraryPage> {
                       ),
                       const SizedBox(width: 8),
                       SizedBox(
-                        width: 72,
+                        width: 88,
                         child: Stack(
                           children: [
                             PointLibraryActionRail(
                               busy: _busy,
                               onAdd: _onAdd,
-                              onUpdate: _onUpdate,
+                              onRename: _onRenameSelected,
+                              onRefresh: _onUpdate,
                               onDelete: _onDelete,
                             ),
                             if (_busy)
