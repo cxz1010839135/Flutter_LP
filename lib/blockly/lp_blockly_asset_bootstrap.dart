@@ -130,11 +130,25 @@ class LpBlocklyAssetBootstrap {
   static Future<void> _wipeRuntimeCache(String targetRoot) async {
     final targetDir = Directory(targetRoot);
     if (await targetDir.exists()) {
-      await targetDir.delete(recursive: true);
+      try {
+        await targetDir.delete(recursive: true);
+      } catch (e, st) {
+        debugPrint('wipe Blockly runtime cache failed: $e\n$st');
+        rethrow;
+      }
     }
+
+    // Windows 安装目录（如 Program Files）下的 .lpk 通常只读，禁止删除。
+    // 仅清用户缓存后仍从安装目录的 .lpk 重新解压即可。
+    if (Platform.isWindows) return;
+
     final packFile = await RobotPaths.blocklyPackFile();
-    if (await packFile.exists()) {
+    if (!await packFile.exists()) return;
+    try {
       await packFile.delete();
+    } catch (e, st) {
+      // 安卓偶发占用时跳过，后续 preferAsset 会从 APK 资源重装。
+      debugPrint('wipe Blockly pack skipped: $e\n$st');
     }
   }
 
