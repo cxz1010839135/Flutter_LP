@@ -361,12 +361,12 @@ Write-Host ">>> staged Blockly LPK ($([math]::Round($lpk.Length / 1MB, 2)) MB)"
 
 $distDir = Join-Path $ProjectRoot "dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
-# 用 pubspec 三位版本号命名（勿用 TrimEnd('.0')，否则 2.0.0.0 会变成 2）
-$pubspecRaw = Get-Content (Join-Path $ProjectRoot 'pubspec.yaml') -Raw
-if ($pubspecRaw -notmatch 'version:\s*([\d.]+)') {
-    throw 'Cannot read version name from pubspec.yaml for dist file names'
+# Dist file names use 3-part version (productVersion like 2.0.0.0 -> 2.0.0)
+if ($productVersion -match '^(\d+\.\d+\.\d+)') {
+    $distVersionName = $Matches[1]
+} else {
+    throw "Invalid productVersion for dist file names: $productVersion"
 }
-$distVersionName = $Matches[1]
 $msiPath = Join-Path $distDir "LPRobot-$distVersionName-x64.msi"
 $setupPath = Join-Path $distDir "LPRobot-$distVersionName-x64-Setup.exe"
 
