@@ -134,22 +134,31 @@ class LpBlocklyAssetBootstrap {
         await targetDir.delete(recursive: true);
       } catch (e, st) {
         debugPrint('wipe Blockly runtime cache failed: $e\n$st');
-        rethrow;
+        // 缓存删不掉时继续尝试从 .lpk 重装，避免直接阻断编程页。
       }
     }
 
-    // Windows 安装目录（如 Program Files）下的 .lpk 通常只读，禁止删除。
-    // 仅清用户缓存后仍从安装目录的 .lpk 重新解压即可。
-    if (Platform.isWindows) return;
-
     final packFile = await RobotPaths.blocklyPackFile();
     if (!await packFile.exists()) return;
+
+    // 安装目录（Program Files 等）下的 .lpk 只读：绝对不要删。
+    // 仅安卓应用私有目录里的副本可删，以便强制从 APK 资源刷新。
+    if (Platform.isWindows || _looksLikeProtectedInstallPath(packFile.path)) {
+      return;
+    }
+
     try {
       await packFile.delete();
     } catch (e, st) {
-      // 安卓偶发占用时跳过，后续 preferAsset 会从 APK 资源重装。
       debugPrint('wipe Blockly pack skipped: $e\n$st');
     }
+  }
+
+  static bool _looksLikeProtectedInstallPath(String path) {
+    final lower = path.replaceAll('/', '\\').toLowerCase();
+    return lower.contains('\\program files\\') ||
+        lower.contains('\\program files (x86)\\') ||
+        lower.contains('\\windows\\');
   }
 
   static Future<void> _writeRuntimeStamp(
