@@ -74,6 +74,19 @@ class RobotPaths {
       to: await platform.funLibDir(),
       copyXmlOnly: true,
     );
+    // Flutter 曾用 files/funlib、files/xml；Android 对齐旧 APP 目录后再迁一次。
+    if (Platform.isAndroid) {
+      await _migrateDirectory(
+        from: Directory(p.join(root, RobotPathLayout.funLibDir)),
+        to: await platform.funLibDir(),
+        copyXmlOnly: true,
+      );
+      await _migrateDirectory(
+        from: Directory(p.join(root, RobotPathLayout.xmlLibraryDir)),
+        to: await platform.xmlLibraryDir(),
+        copyXmlOnly: true,
+      );
+    }
   }
 
   static Future<void> _migrateDirectory({

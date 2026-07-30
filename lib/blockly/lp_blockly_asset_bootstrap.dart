@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
 import '../core/robot_paths.dart';
@@ -22,6 +23,7 @@ class LpBlocklyAssetBootstrap {
   LpBlocklyAssetBootstrap._();
 
   static const String _legacyZipAsset = 'assets/blockly/visualprogram.zip';
+  static const String _runtimeStampName = '.lp_runtime_stamp';
   static const List<String> _criticalRuntimeFiles = [
     'blockly/blockly_uncompressed.js',
     'blockly/demos/code/index.html',
@@ -41,11 +43,27 @@ class LpBlocklyAssetBootstrap {
     if (plainRoot != null) return;
 
     final targetRoot = await RobotPaths.blocklyRuntimeRoot();
-    if (await isRuntimeComplete(targetRoot)) return;
+    final expectedStamp = await _appRuntimeStamp();
+    var preferAssetPack = false;
+
+    // APK 升级后必须重新解压，否则仍会跑旧的 code.js（拖拽散架等修复不生效）。
+    if (await _needsRuntimeRepack(targetRoot, expectedStamp)) {
+      onProgress?.call(7, '检测到 Blockly 资源版本更新，正在重新安装…');
+      await _wipeRuntimeCache(targetRoot);
+      preferAssetPack = Platform.isAndroid;
+    }
+
+    if (await isRuntimeComplete(targetRoot) &&
+        await _stampMatches(targetRoot, expectedStamp)) {
+      return;
+    }
 
     onProgress?.call(8, '正在准备 Blockly 资源…');
 
-    final zipBytes = await _loadZipBytes(onProgress: onProgress);
+    final zipBytes = await _loadZipBytes(
+      onProgress: onProgress,
+      preferAsset: preferAssetPack,
+    );
     final archive = ZipDecoder().decodeBytes(zipBytes);
     if (archive.isEmpty) {
       throw StateError('Blockly 资源包为空');
@@ -82,6 +100,51 @@ class LpBlocklyAssetBootstrap {
         'Blockly 解压后关键文件仍不完整，请重新打包 ${LpBlocklyPack.fileName}。',
       );
     }
+    await _writeRuntimeStamp(targetRoot, expectedStamp);
+  }
+
+  static Future<String> _appRuntimeStamp() async {
+    final info = await PackageInfo.fromPlatform();
+    return '${info.version}+${info.buildNumber}';
+  }
+
+  static File _stampFile(String targetRoot) =>
+      File(p.join(targetRoot, _runtimeStampName));
+
+  static Future<bool> _stampMatches(String targetRoot, String expected) async {
+    final stamp = _stampFile(targetRoot);
+    if (!await stamp.exists()) return false;
+    return (await stamp.readAsString()).trim() == expected;
+  }
+
+  static Future<bool> _needsRuntimeRepack(
+    String targetRoot,
+    String expectedStamp,
+  ) async {
+    final dir = Directory(targetRoot);
+    if (!await dir.exists()) return false;
+    if (!await isRuntimeComplete(targetRoot)) return true;
+    return !(await _stampMatches(targetRoot, expectedStamp));
+  }
+
+  static Future<void> _wipeRuntimeCache(String targetRoot) async {
+    final targetDir = Directory(targetRoot);
+    if (await targetDir.exists()) {
+      await targetDir.delete(recursive: true);
+    }
+    final packFile = await RobotPaths.blocklyPackFile();
+    if (await packFile.exists()) {
+      await packFile.delete();
+    }
+  }
+
+  static Future<void> _writeRuntimeStamp(
+    String targetRoot,
+    String stamp,
+  ) async {
+    final file = _stampFile(targetRoot);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(stamp, flush: true);
   }
 
   /// 校验入口、核心脚本及 Closure 运行库，避免把半解压目录当作可用资源。
@@ -133,16 +196,20 @@ class LpBlocklyAssetBootstrap {
 
   static Future<Uint8List> _loadZipBytes({
     BlocklyBootstrapProgress? onProgress,
+    bool preferAsset = false,
   }) async {
-    final packFile = await RobotPaths.blocklyPackFile();
-    if (await packFile.exists()) {
-      onProgress?.call(10, '正在读取 Blockly 资源包…');
-      final lpk = await packFile.readAsBytes();
-      return LpBlocklyPack.decode(lpk);
-    }
-
     if (kIsWeb) {
       throw StateError('Web 平台不支持 Blockly 本地资源包');
+    }
+
+    // 版本升级重装时优先读 APK 内嵌包，避免沿用磁盘上的旧 .lpk。
+    if (!preferAsset) {
+      final packFile = await RobotPaths.blocklyPackFile();
+      if (await packFile.exists()) {
+        onProgress?.call(10, '正在读取 Blockly 资源包…');
+        final lpk = await packFile.readAsBytes();
+        return LpBlocklyPack.decode(lpk);
+      }
     }
 
     try {
@@ -152,10 +219,19 @@ class LpBlocklyAssetBootstrap {
         data.offsetInBytes,
         data.lengthInBytes,
       );
-      await _persistPackCopy(lpk);
+      await _persistPackCopy(lpk, overwrite: preferAsset);
       return LpBlocklyPack.decode(lpk);
     } catch (_) {
       // 兼容旧版 zip 资源（开发/过渡）
+    }
+
+    if (preferAsset) {
+      final packFile = await RobotPaths.blocklyPackFile();
+      if (await packFile.exists()) {
+        onProgress?.call(10, '正在读取 Blockly 资源包…');
+        final lpk = await packFile.readAsBytes();
+        return LpBlocklyPack.decode(lpk);
+      }
     }
 
     try {
@@ -173,11 +249,14 @@ class LpBlocklyAssetBootstrap {
   }
 
   /// Android：将 APK 内嵌 LPK 落盘到 `installRoot/dll/`，与 Windows 安装目录结构一致。
-  static Future<void> _persistPackCopy(Uint8List lpkBytes) async {
+  static Future<void> _persistPackCopy(
+    Uint8List lpkBytes, {
+    bool overwrite = false,
+  }) async {
     if (!Platform.isAndroid) return;
 
     final packFile = await RobotPaths.blocklyPackFile();
-    if (await packFile.exists()) return;
+    if (!overwrite && await packFile.exists()) return;
 
     final parent = packFile.parent;
     if (!await parent.exists()) {

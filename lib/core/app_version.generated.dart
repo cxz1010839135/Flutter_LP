@@ -6,4 +6,4 @@
 const String kAppVersion = '2.0.0';
 
 /// 构建号（如 1），与 [pubspec.yaml] `version:` 加号后一致。
-const String kAppBuildNumber = '3';
+const String kAppBuildNumber = '5';

@@ -29,6 +29,14 @@
 
   var DEFAULT_NAME = 'main';
 
+  function isAndroidHost() {
+    try {
+      return /Android/i.test(navigator.userAgent || '');
+    } catch (e) {
+      return false;
+    }
+  }
+
   function serverXmlUrl(filename) {
     return (
       '/api/files/server/xml/' + encodeURIComponent(filename || DEFAULT_NAME)
@@ -206,11 +214,22 @@
     },
 
     saveFunXML: function (fileName, xml) {
-      saveToServer(fileName, xml);
+      postToFlutter({
+        type: 'saveFunXML',
+        filename: fileName || DEFAULT_NAME,
+        fileName: fileName || DEFAULT_NAME,
+        xml: xml || '',
+      });
     },
 
     chooseFunXML: function () {
-      postToFlutter({ type: 'pickAndLoadXml' });
+      // Windows 1.8.7：原生打开框（默认 config/server）
+      // Android：自绘对话框，默认函数库
+      if (isAndroidHost()) {
+        postToFlutter({ type: 'pickAndLoadXml', source: 'funlib' });
+      } else {
+        postToFlutter({ type: 'pickAndLoadXml' });
+      }
     },
 
     loadFunXML: function () {
@@ -267,11 +286,27 @@
 
   function installFlutterSaveButton() {
     rebindToolbarButton('SaveDocDiv', function () {
+      var xml = '';
+      try {
+        xml = Code.generateXml();
+      } catch (e) {
+        console.error('generateXml failed:', e);
+      }
+      // Android：自绘保存对话框；Windows 保持 1.8.7：prompt 工程名 → config/server
+      if (isAndroidHost()) {
+        postToFlutter({
+          type: 'promptSaveProgram',
+          fileName: DEFAULT_NAME,
+          xml: xml,
+          gcode: generateGCodeText(),
+        });
+        return;
+      }
       var fileName = prompt('请输入保存的工程名：', DEFAULT_NAME);
       if (!fileName) return;
       fileName = fileName.trim();
       if (!fileName) return;
-      saveProgramToServer(fileName, Code.generateXml());
+      saveProgramToServer(fileName, xml || Code.generateXml());
     });
   }
 
@@ -282,7 +317,12 @@
   }
 
   function loadFromServerFolder() {
-    if (postToFlutter({ type: 'pickAndLoadXml' })) {
+    if (isAndroidHost()) {
+      if (postToFlutter({ type: 'pickAndLoadXml', source: 'server' })) {
+        return;
+      }
+    } else if (postToFlutter({ type: 'pickAndLoadXml' })) {
+      // Windows 1.8.7：宿主 OpenFileDialog
       return;
     }
 
@@ -321,8 +361,39 @@
     window.setTimeout(function () {
       installFlutterSaveButton();
       installFlutterLoadButton();
+      // 仅安卓覆盖函数库保存；Windows 保持 1.8.7 原 Code.SaveDoc
+      if (isAndroidHost()) {
+        installFlutterFunSaveOverride();
+      }
     }, 500);
   });
+
+  /** 安卓：覆盖函数库保存，走 Flutter 对话框 */
+  function installFlutterFunSaveOverride() {
+    if (!window.Code) return;
+    Code.SaveDoc = function () {
+      var xml = '';
+      try {
+        xml = Code.generateXml();
+      } catch (e) {
+        console.error('generateXml failed:', e);
+      }
+      if (
+        postToFlutter({
+          type: 'promptSaveFunXml',
+          fileName: DEFAULT_NAME,
+          xml: xml,
+        })
+      ) {
+        return;
+      }
+      var fileName = prompt('请输入保存的函数文件名：');
+      if (!fileName) return;
+      if (typeof bound !== 'undefined' && bound && bound.saveFunXML) {
+        bound.saveFunXML(fileName, xml || Code.generateXml());
+      }
+    };
+  }
 
   function scheduleInitialLoad() {
     window.setTimeout(function () {

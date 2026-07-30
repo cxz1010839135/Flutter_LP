@@ -448,7 +448,7 @@ Code.recomputeWorkspaceBlockLayout_ = function () {
 
 /**
  * AI 侧栏改变 WebView 宽度后，拖拽松手时块栈可能散架。
- * 在拖拽开始刷新 startXY_，松手后稳定根块栈（等同手动折叠/展开）。
+ * 在拖拽开始刷新 startXY_ 并重绘根块，松手后稳定根块栈（等同手动折叠/展开）。
  */
 Code._dragRelayoutFixInstalled_ = false;
 
@@ -462,6 +462,14 @@ Code.installDragRelayoutFix_ = function () {
   Blockly.BlockDragger.prototype.startBlockDrag = function (currentDragDeltaXY) {
     if (this.workspace_ && this.workspace_.updateScreenCalculations_) {
       this.workspace_.updateScreenCalculations_();
+    }
+    try {
+      var dragRoot = this.draggingBlock_ && this.draggingBlock_.getRootBlock();
+      if (dragRoot && !dragRoot.disposed && typeof dragRoot.render === 'function') {
+        dragRoot.render(false);
+      }
+    } catch (preErr) {
+      console.warn('drag start render', preErr);
     }
     this.startXY_ = this.draggingBlock_.getRelativeToSurfaceXY();
     origStart.call(this, currentDragDeltaXY);
@@ -495,12 +503,39 @@ Code.installDragRelayoutFix_ = function () {
 
 /**
  * 加载 XML 后分阶段刷新布局与块渲染（Windows WebView2 需多次重绘）。
+ * 末次再强制折叠/展开顶层栈，避免导入后首次拖拽时嵌套块「散架」。
  */
 Code.scheduleWorkspaceRerenderAfterLoad_ = function () {
   Code.scheduleLayoutRefresh_();
   window.setTimeout(Code.refreshWorkspaceAfterLoad_, 100);
   window.setTimeout(Code.refreshWorkspaceAfterLoad_, 500);
-  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 1200);
+  window.setTimeout(function () {
+    Code.refreshWorkspaceAfterLoad_();
+    if (typeof Code.recomputeWorkspaceBlockLayout_ === 'function') {
+      Code.recomputeWorkspaceBlockLayout_();
+    }
+  }, 1200);
+};
+
+/**
+ * Android WebView：CSS translate3d 拖拽层会导致积木拖拽「散架」。
+ * 仅安卓关闭 3D 拖拽面；Windows 保持 1.8.7 原行为。
+ */
+Code.disableDragSurfaceForWebView_ = function () {
+  if (typeof Blockly === 'undefined' || !Blockly.utils) {
+    return;
+  }
+  var ua = '';
+  try {
+    ua = navigator.userAgent || '';
+  } catch (e) { }
+  if (!/Android/i.test(ua)) {
+    return;
+  }
+  Blockly.utils.is3dSupported = function () {
+    return false;
+  };
+  Blockly.utils.is3dSupported.cached_ = false;
 };
 
 /**
@@ -659,6 +694,8 @@ Code.renderContent = function (opt_force) {
 Code.init = function () {
 
   Code.initLanguage();
+  // 须在 Blockly.inject 之前关闭 WebView 3D 拖拽面，否则导入后拖拽会散架
+  Code.disableDragSurfaceForWebView_();
   var rtl = Code.isRtl(); //布局
   var container = document.getElementById('content_area');//获取content_area的空间
   //跟随浏览器自适应调整大小  begin

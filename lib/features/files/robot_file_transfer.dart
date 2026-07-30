@@ -88,8 +88,30 @@ class RobotFileTransfer {
   RobotFileTransfer._();
 
   /// 本地浏览默认目录：优先选「有文件」的目录（PC 上工程目录常为空）。
+  /// Android：对齐旧 FilesActivity，默认从 LPRobot 根进入，可浏览 FunLib/Downloads 等。
   static Future<Directory> localBrowseRoot() async {
     await RobotPaths.ensureLayout();
+    if (Platform.isAndroid) {
+      final root = Directory(await RobotPaths.installRoot());
+      if (!await root.exists()) {
+        await root.create(recursive: true);
+      }
+      // 优先落到有内容的 Downloads / FunLib / server，否则 LPRobot 根。
+      final prefer = <Directory>[
+        await downloadSessionRoot(),
+        Directory(await RobotPaths.funLibDir()),
+        Directory(await RobotPaths.serverDir()),
+        Directory(await RobotPaths.xmlLibraryDir()),
+        root,
+      ];
+      for (final dir in prefer) {
+        if (!await dir.exists()) continue;
+        final entries = await dir.list(followLinks: false).toList();
+        if (entries.isNotEmpty) return dir;
+      }
+      return root;
+    }
+
     final candidates = <Directory>[
       Directory(await RobotPaths.serverDir()),
       Directory(

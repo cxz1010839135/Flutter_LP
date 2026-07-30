@@ -9,10 +9,19 @@ import '../core/robot_path_layout.dart';
 import '../core/robot_paths.dart';
 import '../core/robot_state.dart';
 import '../network/http_manager.dart';
+import 'lp_blockly_android_file_dialog.dart';
 import 'lp_blockly_file_picker.dart';
+import 'lp_blockly_webview_visibility.dart';
 
 /// 非 Windows 平台下从目录列表选手 XML；取消时返回 null。
 typedef PickXmlFromList = Future<String?> Function(String browseDir);
+
+/// 安卓保存对话框：返回目录 + 文件名；取消为 null。
+typedef PromptAndroidSave = Future<LpBlocklyAndroidFileChoice?> Function({
+  required String title,
+  required String initialDir,
+  required String initialName,
+});
 typedef BlocklyTaskProgressCallback = void Function(int percent, String message);
 
 /// Blockly 退出请求（来自 `bound.exit()`）。
@@ -62,6 +71,7 @@ class LpBlocklyBridge {
     this.onTaskProgress,
     this.onJsLoadComplete,
     this.pickXmlFromList,
+    this.promptAndroidSave,
   });
 
   final WebViewController controller;
@@ -72,6 +82,7 @@ class LpBlocklyBridge {
   final BlocklyTaskProgressCallback? onTaskProgress;
   final VoidCallback? onJsLoadComplete;
   final PickXmlFromList? pickXmlFromList;
+  final PromptAndroidSave? promptAndroidSave;
 
   bool _updateProgram = false;
   bool _compileOk = false;
@@ -124,6 +135,21 @@ class LpBlocklyBridge {
           gcode: (data['gcode'] ?? '') as String,
         );
         break;
+      case 'promptSaveProgram':
+        await _promptAndSaveProgram(
+          xml: (data['xml'] ?? '') as String,
+          gcode: (data['gcode'] ?? '') as String,
+          initialName:
+              (data['fileName'] ?? data['filename'] ?? 'main') as String,
+        );
+        break;
+      case 'promptSaveFunXml':
+        await _promptAndSaveFunXml(
+          xml: (data['xml'] ?? '') as String,
+          initialName:
+              (data['fileName'] ?? data['filename'] ?? 'main') as String,
+        );
+        break;
       case 'saveServerRp4':
         await _saveServerRp4(
           filename: (data['fileName'] ?? data['filename'] ?? 'main') as String,
@@ -152,7 +178,9 @@ class LpBlocklyBridge {
         );
         break;
       case 'pickAndLoadXml':
-        await _pickAndLoadXml();
+        await _pickAndLoadXml(
+          source: (data['source'] as String?) ?? 'server',
+        );
         break;
       case 'saveCompileResult':
         _compileOk = data['result'] == true;
@@ -200,11 +228,144 @@ class LpBlocklyBridge {
       );
       _progress(100, '保存完成');
       showMessage(
-        '已保存到 ${RobotPathLayout.serverDir}/$name.xml 与 $name.rp4',
+        await _androidAwareSavedMessage(
+          '${RobotPathLayout.serverDir}/$name.xml 与 $name.rp4',
+          absoluteHintFiles: [
+            await RobotPaths.serverXmlFile(name),
+            await RobotPaths.serverRp4File(name),
+          ],
+        ),
       );
     } catch (e, st) {
       debugPrint('Save program failed: $e\n$st');
       _progress(100, '保存失败');
+      showMessage('保存失败：$e', isError: true);
+    }
+  }
+
+  /// 安卓：弹 Flutter 对话框选目录/文件名后再保存工程（xml+rp4）。
+  /// Windows 不走此路径（1.8.7：JS prompt → saveProgram）。
+  Future<void> _promptAndSaveProgram({
+    required String xml,
+    required String gcode,
+    required String initialName,
+  }) async {
+    if (!Platform.isAndroid || promptAndroidSave == null) {
+      await _handleSaveProgram(
+        filename: initialName,
+        xml: xml,
+        gcode: gcode,
+      );
+      return;
+    }
+
+    final choice = await promptAndroidSave!(
+      title: '保存工程',
+      initialDir: await RobotPaths.serverDir(),
+      initialName: initialName,
+    );
+    if (choice == null) return;
+
+    if (!await _confirmOverwriteIfNeeded(choice.absolutePath)) return;
+
+    switch (choice.targetKey) {
+      case 'funlib':
+        await _saveFunXml(filename: choice.fileName, xml: xml);
+        return;
+      case 'xml':
+        await _saveXmlToDirectory(
+          directory: choice.directory,
+          filename: choice.fileName,
+          xml: xml,
+          gcode: gcode,
+        );
+        return;
+      case 'server':
+        await _handleSaveProgram(
+          filename: choice.fileName,
+          xml: xml,
+          gcode: gcode,
+        );
+        return;
+      default:
+        await _saveXmlToDirectory(
+          directory: choice.directory,
+          filename: choice.fileName,
+          xml: xml,
+          gcode: gcode,
+        );
+    }
+  }
+
+  /// 安卓：弹对话框保存到函数库（也可改目录）。
+  Future<void> _promptAndSaveFunXml({
+    required String xml,
+    required String initialName,
+  }) async {
+    if (!Platform.isAndroid || promptAndroidSave == null) {
+      await _saveFunXml(filename: initialName, xml: xml);
+      return;
+    }
+
+    final choice = await promptAndroidSave!(
+      title: '保存到函数库',
+      initialDir: await RobotPaths.funLibDir(),
+      initialName: initialName,
+    );
+    if (choice == null) return;
+    if (!await _confirmOverwriteIfNeeded(choice.absolutePath)) return;
+
+    if (choice.targetKey == 'funlib') {
+      await _saveFunXml(filename: choice.fileName, xml: xml);
+      return;
+    }
+    await _saveXmlToDirectory(
+      directory: choice.directory,
+      filename: choice.fileName,
+      xml: xml,
+    );
+  }
+
+  Future<bool> _confirmOverwriteIfNeeded(String absolutePath) async {
+    final file = File(absolutePath);
+    if (!await file.exists()) return true;
+    // 无 UI 上下文时直接覆盖；页面侧对话框已让用户明确点「确定保存」。
+    showMessage('将覆盖已有文件：${p.basename(absolutePath)}');
+    return true;
+  }
+
+  Future<void> _saveXmlToDirectory({
+    required String directory,
+    required String filename,
+    required String xml,
+    String gcode = '',
+  }) async {
+    final name = RobotPaths.sanitizeBaseName(filename);
+    if (name.isEmpty) {
+      showMessage('文件名无效', isError: true);
+      return;
+    }
+    try {
+      final dir = Directory(directory);
+      await dir.create(recursive: true);
+      final xmlFile = File(p.join(directory, '$name.xml'));
+      await xmlFile.writeAsString(xml);
+      File? rp4File;
+      if (gcode.isNotEmpty) {
+        rp4File = File(p.join(directory, '$name.rp4'));
+        await rp4File.writeAsString(gcode);
+      }
+      showMessage(
+        await _androidAwareSavedMessage(
+          '$directory/$name.xml',
+          absoluteHintFiles: [
+            xmlFile,
+            if (rp4File != null) rp4File,
+          ],
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('Save xml to dir failed: $e\n$st');
       showMessage('保存失败：$e', isError: true);
     }
   }
@@ -408,9 +569,12 @@ class LpBlocklyBridge {
       final file = await RobotPaths.funLibXmlFile(filename);
       await file.parent.create(recursive: true);
       await file.writeAsString(xml);
-      final message =
-          '已保存到 ${RobotPathLayout.funLibDir}/${p.basename(file.path)}';
-      showMessage(message);
+      showMessage(
+        await _androidAwareSavedMessage(
+          '${RobotPathLayout.funLibDir}/${p.basename(file.path)}',
+          absoluteHintFiles: [file],
+        ),
+      );
     } catch (e, st) {
       debugPrint('Save FunLib XML failed: $e\n$st');
       showMessage('函数库保存失败：$e', isError: true);
@@ -436,13 +600,30 @@ class LpBlocklyBridge {
     }
   }
 
-  Future<void> _pickAndLoadXml() async {
+  Future<void> _pickAndLoadXml({String source = 'server'}) async {
     try {
-      final initialDir = await RobotPaths.serverDir();
+      // Windows 1.8.7：始终 OpenFileDialog，默认 config/server。
+      // Android：按 source 切函数库 / 控制器程序 / 工程库。
+      final String initialDir;
+      if (Platform.isWindows) {
+        initialDir = await RobotPaths.serverDir();
+      } else if (Platform.isAndroid && source == 'funlib') {
+        initialDir = await RobotPaths.funLibDir();
+      } else if (Platform.isAndroid && source == 'xml') {
+        initialDir = await RobotPaths.xmlLibraryDir();
+      } else {
+        initialDir = await RobotPaths.serverDir();
+      }
+
       final String? pickedPath;
       if (Platform.isWindows) {
-        // Windows 原生对话框：取消或关闭时返回 null，不再弹出备选列表。
-        pickedPath = await LpBlocklyFilePicker.pickXmlFile(initialDir);
+        // 原生对话框会被 WebView2 挡住，先隐藏再弹出（不影响选文件逻辑）。
+        await setBlocklyWebViewVisible(controller, false);
+        try {
+          pickedPath = await LpBlocklyFilePicker.pickXmlFile(initialDir);
+        } finally {
+          await setBlocklyWebViewVisible(controller, true);
+        }
       } else if (pickXmlFromList != null) {
         pickedPath = await pickXmlFromList!(initialDir);
       } else {
@@ -465,7 +646,21 @@ class LpBlocklyBridge {
     await controller.runJavaScript(
       'if(window.Code&&Code.appendBlocksfromXml){Code.appendBlocksfromXml($encoded);}',
     );
-    final message = '已追加导入：$pickedPath';
+    final message = Platform.isAndroid
+        ? '已追加导入：${p.basename(pickedPath)}\n$pickedPath'
+        : '已追加导入：$pickedPath';
     showMessage(message);
+  }
+
+  /// Android 提示绝对路径（旧 APP 习惯）；其它平台保持相对目录文案。
+  Future<String> _androidAwareSavedMessage(
+    String relativeLabel, {
+    List<File> absoluteHintFiles = const [],
+  }) async {
+    if (!Platform.isAndroid || absoluteHintFiles.isEmpty) {
+      return '已保存到 $relativeLabel';
+    }
+    final abs = absoluteHintFiles.map((f) => f.path).join('\n');
+    return '已保存到：\n$abs';
   }
 }

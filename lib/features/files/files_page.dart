@@ -9,6 +9,7 @@ import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/maintenance_edit_gate.dart';
+import '../../core/robot_paths.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
@@ -186,6 +187,16 @@ class _FilesPageState extends State<FilesPage> {
       return;
     }
 
+    // Android：不要退到 LPRobot 根之上（对齐旧 APP 沙箱浏览）。
+    if (Platform.isAndroid) {
+      final root = p.normalize(await RobotPaths.installRoot());
+      if (dirNorm == root) return;
+      if (!p.isWithin(root, parentNorm) && parentNorm != root) {
+        await _loadLocal(Directory(root));
+        return;
+      }
+    }
+
     if (parentNorm == dirNorm || parent.path.isEmpty) return;
     await _loadLocal(parent);
   }
@@ -226,6 +237,14 @@ class _FilesPageState extends State<FilesPage> {
 
   Future<void> _goProgramConfigDir() async {
     final dir = await RobotFileTransfer.programConfigDir();
+    await _loadLocal(dir);
+  }
+
+  Future<void> _goFunLibDir() async {
+    final dir = Directory(await RobotPaths.funLibDir());
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
     await _loadLocal(dir);
   }
 
@@ -725,8 +744,12 @@ class _FilesPageState extends State<FilesPage> {
                             child: OutlinedButton(
                               onPressed: _localLoading || _transferring
                                   ? null
-                                  : _goProgramConfigDir,
-                              child: const Text('程序配置'),
+                                  : (Platform.isAndroid
+                                      ? _goFunLibDir
+                                      : _goProgramConfigDir),
+                              child: Text(
+                                Platform.isAndroid ? '函数库' : '程序配置',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -734,10 +757,25 @@ class _FilesPageState extends State<FilesPage> {
                             child: OutlinedButton(
                               onPressed: _localLoading || _transferring
                                   ? null
-                                  : _goDownloadRoot,
-                              child: const Text('下载目录'),
+                                  : (Platform.isAndroid
+                                      ? _goProgramConfigDir
+                                      : _goDownloadRoot),
+                              child: Text(
+                                Platform.isAndroid ? '程序配置' : '下载目录',
+                              ),
                             ),
                           ),
+                          if (Platform.isAndroid) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _localLoading || _transferring
+                                    ? null
+                                    : _goDownloadRoot,
+                                child: const Text('下载'),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],

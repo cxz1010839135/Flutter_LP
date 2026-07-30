@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'lp_blockly_android_file_dialog.dart';
 import 'lp_blockly_bridge.dart';
 import 'lp_blockly_config.dart';
 import 'lp_blockly_load_tracker.dart';
@@ -309,6 +310,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         controller: controller,
         showMessage: _showMessage,
         pickXmlFromList: _pickXmlFromLibraryDir,
+        promptAndroidSave: Platform.isAndroid ? _promptAndroidSave : null,
         onTaskProgress: _onTaskProgress,
         onTaskStarted: _onTaskStarted,
         onJsLoadComplete: () => _loadTracker?.markJsLoadComplete(),
@@ -639,21 +641,23 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
     );
   }
 
-  /// 原生对话框不可用时，从 files/xml 列表中选择
+  /// 原生对话框不可用时，从本地目录列表选择 XML。
+  /// Android：美观目录浏览器，选中后需点「确定导入」，可切换快捷目录并进入子文件夹。
   Future<String?> _pickXmlFromLibraryDir(String browseDir) async {
     if (!mounted) return null;
+
+    if (Platform.isAndroid) {
+      return LpBlocklyAndroidFileDialog.pickXml(
+        context: context,
+        webViewController: _controller,
+        initialDir: browseDir,
+      );
+    }
 
     final dir = Directory(browseDir);
     if (!await dir.exists()) return null;
 
-    final files = <File>[];
-    await for (final entity in dir.list()) {
-      if (entity is File && p.extension(entity.path).toLowerCase() == '.xml') {
-        files.add(entity);
-      }
-    }
-    files.sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
-
+    final files = await _listXmlFiles(dir);
     if (files.isEmpty) {
       if (mounted) {
         _showMessage(
@@ -704,6 +708,34 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<List<File>> _listXmlFiles(Directory dir) async {
+    if (!await dir.exists()) return const [];
+    final files = <File>[];
+    await for (final entity in dir.list()) {
+      if (entity is File && p.extension(entity.path).toLowerCase() == '.xml') {
+        files.add(entity);
+      }
+    }
+    files.sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+    return files;
+  }
+
+  /// 安卓保存：Flutter 对话框选目录 + 文件名，需点确定。
+  Future<LpBlocklyAndroidFileChoice?> _promptAndroidSave({
+    required String title,
+    required String initialDir,
+    required String initialName,
+  }) async {
+    if (!mounted) return null;
+    return LpBlocklyAndroidFileDialog.saveAs(
+      context: context,
+      webViewController: _controller,
+      title: title,
+      initialDir: initialDir,
+      initialName: initialName,
     );
   }
 
