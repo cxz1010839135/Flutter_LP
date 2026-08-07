@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/lp_app_assets.dart';
@@ -41,6 +43,9 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   DriverParamsFileLayout? _driverLayout;
   int _driverAxisCount = 6;
   int? _selectedDriverRow;
+
+  /// 全选时会连点多行，短时内只弹一次提示。
+  DateTime? _lastBlockedTipAt;
 
   List<ConfigFileStepDef> get _steps =>
       buildConfigFileSteps(RobotState.instance.robotModel);
@@ -198,10 +203,42 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     }
   }
 
+  Future<void> _showBlockedTip() async {
+    final now = DateTime.now();
+    if (_lastBlockedTipAt != null &&
+        now.difference(_lastBlockedTipAt!) < const Duration(milliseconds: 600)) {
+      return;
+    }
+    _lastBlockedTipAt = now;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('提示'),
+        content: const Text(MaintenanceEditGate.blockedTip),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 运动中点选/勾选：提示且不进入修改。
+  bool _guardSelectForEdit() {
+    if (MaintenanceEditGate.canEdit()) return true;
+    unawaited(_showBlockedTip());
+    return false;
+  }
+
   Future<void> _editDriverRow(int index) async {
     final row = _driverRows[index];
     final readOnly = !MaintenanceEditGate.canEdit();
     if (readOnly) {
+      await _showBlockedTip();
+      if (!mounted) return;
       await _showDriverRowViewDialog(row);
       return;
     }
@@ -362,6 +399,8 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     final row = _rows[index];
     final readOnly = !MaintenanceEditGate.canEdit();
     if (readOnly) {
+      await _showBlockedTip();
+      if (!mounted) return;
       await _showRowViewDialog(row);
       return;
     }
@@ -657,13 +696,15 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
           rows: [
             for (var i = 0; i < _rows.length; i++)
               DataRow(
-                selected: _selectedRow == i,
-                onSelectChanged: (_) {
-                  setState(() => _selectedRow = i);
-                  _editRow(i);
-                },
                 cells: [
-                  DataCell(Text(_rows[i].name)),
+                  DataCell(
+                    Text(_rows[i].name),
+                    onTap: () {
+                      if (!_guardSelectForEdit()) return;
+                      setState(() => _selectedRow = i);
+                      unawaited(_editRow(i));
+                    },
+                  ),
                   ...List.generate(
                     _step.editableColumnCount,
                     (col) => DataCell(
@@ -672,6 +713,11 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                             ? _rows[i].values[col]
                             : '',
                       ),
+                      onTap: () {
+                        if (!_guardSelectForEdit()) return;
+                        setState(() => _selectedRow = i);
+                        unawaited(_editRow(i));
+                      },
                     ),
                   ),
                 ],
@@ -775,17 +821,17 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
               rows: [
                 for (var i = 0; i < _driverRows.length; i++)
                   DataRow(
-                    selected: _selectedDriverRow == i,
-                    onSelectChanged: (_) {
-                      setState(() => _selectedDriverRow = i);
-                      _editDriverRow(i);
-                    },
                     cells: [
                       DataCell(
                         SizedBox(
                           width: 140,
                           child: Text(_driverRows[i].name),
                         ),
+                        onTap: () {
+                          if (!_guardSelectForEdit()) return;
+                          setState(() => _selectedDriverRow = i);
+                          unawaited(_editDriverRow(i));
+                        },
                       ),
                       ...List.generate(
                         _driverAxisCount,
@@ -795,6 +841,11 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                                 ? _driverRows[i].values[col]
                                 : '',
                           ),
+                          onTap: () {
+                            if (!_guardSelectForEdit()) return;
+                            setState(() => _selectedDriverRow = i);
+                            unawaited(_editDriverRow(i));
+                          },
                         ),
                       ),
                     ],

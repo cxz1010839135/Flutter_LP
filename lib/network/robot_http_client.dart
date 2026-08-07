@@ -4,7 +4,10 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'package:flutter/foundation.dart';
+
 import '../core/app_info.dart';
+import '../platform/android_wifi_network_binder.dart';
 import 'robot_api_response.dart';
 import 'robot_tagged_file_upload.dart';
 
@@ -229,6 +232,7 @@ class RobotHttpClient {
   }
 
   /// 原始 Socket POST（嵌入式控制器与 Dart HttpClient 不兼容，curl/Socket 正常）。
+  /// Android：走原生 OkHttp + Wi‑Fi 绑定（对齐老版 HttpManager，直连 192.168.11.11）。
   Future<String> _postViaSocket(
     Uri uri,
     List<int> body,
@@ -238,6 +242,33 @@ class RobotHttpClient {
   }) async {
     final connectLimit = connectTimeoutOverride ?? connectTimeout;
     final ioLimit = ioTimeoutOverride ?? ioTimeout;
+
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        AndroidWifiNetworkBinder.isAndroid) {
+      try {
+        return await AndroidWifiNetworkBinder.httpPost(
+          url: uri.toString(),
+          body: body,
+          contentType: contentType,
+          connectTimeout: connectLimit,
+          readTimeout: ioLimit,
+        );
+      } catch (e) {
+        final msg = e.toString();
+        if (msg.contains('网络不可达') ||
+            msg.contains('Failed to connect') ||
+            msg.contains('ECONNREFUSED') ||
+            msg.contains('ENETUNREACH') ||
+            msg.contains('SocketTimeout') ||
+            msg.contains('timeout') ||
+            msg.contains('Timeout')) {
+          throw Exception('网络不可达（$msg），请确认已连机器人 Wi‑Fi 且 IP 正确');
+        }
+        rethrow;
+      }
+    }
+
     final port = uri.hasPort ? uri.port : 80;
     final socket = await Socket.connect(uri.host, port).timeout(connectLimit);
     try {

@@ -227,14 +227,18 @@ class LpBlocklyBridge {
         progressSpan: 100,
       );
       _progress(100, '保存完成');
+      final hasGcode = gcode.trim().isNotEmpty;
       showMessage(
         await _androidAwareSavedMessage(
-          '${RobotPathLayout.serverDir}/$name.xml 与 $name.rp4',
+          hasGcode
+              ? '${RobotPathLayout.serverDir}/$name.xml 与 $name.rp4'
+              : '${RobotPathLayout.serverDir}/$name.xml（G 代码编译失败，未覆盖 RP4）',
           absoluteHintFiles: [
             await RobotPaths.serverXmlFile(name),
-            await RobotPaths.serverRp4File(name),
+            if (hasGcode) await RobotPaths.serverRp4File(name),
           ],
         ),
+        isError: !hasGcode,
       );
     } catch (e, st) {
       debugPrint('Save program failed: $e\n$st');
@@ -502,13 +506,21 @@ class LpBlocklyBridge {
       await xmlFile.parent.create(recursive: true);
       await xmlFile.writeAsString(xml);
 
-      if (!skipProgress) {
-        _progress(
-          progressBase + (progressSpan * 0.55).round(),
-          silent ? '正在保存 G 代码…' : '正在写入 G 代码…',
+      final hasGcode = gcode.trim().isNotEmpty;
+      if (hasGcode) {
+        if (!skipProgress) {
+          _progress(
+            progressBase + (progressSpan * 0.55).round(),
+            silent ? '正在保存 G 代码…' : '正在写入 G 代码…',
+          );
+        }
+        await rp4File.writeAsString(gcode);
+      } else {
+        // 编译失败时 JS 会传空 gcode：只保 XML，避免把 rp4 写成空文件
+        debugPrint(
+          'Save server project: skip empty rp4 for $filename (keep existing if any)',
         );
       }
-      await rp4File.writeAsString(gcode);
 
       if (silent) {
         if (!skipProgress) {
@@ -520,10 +532,12 @@ class LpBlocklyBridge {
         return;
       }
 
-      final message =
-          '已保存到 ${RobotPathLayout.serverDir}/${p.basename(xmlFile.path)} '
-          '和 ${RobotPathLayout.serverDir}/${p.basename(rp4File.path)}';
-      showMessage(message);
+      final message = hasGcode
+          ? '已保存到 ${RobotPathLayout.serverDir}/${p.basename(xmlFile.path)} '
+              '和 ${RobotPathLayout.serverDir}/${p.basename(rp4File.path)}'
+          : '已保存 XML（${RobotPathLayout.serverDir}/${p.basename(xmlFile.path)}）；'
+              'G 代码编译失败，未覆盖 RP4';
+      showMessage(message, isError: !hasGcode);
     } catch (e, st) {
       debugPrint('Save server project failed: $e\n$st');
       if (!silent) {

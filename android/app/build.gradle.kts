@@ -52,6 +52,11 @@ flutter {
     source = "../.."
 }
 
+dependencies {
+    // 对齐老版 LPRobot HttpManager：安卓侧用 OkHttp 走机器人 Wi‑Fi
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
+
 // Android 无 exe 旁 dll/：构建前将 dll/visualprogram 打成加密 LPK 并写入 Flutter assets。
 // 运行时：APK 内嵌 assets/blockly/visualprogram.lpk → 首次进编程页解压到 installRoot/dll/visualprogram/
 val syncBlocklyAssets = tasks.register<Exec>("syncBlocklyAssets") {

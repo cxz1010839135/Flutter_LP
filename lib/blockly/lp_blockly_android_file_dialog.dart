@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../app/lp_robot_colors.dart';
 import '../core/robot_paths.dart';
+import '../platform/android_storage_access.dart';
 import 'lp_blockly_webview_visibility.dart';
 
 /// 安卓 Blockly 导入/保存结果。
@@ -39,6 +40,7 @@ abstract final class LpBlocklyAndroidFileDialog {
     WebViewController? webViewController,
     required String initialDir,
   }) async {
+    await AndroidStorageAccess.ensureAccess();
     final roots = await _AndroidBrowseRoots.resolve();
     if (!context.mounted) return null;
 
@@ -66,6 +68,7 @@ abstract final class LpBlocklyAndroidFileDialog {
     required String title,
     String confirmLabel = '确定保存',
   }) async {
+    await AndroidStorageAccess.ensureAccess();
     final roots = await _AndroidBrowseRoots.resolve();
     if (!context.mounted) return null;
 
@@ -175,7 +178,7 @@ class _AndroidFileDialogBodyState extends State<_AndroidFileDialogBody> {
     super.dispose();
   }
 
-  Future<void> _loadDir(String dirPath) async {
+  Future<void> _loadDir(String dirPath, {bool retriedPermission = false}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -186,7 +189,12 @@ class _AndroidFileDialogBodyState extends State<_AndroidFileDialogBody> {
     try {
       final dir = Directory(_currentDir);
       if (!await dir.exists()) {
-        await dir.create(recursive: true);
+        // 仅在应用已知目录下自动创建；浏览整机公共路径时不 mkdir。
+        if (_isAppManagedPath(_currentDir)) {
+          await dir.create(recursive: true);
+        } else {
+          throw FileSystemException('目录不存在或无权限访问', _currentDir);
+        }
       }
 
       final dirs = <_Entry>[];
@@ -210,6 +218,13 @@ class _AndroidFileDialogBodyState extends State<_AndroidFileDialogBody> {
         _loading = false;
       });
     } catch (e) {
+      if (!retriedPermission && !await AndroidStorageAccess.hasAccess()) {
+        final ok = await AndroidStorageAccess.requestAccess();
+        if (ok && mounted) {
+          await _loadDir(dirPath, retriedPermission: true);
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _entries = const [];
@@ -219,22 +234,24 @@ class _AndroidFileDialogBodyState extends State<_AndroidFileDialogBody> {
     }
   }
 
+  /// 上级目录：可退到整机路径（直到 /）；Windows 不用此对话框。
   bool get _canGoUp {
     final parent = p.normalize(p.dirname(_currentDir));
-    if (parent == _currentDir) return false;
-    final root = widget.roots.installRoot;
-    // 允许在安装根及其子目录内回退；若当前已在根外（如公共 Downloads），也可回退到父级。
-    if (_currentDir == root) return false;
-    if (_isUnder(root, _currentDir)) {
-      return _isUnder(root, parent) || parent == root;
-    }
-    return true;
+    return parent != _currentDir && parent.isNotEmpty;
   }
 
   bool _isUnder(String root, String path) {
     final r = p.normalize(root);
     final x = p.normalize(path);
     return x == r || p.isWithin(r, x);
+  }
+
+  bool _isAppManagedPath(String path) {
+    final roots = widget.roots;
+    return _isUnder(roots.installRoot, path) ||
+        _isUnder(roots.funDir, path) ||
+        _isUnder(roots.serverDir, path) ||
+        _isUnder(roots.xmlDir, path);
   }
 
   void _goUp() {
@@ -532,7 +549,7 @@ class _AndroidFileDialogBodyState extends State<_AndroidFileDialogBody> {
       return Center(
         child: Text(
           widget.mode == _DialogMode.pick
-              ? '该目录没有可导入的 XML，可点上方切换目录或进入子文件夹'
+              ? '该目录没有可导入的 XML，可点↑上级目录浏览整机，或用上方快捷目录'
               : '该目录暂无 XML，可直接输入文件名保存',
           textAlign: TextAlign.center,
           style: const TextStyle(

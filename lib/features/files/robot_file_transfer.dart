@@ -241,7 +241,11 @@ class RobotFileTransfer {
   }
 
   static Future<List<FileSystemEntity>> listLocal(Directory dir) async {
+    // 浏览整机目录时不要对公共路径 mkdir（无权限会失败，且不应创建）。
     if (!await dir.exists()) {
+      if (Platform.isAndroid) {
+        throw FileSystemException('目录不存在或无权限访问', dir.path);
+      }
       await dir.create(recursive: true);
       return const [];
     }

@@ -16,10 +16,16 @@ class LpBlocklyProgressOverlay extends StatelessWidget {
   final String message;
   final bool dimmed;
 
+  static const double _ringSize = 72;
+  static const double _strokeWidth = 5;
+
   @override
   Widget build(BuildContext context) {
     final clamped = progress.clamp(0, 100);
     final theme = Theme.of(context);
+    // 圆环内侧可用直径：减去描边与余量，百分比 FittedBox 自适应缩放
+    const innerPad = 6.0;
+    const textBox = _ringSize - _strokeWidth * 2 - innerPad * 2;
 
     return ColoredBox(
       color: dimmed
@@ -36,8 +42,8 @@ class LpBlocklyProgressOverlay extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  width: 112,
-                  height: 112,
+                  width: _ringSize,
+                  height: _ringSize,
                   child: TweenAnimationBuilder<double>(
                     duration: const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
@@ -46,18 +52,40 @@ class LpBlocklyProgressOverlay extends StatelessWidget {
                       return Stack(
                         alignment: Alignment.center,
                         children: [
-                          CircularProgressIndicator(
-                            value: value,
-                            strokeWidth: 7,
-                            strokeCap: StrokeCap.round,
-                            color: LpRobotColors.primary,
-                            backgroundColor: LpRobotColors.background,
-                          ),
-                          Text(
-                            '$clamped%',
-                            style: theme.textTheme.titleLarge?.copyWith(
+                          Positioned.fill(
+                            child: CircularProgressIndicator(
+                              value: value,
+                              strokeWidth: _strokeWidth,
+                              strokeCap: StrokeCap.round,
+                              strokeAlign: CircularProgressIndicator.strokeAlignInside,
                               color: LpRobotColors.primary,
-                              fontWeight: FontWeight.w700,
+                              backgroundColor: LpRobotColors.background,
+                            ),
+                          ),
+                          SizedBox(
+                            width: textBox,
+                            height: textBox,
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                  ),
+                                  child: Text(
+                                    '$clamped%',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      color: LpRobotColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.0,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ],

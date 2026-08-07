@@ -14,6 +14,7 @@ import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
 import '../../network/http_manager.dart';
+import '../../platform/android_storage_access.dart';
 import 'robot_file_backup.dart';
 import 'robot_file_transfer.dart';
 
@@ -47,7 +48,6 @@ class _FilesPageState extends State<FilesPage> {
   /// 当前驱控目录（用于上传 tagPath），以 `/` 结尾；根目录为空。
   String _remoteTagPath = '';
   bool get _canUpload =>
-      MaintenanceEditGate.canEdit() &&
       _remoteTagPath.isNotEmpty &&
       _selectedLocal != null &&
       !_transferring;
@@ -65,6 +65,14 @@ class _FilesPageState extends State<FilesPage> {
   Future<void> _initLocal() async {
     setState(() => _localLoading = true);
     try {
+      if (Platform.isAndroid) {
+        final ok = await AndroidStorageAccess.ensureAccess();
+        if (!ok) {
+          LpStatusLog.instance.warning(
+            '未授予全部文件访问权限，本地目录可能无法浏览公共存储',
+          );
+        }
+      }
       final dir = await RobotFileTransfer.localBrowseRoot();
       final entries = await RobotFileTransfer.listLocal(dir);
       if (!mounted) return;
@@ -97,6 +105,18 @@ class _FilesPageState extends State<FilesPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _localLoading = false);
+      if (Platform.isAndroid && !await AndroidStorageAccess.hasAccess()) {
+        final ok = await AndroidStorageAccess.requestAccess();
+        if (ok && mounted) {
+          await _loadLocal(dir);
+          return;
+        }
+        LpStatusLog.instance.warning(
+          '打开目录失败（需「所有文件访问」权限）：${dir.path}',
+        );
+      } else {
+        LpStatusLog.instance.warning('打开本地目录失败：${dir.path}，$e');
+      }
     }
   }
 
@@ -187,16 +207,7 @@ class _FilesPageState extends State<FilesPage> {
       return;
     }
 
-    // Android：不要退到 LPRobot 根之上（对齐旧 APP 沙箱浏览）。
-    if (Platform.isAndroid) {
-      final root = p.normalize(await RobotPaths.installRoot());
-      if (dirNorm == root) return;
-      if (!p.isWithin(root, parentNorm) && parentNorm != root) {
-        await _loadLocal(Directory(root));
-        return;
-      }
-    }
-
+    // Android：允许退到整机目录（直到 /）；访问公共存储需全部文件访问权限。
     if (parentNorm == dirNorm || parent.path.isEmpty) return;
     await _loadLocal(parent);
   }
@@ -355,41 +366,218 @@ class _FilesPageState extends State<FilesPage> {
     }
   }
 
-  Future<void> _startBackup() async {
-    if (!RobotState.instance.isConnected) {
-      LpStatusLog.instance.warning('请先连接控制器');
-      return;
-    }
-    if (!await _confirm('确定要备份驱控关键目录与文件吗？')) return;
-    if (!mounted) return;
+  Future<BackupContentOptions?> _pickContentOptions({
+    required String title,
+    required String confirmLabel,
+  }) async {
+    final options = BackupContentOptions();
+    return showDialog<BackupContentOptions>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final allOn = options.selected.every((e) => e);
+            final noneOn = options.selected.every((e) => !e);
+            final selectAllValue = allOn
+                ? true
+                : (noneOn ? false : null); // 部分勾选时显示中间态
+            return AlertDialog(
+              title: Text(title),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      tristate: true,
+                      title: const Text(
+                        '全选 / 全取消',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      value: selectAllValue,
+                      onChanged: (_) {
+                        setLocal(() {
+                          final turnOn = !allOn;
+                          for (var i = 0; i < options.selected.length; i++) {
+                            options.selected[i] = turnOn;
+                          }
+                        });
+                      },
+                    ),
+                    const Divider(height: 12),
+                    for (var i = 0; i < BackupContentOptions.labels.length; i++)
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(BackupContentOptions.labels[i]),
+                        value: options.selected[i],
+                        onChanged: (v) {
+                          setLocal(() => options.selected[i] = v ?? false);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, options.copy()),
+                  child: Text(confirmLabel),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
-    final clear = await showDialog<bool>(
+  Future<String?> _askBackupName() async {
+    final controller = TextEditingController(
+      text: RobotFileBackup.defaultBackupName(),
+    );
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('提示'),
-        content: const Text(
-          '是否清除之前的备份文件？\n'
-          '选「是」将删除 Backup_ 文件夹中的所有内容\n'
-          '选「否」将覆盖同名文件，保留其他文件',
+        title: const Text('设置备份名称'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '请输入备份文件夹名称',
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('否'),
-          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('是'),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('开始备份'),
           ),
         ],
       ),
     );
-    if (clear == null) return;
-    if (clear) await RobotFileBackup.clearBackupFolders();
+    controller.dispose();
+    return result;
+  }
+
+  Future<LocalBackupSet?> _pickLocalBackupSet() async {
+    // 优先：左侧已选中的 zip；或当前目录下的备份 zip/文件夹（不限固定 downloads 路径）
+    LocalBackupSet? preferred;
+    if (_selectedLocal != null) {
+      preferred = await RobotFileBackup.backupSetFromPath(_selectedLocal!.path);
+    }
+
+    final extra = <Directory>[];
+    if (_localDir != null && !_localBrowsingDrives) {
+      extra.add(_localDir!);
+    }
+    final sets = await RobotFileBackup.listLocalBackupSets(extraDirs: extra);
+
+    // 把已选项放到列表最前
+    final merged = <LocalBackupSet>[];
+    final seen = <String>{};
+    void add(LocalBackupSet s) {
+      final key = p.normalize(s.path).toLowerCase();
+      if (!seen.add(key)) return;
+      merged.add(s);
+    }
+
+    if (preferred != null) add(preferred);
+    for (final s in sets) {
+      add(s);
+    }
+
+    if (!mounted) return null;
+    if (merged.isEmpty) {
+      await _showTip(
+        '当前目录没有可恢复的备份。\n\n'
+        '请在左侧本地目录选中 Backup_*.zip，\n'
+        '或进入含 home/usr/sd 的备份文件夹后再点「一键恢复」。',
+      );
+      return null;
+    }
+
+    // 仅一项且已选中：直接使用，少一步弹窗
+    if (merged.length == 1 && preferred != null) {
+      return preferred;
+    }
+
+    return showDialog<LocalBackupSet>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('选择要恢复的备份'),
+        content: SizedBox(
+          width: 480,
+          height: 360,
+          child: ListView.builder(
+            itemCount: merged.length,
+            itemBuilder: (_, i) {
+              final item = merged[i];
+              final type = item.isZip ? '压缩包' : '文件夹';
+              final selected = preferred != null &&
+                  p.equals(preferred.path, item.path);
+              return ListTile(
+                selected: selected,
+                leading: Icon(
+                  item.isZip ? Icons.archive_outlined : Icons.folder,
+                ),
+                title: Text(item.name),
+                subtitle: Text('$type · ${item.path}'),
+                onTap: () => Navigator.pop(ctx, item),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startBackup() async {
+    if (!RobotState.instance.isConnected) {
+      LpStatusLog.instance.warning('请先连接控制器');
+      return;
+    }
+
+    final options = await _pickContentOptions(
+      title: '选择要备份的内容',
+      confirmLabel: '下一步',
+    );
+    if (options == null || !mounted) return;
+
+    final name = await _askBackupName();
+    if (name == null || !mounted) return;
+    if (!RobotFileBackup.isValidBackupName(name)) {
+      await _showTip('备份名称不能为空，且不能包含 \\ / : * ? " < > |');
+      return;
+    }
+
+    final session = await RobotFileTransfer.downloadSessionRoot();
+    final zipExists =
+        await File(p.join(session.path, '$name${RobotFileBackup.zipSuffix}'))
+            .exists();
+    final dirExists = await Directory(p.join(session.path, name)).exists();
+    if (zipExists || dirExists) {
+      if (!await _confirm('已存在同名备份「$name」，是否覆盖？')) return;
+    }
 
     setState(() {
       _transferring = true;
@@ -398,7 +586,13 @@ class _FilesPageState extends State<FilesPage> {
       _batchProgressTotal = 0;
     });
     try {
-      final count = await RobotFileBackup.runBackup(
+      final model = RobotState.instance.robotModel.trim().isEmpty
+          ? 'XYZ01'
+          : RobotState.instance.robotModel.trim();
+      final result = await RobotFileBackup.runBackup(
+        options: options,
+        folderName: name,
+        robotModel: model,
         onProgress: (p) {
           if (!mounted) return;
           setState(() {
@@ -408,14 +602,17 @@ class _FilesPageState extends State<FilesPage> {
           });
         },
       );
-      final summary = await RobotFileBackup.summarizeBackup();
-      LpStatusLog.instance.success('备份完成，共 $count 个文件', openPanel: false);
+      final summary = await RobotFileBackup.summarizePath(result.zipPath);
+      LpStatusLog.instance.success(
+        '备份完成，共 ${result.fileCount} 个文件',
+        openPanel: false,
+      );
       if (mounted) {
         await _showTip(
           '备份已完成！\n\n'
-          '备份文件数：${summary.fileCount} 个\n'
-          '总大小：${summary.sizeText}\n\n'
-          '备份路径：\n${summary.path}',
+          '备份文件数：${result.fileCount} 个\n'
+          '压缩包大小：${summary.sizeText}\n\n'
+          '已保存为压缩包：\n${result.zipPath}',
         );
         await _goDownloadRoot();
       }
@@ -437,20 +634,23 @@ class _FilesPageState extends State<FilesPage> {
       LpStatusLog.instance.warning('请先连接控制器');
       return;
     }
-    if (!await _confirm('确定要从备份文件恢复到驱控吗？')) return;
 
-    final summary = await RobotFileBackup.summarizeBackup();
-    if (summary.fileCount == 0) {
-      await _showTip('没有找到备份文件夹或备份为空');
-      return;
-    }
+    final backupSet = await _pickLocalBackupSet();
+    if (backupSet == null || !mounted) return;
+
+    final options = await _pickContentOptions(
+      title: '选择要恢复的内容',
+      confirmLabel: '开始恢复',
+    );
+    if (options == null || !mounted) return;
+
+    final summary = await RobotFileBackup.summarizePath(backupSet.path);
     if (!await _confirm(
-      '检测到备份文件：\n\n'
-      '文件数量：${summary.fileCount} 个\n'
-      '总大小：${summary.sizeText}\n\n'
-      '将覆盖驱控上的同名文件（不会追加副本）。\n'
-      '请勿连续多次恢复；若此前已重复恢复，请先备份时选「是」清除本地 Backup_ 后重新备份。\n\n'
-      '确定要恢复这些文件到驱控吗？',
+      '将使用备份：${backupSet.name}\n\n'
+      '本地大小：${summary.sizeText}\n\n'
+      '将按所选内容覆盖驱控上的同名文件。\n'
+      '恢复完成后需要重启设备才能生效。\n\n'
+      '确定开始恢复吗？',
     )) {
       return;
     }
@@ -462,7 +662,14 @@ class _FilesPageState extends State<FilesPage> {
       _batchProgressTotal = 0;
     });
     try {
+      final model = RobotState.instance.robotModel.trim().isEmpty
+          ? 'XYZ01'
+          : RobotState.instance.robotModel.trim();
       final count = await RobotFileBackup.runRestore(
+        backupPath: backupSet.path,
+        isZip: backupSet.isZip,
+        options: options,
+        robotModel: model,
         onProgress: (p) {
           if (!mounted) return;
           setState(() {
@@ -550,6 +757,41 @@ class _FilesPageState extends State<FilesPage> {
     );
   }
 
+  /// 自动运行/运动中拦截备份、恢复、上传、下载等写入操作。
+  Future<bool> _ensureCanEdit() async {
+    if (MaintenanceEditGate.canEdit()) return true;
+    await _showTip(MaintenanceEditGate.blockedTip);
+    return false;
+  }
+
+  Future<void> _onBackupPressed() async {
+    if (!await _ensureCanEdit()) return;
+    await _startBackup();
+  }
+
+  Future<void> _onRestorePressed() async {
+    if (!await _ensureCanEdit()) return;
+    await _startRestore();
+  }
+
+  Future<void> _onUploadPressed() async {
+    if (!await _ensureCanEdit()) return;
+    if (!_canUpload) {
+      await _showTip('请先在右侧驱控目录中进入目标文件夹');
+      return;
+    }
+    await _upload();
+  }
+
+  Future<void> _onDownloadPressed() async {
+    if (!await _ensureCanEdit()) return;
+    if (_selectedRemote == null) {
+      await _showTip('请先选择要下载的文件或目录');
+      return;
+    }
+    await _downloadSelected();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -629,7 +871,7 @@ class _FilesPageState extends State<FilesPage> {
               ),
             ),
           ),
-          _buildActionBar(canEdit: canEdit),
+          _buildActionBar(),
           if (_transferring)
             const LinearProgressIndicator(
               color: LpRobotColors.primary,
@@ -642,7 +884,7 @@ class _FilesPageState extends State<FilesPage> {
     );
   }
 
-  Widget _buildActionBar({required bool canEdit}) {
+  Widget _buildActionBar() {
     final selectedName = _selectedLocal != null
         ? p.basename(_selectedLocal!.path)
         : null;
@@ -723,7 +965,7 @@ class _FilesPageState extends State<FilesPage> {
                     children: [
                       FilledButton(
                         onPressed:
-                            canEdit && !_transferring ? _startBackup : null,
+                            !_transferring ? _onBackupPressed : null,
                         style: primaryStyle,
                         child: const Text('一键备份'),
                       ),
@@ -785,23 +1027,21 @@ class _FilesPageState extends State<FilesPage> {
                 Expanded(
                   child: FilledButton(
                     onPressed:
-                        canEdit && !_transferring ? _startRestore : null,
+                        !_transferring ? _onRestorePressed : null,
                     style: primaryStyle,
                     child: const Text('一键恢复'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 FilledButton.icon(
-                  onPressed: canEdit && _canUpload ? _upload : null,
+                  onPressed: !_transferring ? _onUploadPressed : null,
                   style: transferStyle,
                   icon: const Icon(Icons.cloud_upload_outlined, size: 18),
                   label: const Text('上传到驱控'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: _selectedRemote != null && !_transferring
-                      ? _downloadSelected
-                      : null,
+                  onPressed: !_transferring ? _onDownloadPressed : null,
                   style: transferStyle,
                   icon: const Icon(Icons.cloud_download_outlined, size: 18),
                   label: const Text('下载到本地'),
@@ -875,10 +1115,12 @@ class _FilesPageState extends State<FilesPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '可点「程序配置」「下载目录」，或用「本地后退」进入其它磁盘',
+              Text(
+                Platform.isAndroid
+                    ? '可点「程序配置」「下载目录」，或用「本地后退」浏览整机目录'
+                    : '可点「程序配置」「下载目录」，或用「本地后退」进入其它磁盘',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: LpRobotColors.textDark,
@@ -1120,12 +1362,11 @@ class _FilesPageState extends State<FilesPage> {
               _viewRemoteFile(item);
             }
           },
-          onLongPress: canEdit
-              ? () {
-                  _selectRemote(item);
-                  _downloadSelected();
-                }
-              : null,
+          onLongPress: () async {
+            if (!await _ensureCanEdit()) return;
+            _selectRemote(item);
+            await _downloadSelected();
+          },
         );
       },
     );

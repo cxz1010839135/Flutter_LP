@@ -33,9 +33,6 @@ abstract final class ControlMoveLayout {
   static const double confirmHeightMax = 66;
   static const double rowControlHeightRatio = 0.68;
 
-  /// 速度行：滑条右侧百分比区宽度。
-  static const double speedPercentWidth = 76;
-
   static const double labelFontSize = 18;
   static const double fieldFontSize = 18;
   static const double confirmFontSize = 24;

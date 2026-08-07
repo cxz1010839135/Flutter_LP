@@ -312,12 +312,12 @@ class _RobotViewport extends StatelessWidget {
                     right: 0,
                     bottom: availH * 0.02,
                     child: Text(
-                      '运行中 ${t.speedPercentValue}%',
+                      '自动运行中',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: movingSize,
-                        color: LpRobotColors.primary,
-                        fontWeight: FontWeight.w600,
+                        color: LpRobotColors.liveValue,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),

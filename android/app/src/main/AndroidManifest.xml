@@ -1,19 +1,29 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 控制器 HTTP、Blockly 本地 shelf (127.0.0.1) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- 绑定进程到机器人 Wi‑Fi（无外网热点时避免走蜂窝；对齐老版 Manifest） -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- 现场联机时保持屏幕常亮（与 Android 原版工控平板习惯一致） -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- 旧版外置 /storage/emulated/0/LPRobot/ 只读/迁移（Android 10 及以下写权限） -->
+    <!-- 文件管理：浏览/上传本地任意目录（含公共存储） -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
+    <!-- Android 11+：允许文件页退到 /storage/emulated/0 等整机目录 -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"

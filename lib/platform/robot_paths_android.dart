@@ -3,19 +3,19 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../core/robot_path_layout.dart';
 import 'robot_paths_base.dart';
 
-/// Android 数据根：旧版外置 `LPRobot/` 仅当可写时使用；否则应用专属目录。
+/// Android 数据根：优先应用专属目录（可写）。
 ///
-/// 函数库/工程目录对齐旧原生 APP：
-/// `LPRobot/LPRobotCustomParam/ProgramProject/FunLib`
+/// 旧版公共目录 `/storage/emulated/0/LPRobot` 在 Android 10+ 常出现
+/// `Operation not permitted (errno=1)`，会导致连接成功后保存 IP 失败。
+/// 函数库/工程若旧目录确实可写，仍优先落到旧路径，便于现场找文件。
 class RobotPathsAndroid extends RobotPathsBase {
   static const String _legacyRoot = '/storage/emulated/0/LPRobot';
   static const String _dataDirName = 'LPRobot';
-  static const String _writeProbeDir = '.lp_write_probe';
+  static const String _writeProbeFile = '.lp_write_probe';
 
-  /// 旧版 APP 函数库相对路径（相对 installRoot）。
+  /// 旧版 APP 函数库相对路径（相对 installRoot / 旧根）。
   static const String appFunLibRel = 'LPRobotCustomParam/ProgramProject/FunLib';
 
   /// 旧版 APP 工程目录（XML 库）。
@@ -23,24 +23,39 @@ class RobotPathsAndroid extends RobotPathsBase {
 
   @override
   Future<String> resolveInstallRoot() async {
-    final legacy = await _tryLegacyRoot();
-    if (legacy != null) return legacy;
-
+    // 始终使用应用专属目录作为可写根，避免公共存储权限问题。
     final scoped = p.join((await _appStorageBase()).path, _dataDirName);
     final dir = Directory(scoped);
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
+    // 启动时做一次真实写文件探测，失败则退到 documents
+    if (!await _canWriteFileUnder(scoped)) {
+      final docs = await getApplicationDocumentsDirectory();
+      final fallback = Directory(p.join(docs.path, _dataDirName));
+      if (!await fallback.exists()) {
+        await fallback.create(recursive: true);
+      }
+      return p.normalize(fallback.path);
+    }
     return p.normalize(dir.path);
   }
 
-  /// 函数库落到旧 APP 路径，便于现场按原目录找文件。
+  /// 函数库：旧目录可写则用旧路径，否则落在应用专属根下。
   @override
-  Future<String> funLibDir() => _ensureAndroidSubdir(appFunLibRel);
+  Future<String> funLibDir() => _preferLegacyOrScoped(appFunLibRel);
 
-  /// XML 工程库落到旧 ProgramProject（与 FunLib 同级）。
+  /// XML 工程库：同上。
   @override
-  Future<String> xmlLibraryDir() => _ensureAndroidSubdir(appProgramRel);
+  Future<String> xmlLibraryDir() => _preferLegacyOrScoped(appProgramRel);
+
+  Future<String> _preferLegacyOrScoped(String relative) async {
+    final legacyPath = p.join(_legacyRoot, relative);
+    if (await _canWriteFileUnder(legacyPath)) {
+      return p.normalize(legacyPath);
+    }
+    return _ensureAndroidSubdir(relative);
+  }
 
   Future<String> _ensureAndroidSubdir(String relative) async {
     final dir = Directory(p.join(await installRoot(), relative));
@@ -50,45 +65,33 @@ class RobotPathsAndroid extends RobotPathsBase {
     return p.normalize(dir.path);
   }
 
-  /// 旧版原生 APK 的公共目录；目录已存在但不可写时（模拟器/高版本 Android）不使用。
-  Future<String?> _tryLegacyRoot() async {
-    final dir = Directory(_legacyRoot);
-    if (!await dir.exists()) {
-      try {
-        await dir.create(recursive: true);
-      } catch (_) {
-        return null;
-      }
-    }
-    if (!await _canWriteUnder(_legacyRoot)) {
-      return null;
-    }
-    return p.normalize(_legacyRoot);
-  }
-
-  /// 探测能否在根下创建 [RobotPathLayout.configDir]（与 ensureLayout 一致）。
-  Future<bool> _canWriteUnder(String root) async {
-    final probe = Directory(p.join(root, RobotPathLayout.configDir, _writeProbeDir));
+  /// 真实写文件探测（仅 create 目录在部分机型上会误判为可写）。
+  Future<bool> _canWriteFileUnder(String dirPath) async {
+    final dir = Directory(dirPath);
+    final probe = File(p.join(dirPath, _writeProbeFile));
     try {
-      if (await probe.exists()) {
-        await probe.delete(recursive: true);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
       }
-      await probe.create(recursive: true);
-      await probe.delete(recursive: true);
-      return true;
+      await probe.writeAsString('ok', flush: true);
+      final ok = await probe.exists() && (await probe.readAsString()) == 'ok';
+      try {
+        if (await probe.exists()) await probe.delete();
+      } catch (_) {}
+      return ok;
     } catch (_) {
       try {
-        if (await probe.exists()) {
-          await probe.delete(recursive: true);
-        }
+        if (await probe.exists()) await probe.delete();
       } catch (_) {}
       return false;
     }
   }
 
   Future<Directory> _appStorageBase() async {
-    final external = await getExternalStorageDirectory();
-    if (external != null) return external;
+    try {
+      final external = await getExternalStorageDirectory();
+      if (external != null) return external;
+    } catch (_) {}
     return getApplicationDocumentsDirectory();
   }
 }

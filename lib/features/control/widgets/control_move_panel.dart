@@ -182,7 +182,8 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
                   height: frameHeight,
                   child: ControlFunctionFrame(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      // 右侧略收；留足边距避免「100%」贴边被裁切。
+                      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -208,15 +209,11 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
                               ),
                             ),
                           Expanded(
-                            child: _frameRow(
-                              label: '速度设定',
-                              builder: (fieldH) => _MoveSpeedField(
-                                speed: speed,
-                                fieldHeight: fieldH,
-                                onChanged: RobotTelemetry.instance
-                                    .setSpeedPercentValue,
-                                onChangeEnd: _applySpeedPercent,
-                              ),
+                            child: _buildSpeedRow(
+                              speed: speed,
+                              onChanged: RobotTelemetry
+                                  .instance.setSpeedPercentValue,
+                              onChangeEnd: _applySpeedPercent,
                             ),
                           ),
                           Expanded(
@@ -305,76 +302,100 @@ class _ControlMovePanelState extends State<ControlMovePanel> {
       },
     );
   }
-}
 
-class _MoveSpeedField extends StatelessWidget {
-  const _MoveSpeedField({
-    required this.speed,
-    required this.fieldHeight,
-    required this.onChanged,
-    required this.onChangeEnd,
-  });
+  /// 与关节页一致：左标签、右百分比，中间 −/条/+，速度条占满剩余宽度。
+  Widget _buildSpeedRow({
+    required int speed,
+    required ValueChanged<int> onChanged,
+    required ValueChanged<int> onChangeEnd,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fieldH = _rowControlHeight(
+          constraints.maxHeight,
+          min: ControlMoveLayout.fieldHeightMin,
+          max: ControlMoveLayout.fieldHeightMax,
+        );
+        final trackH = (fieldH * 0.62).clamp(28.0, 38.0);
+        // 原 36，放大 0.5 倍 → 54；行高不够时略收，避免挤扁速度条高度。
+        final btnSize = 54.0.clamp(36.0, constraints.maxHeight * 0.92);
 
-  final int speed;
-  final double fieldHeight;
-  final ValueChanged<int> onChanged;
-  final ValueChanged<int> onChangeEnd;
+        void nudge(int delta) {
+          final next = (speed + delta).clamp(1, 100);
+          if (next == speed) return;
+          onChanged(next);
+          onChangeEnd(next);
+        }
 
-  static const double _btnSize = 36;
-  static const double _gap = 5;
+        const labelStyle = TextStyle(
+          fontSize: ControlMoveLayout.labelFontSize,
+          fontWeight: FontWeight.w700,
+          color: LpRobotColors.textDark,
+          height: 1.2,
+        );
 
-  void _nudge(int delta) {
-    final next = (speed + delta).clamp(1, 100);
-    if (next == speed) return;
-    onChanged(next);
-    onChangeEnd(next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final trackH = (fieldHeight * 0.62).clamp(28.0, 38.0);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ControlJogImageButton(
-          assetOff: ControlAssets.subtractUnpressed,
-          assetOn: ControlAssets.subtractPressed,
-          size: _btnSize,
-          onTap: () => _nudge(-1),
-        ),
-        const SizedBox(width: _gap),
-        Expanded(
-          child: ControlOrangeSpeedBar(
-            value: speed,
-            height: fieldHeight,
-            trackHeight: trackH,
-            onChanged: onChanged,
-            onChangeEnd: onChangeEnd,
-          ),
-        ),
-        const SizedBox(width: _gap),
-        ControlJogImageButton(
-          assetOff: ControlAssets.addUnpressed,
-          assetOn: ControlAssets.addPressed,
-          size: _btnSize,
-          onTap: () => _nudge(1),
-        ),
-        const SizedBox(width: 6),
-        SizedBox(
-          width: ControlMoveLayout.speedPercentWidth,
-          child: Text(
-            '$speed%',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: LpRobotColors.primary,
-              height: 1.1,
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: _labelWidth,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('速度设定', style: labelStyle),
+              ),
             ),
-          ),
-        ),
-      ],
+            Expanded(
+              child: SizedBox(
+                height: fieldH,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ControlJogImageButton(
+                      assetOff: ControlAssets.subtractUnpressed,
+                      assetOn: ControlAssets.subtractPressed,
+                      size: btnSize,
+                      onTap: () => nudge(-1),
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: ControlOrangeSpeedBar(
+                        value: speed,
+                        height: fieldH,
+                        trackHeight: trackH,
+                        onChanged: onChanged,
+                        onChangeEnd: onChangeEnd,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    ControlJogImageButton(
+                      assetOff: ControlAssets.addUnpressed,
+                      assetOn: ControlAssets.addPressed,
+                      size: btnSize,
+                      onTap: () => nudge(1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 按「100%」实际字宽占位，避免固定宽度时溢出或偏窄。
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(
+                '$speed%',
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                softWrap: false,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: LpRobotColors.primary,
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

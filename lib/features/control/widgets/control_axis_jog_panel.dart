@@ -38,7 +38,8 @@ class ControlAxisJogPanel extends StatefulWidget {
 
 class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   static const double _labelWidth = 72;
-  static const double _jogBtnSize = 38;
+  /// 速度行 ±：原 38，放大 0.5 倍 → 57。
+  static const double _jogBtnSize = 57;
   static const double _jogGap = 5;
   static const double _frameWidthRatio = 0.94;
   static const double _frameMinWidth = 320;
@@ -215,7 +216,8 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                 height: frameHeight,
                 child: ControlFunctionFrame(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    // 右侧略收；留足边距避免「100%」贴边被裁切。
+                    padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
                     child: LayoutBuilder(
                       builder: (context, inner) {
                         // 三行紧凑排布；整体略下移，白框内视觉居中。
@@ -362,6 +364,10 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
       builder: (context, constraints) {
         // 分段块要够高，避免被行高压缩后几乎看不见。
         final trackH = (constraints.maxHeight * 0.48).clamp(28.0, 38.0);
+        final btnSize =
+            _jogBtnSize.clamp(36.0, constraints.maxHeight * 0.92);
+
+        // 左「速度设定」、右「xx%」固定；中间 −/条/+ 整体居中，速度条 Expanded 占满剩余宽度。
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -376,7 +382,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                   ControlJogImageButton(
                     assetOff: ControlAssets.subtractUnpressed,
                     assetOn: ControlAssets.subtractPressed,
-                    size: _jogBtnSize,
+                    size: btnSize,
                     onPressStart: () => _onJogPressStart(-1),
                     onPressEnd: () => _onJogPressEnd(-1),
                   ),
@@ -394,22 +400,22 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                   ControlJogImageButton(
                     assetOff: ControlAssets.addUnpressed,
                     assetOn: ControlAssets.addPressed,
-                    size: _jogBtnSize,
+                    size: btnSize,
                     onPressStart: () => _onJogPressStart(1),
                     onPressEnd: () => _onJogPressEnd(1),
                   ),
-                  const SizedBox(width: 4),
-                  SizedBox(
-                    width: 72,
-                    child: Text(
-                      '$speed%',
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: _valueStyle,
-                    ),
-                  ),
                 ],
+              ),
+            ),
+            // 按「100%」实际字宽占位，避免固定宽度时溢出或偏窄。
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(
+                '$speed%',
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                softWrap: false,
+                style: _valueStyle,
               ),
             ),
           ],

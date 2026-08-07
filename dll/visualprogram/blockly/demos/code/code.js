@@ -367,9 +367,13 @@ Code.scheduleLayoutRefresh_ = function () {
   window.setTimeout(run, 1000);
 };
 
+/** 超过该块数视为大工程：避免全量 render / 折叠展开导致进页卡死。 */
+Code.LARGE_WORKSPACE_BLOCK_LIMIT_ = 800;
+
 /**
  * WebView 在隐藏状态下加载工程时，SVG 文字宽度会为 0，导致 M/D/T 编号槽位空白。
- * 显示 WebView 或加载 XML 后调用，清缓存并重绘全部块与行内注释。
+ * 显示 WebView 或加载 XML 后调用，清缓存并重绘。
+ * 大工程只重绘顶层块，避免对数千块反复 render。
  */
 Code.refreshWorkspaceAfterLoad_ = function () {
   if (!Code.workspace) {
@@ -380,16 +384,26 @@ Code.refreshWorkspaceAfterLoad_ = function () {
       Blockly.Field.cacheWidths_ = null;
     }
     var blocks = Code.workspace.getAllBlocks(false);
-    for (var i = 0; i < blocks.length; i++) {
-      var block = blocks[i];
-      if (block.comment && typeof block.comment.setText === 'function') {
-        var commentText = block.comment.text_;
-        if (commentText != null && commentText !== '') {
-          block.comment.setText(commentText);
+    var large = blocks.length > Code.LARGE_WORKSPACE_BLOCK_LIMIT_;
+    if (large) {
+      var tops = Code.workspace.getTopBlocks(false);
+      for (var t = 0; t < tops.length; t++) {
+        if (tops[t] && tops[t].rendered) {
+          tops[t].render(false);
         }
       }
-      if (block.rendered) {
-        block.render(false);
+    } else {
+      for (var i = 0; i < blocks.length; i++) {
+        var block = blocks[i];
+        if (block.comment && typeof block.comment.setText === 'function') {
+          var commentText = block.comment.text_;
+          if (commentText != null && commentText !== '') {
+            block.comment.setText(commentText);
+          }
+        }
+        if (block.rendered) {
+          block.render(false);
+        }
       }
     }
     Blockly.svgResize(Code.workspace);
@@ -421,6 +435,7 @@ Code.stabilizeBlockStack_ = function (block) {
 /**
  * 模拟顶层块折叠再展开，强制重算连接与拖拽坐标（等同用户手动折叠/展开）。
  * AI 侧栏开合导致 WebView 尺寸变化后调用。
+ * 大工程跳过折叠/展开（对整栈两次全量 render，极易卡死）。
  */
 Code.recomputeWorkspaceBlockLayout_ = function () {
   if (!Code.workspace) {
@@ -429,6 +444,14 @@ Code.recomputeWorkspaceBlockLayout_ = function () {
   try {
     if (typeof Code.scheduleLayoutRefresh_ === 'function') {
       Code.scheduleLayoutRefresh_();
+    }
+    var allCount = Code.workspace.getAllBlocks(false).length;
+    if (allCount > Code.LARGE_WORKSPACE_BLOCK_LIMIT_) {
+      Blockly.svgResize(Code.workspace);
+      if (Code.workspace.updateScreenCalculations_) {
+        Code.workspace.updateScreenCalculations_();
+      }
+      return;
     }
     Blockly.Events.disable();
     var tops = Code.workspace.getTopBlocks(false);
@@ -505,16 +528,33 @@ Code.installDragRelayoutFix_ = function () {
  * 加载 XML 后分阶段刷新布局与块渲染（Windows WebView2 需多次重绘）。
  * 末次再强制折叠/展开顶层栈，避免导入后首次拖拽时嵌套块「散架」。
  */
+Code._rerenderAfterLoadTimer_ = null;
+Code._rerenderAfterLoadGen_ = 0;
+
+/**
+ * 加载/显示后重绘：防抖合并多次调用（load + ReLoadXML + WebView 显隐会连打）。
+ * 大工程只轻量刷新一次，不再 100/500/1200ms 连刷三次。
+ */
 Code.scheduleWorkspaceRerenderAfterLoad_ = function () {
   Code.scheduleLayoutRefresh_();
-  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 100);
-  window.setTimeout(Code.refreshWorkspaceAfterLoad_, 500);
-  window.setTimeout(function () {
+  if (Code._rerenderAfterLoadTimer_) {
+    clearTimeout(Code._rerenderAfterLoadTimer_);
+    Code._rerenderAfterLoadTimer_ = null;
+  }
+  var gen = ++Code._rerenderAfterLoadGen_;
+  Code._rerenderAfterLoadTimer_ = window.setTimeout(function () {
+    Code._rerenderAfterLoadTimer_ = null;
+    if (gen !== Code._rerenderAfterLoadGen_) {
+      return;
+    }
     Code.refreshWorkspaceAfterLoad_();
-    if (typeof Code.recomputeWorkspaceBlockLayout_ === 'function') {
+    // 小工程才做折叠展开稳定；大工程在 refresh 里已处理
+    var n = Code.workspace ? Code.workspace.getAllBlocks(false).length : 0;
+    if (n > 0 && n <= Code.LARGE_WORKSPACE_BLOCK_LIMIT_ &&
+        typeof Code.recomputeWorkspaceBlockLayout_ === 'function') {
       Code.recomputeWorkspaceBlockLayout_();
     }
-  }, 1200);
+  }, 180);
 };
 
 /**
@@ -1848,7 +1888,8 @@ Code.saveXmlFile = function (filename) {
 /** @return {!string} Generated XML code from the Blockly workspace. */
 Code.generateXml = function () {
   var xmlDom = Blockly.Xml.workspaceToDom(Code.workspace);
-  return Blockly.Xml.domToPrettyText(xmlDom);
+  // 紧凑 XML：大工程 pretty 会膨胀数倍，离线再进页解析/加载更卡
+  return Blockly.Xml.domToText(xmlDom);
 };
 
 /**
@@ -2307,5 +2348,5 @@ Code.ReLoadXML = function () {
   }
   Code.loadXML("main");
   Code.loadComplete();
-  Code.scheduleWorkspaceRerenderAfterLoad_();
+  // loadBlocksfromXmlDom 内已 scheduleWorkspaceRerenderAfterLoad_，此处勿再排一次
 };

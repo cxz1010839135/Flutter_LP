@@ -6,12 +6,13 @@ import '../../app/lp_app_assets.dart';
 import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../core/app_info.dart';
-import '../../core/robot_connection_monitor.dart';
 import '../../core/local_app_settings.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/robot_connection_monitor.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../network/http_manager.dart';
+import '../../platform/android_wifi_network_binder.dart';
 import '../home/main_home_page.dart';
 
 /// 连接页（切图1 login1，对齐设计稿橙色卡片）
@@ -214,6 +215,14 @@ class _ConnectPageState extends State<ConnectPage> {
     HttpManager.instance.baseUrl = baseUrl;
 
     try {
+      // Android：对齐老项目——先绑 Wi‑Fi（失败不阻断），再用原生 OkHttp 直连 IP
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        if (mounted) {
+          setState(() => _connectStatus = '正在连接 Wi‑Fi 通道…');
+        }
+        await AndroidWifiNetworkBinder.bindWifi();
+      }
+
       final clientTag =
           '${RobotApiConstants.connectClientPrefix} V${AppInfo.version}';
       if (mounted) {
@@ -223,7 +232,10 @@ class _ConnectPageState extends State<ConnectPage> {
       await HttpManager.instance.connectSyncAndApply(clientTag: clientTag);
       final syncWarning = HttpManager.instance.lastProgramSyncError;
 
-      await LocalAppSettings.saveDefaultIp(ip);
+      // 保存 IP 失败不应判定为连接失败（Android 公共目录可能不可写）
+      try {
+        await LocalAppSettings.saveDefaultIp(ip);
+      } catch (_) {}
 
       if (!mounted) return;
       RobotConnectionMonitor.instance.reset();
@@ -262,11 +274,26 @@ class _ConnectPageState extends State<ConnectPage> {
 
   String _formatConnectError(Object error, String ip) {
     final text = error.toString();
-    if (text.contains('网络不可达') || text.contains('Connection refused')) {
+    final android = defaultTargetPlatform == TargetPlatform.android;
+    if (text.contains('网络不可达') ||
+        text.contains('Connection refused') ||
+        text.contains('Failed to connect') ||
+        text.contains('ENETUNREACH')) {
+      if (android) {
+        return '无法访问 $ip：请先连接机器人 Wi‑Fi，再输入 IP（默认 192.168.11.11）连接；'
+            '若仍失败可先关闭移动数据后重试';
+      }
       return '无法访问 $ip：请确认 PC 与控制器在同一 Wi‑Fi/网段，'
           '且 Windows 防火墙未拦截本程序';
     }
-    if (text.contains('连接超时') || text.contains('TimeoutException')) {
+    if (text.contains('连接超时') ||
+        text.contains('TimeoutException') ||
+        text.contains('timeout') ||
+        text.contains('Timeout')) {
+      if (android) {
+        return '连接 $ip 超时：请确认已连机器人热点、IP 正确（常用 192.168.11.11），'
+            '且控制器已开机';
+      }
       return '连接 $ip 超时：请确认 IP 正确且控制器 HTTP 服务已启动';
     }
     if (text.contains('Connection closed') || text.contains('HTTP 通信异常')) {

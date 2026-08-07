@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../platform/android_wifi_network_binder.dart';
 import 'robot_link_kind.dart';
 
 /// 运行时机器人状态（逐步从 Android RobotCommand 迁入）
@@ -86,6 +87,9 @@ class RobotState extends ChangeNotifier {
     robotSerialNumber = '';
     robotType = 0;
     linkKind = RobotLinkKind.unknown;
+    // Android：解除 Wi‑Fi 进程绑定，恢复系统默认路由
+    // ignore: unawaited_futures
+    AndroidWifiNetworkBinder.unbind();
     notifyListeners();
   }
 

@@ -327,7 +327,7 @@ class _Toolbar extends StatelessWidget {
                 ),
                 if (moving)
                   Text(
-                    '运行中',
+                    '自动运行中',
                     style: LpAppFonts.style(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
