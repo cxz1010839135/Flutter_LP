@@ -1,189 +1,11 @@
-领鹏智能机器人上位机软件 V1.8.7 - 源程序(后30页)
+领鹏智能机器人上位机软件 V2.0.5 - 源程序(后30页)
 软件名称：领鹏智能机器人上位机软件
-版本号：V1.8.7
+版本号：V2.0.5
 编程语言：Dart (Flutter)
-生成日期：2026-07-13
+生成日期：2026-08-10
 
 
 --- 第 1 页 ---
-    }
-    return robotCmd(RobotCommands.robotAddModel, data: data);
-  }
-}
-
-// ===== File: lib/network/api/robot_http_tech.dart =====
-import '../../core/robot_api_constants.dart';
-import '../robot_api_response.dart';
-import 'robot_http_api_mixin.dart';
-
-/// 调试模式 / 电凸轮 / EtherCAT 配置。
-mixin RobotHttpTechMixin on RobotHttpApiMixin {
-  Future<RobotApiResponse> robotTechModeOnOff({required int modeState}) {
-    return robotCmd(
-      RobotCommands.robotTechModeOnOff,
-      data: {'mode': modeState},
-    );
-  }
-
-  Future<RobotApiResponse> robotTechGetStatus() =>
-      robotCmd(RobotCommands.robotTechGetStatus);
-
-  Future<RobotApiResponse> robotTechGetData({
-    required int index,
-    required int len,
-  }) {
-    return robotCmd(
-      RobotCommands.robotTechGetData,
-      data: {'index': index, 'len': len},
-    );
-  }
-
-  Future<RobotApiResponse> robotTechAxisStatus({required int axis}) {
-    return robotCmd(
-      RobotCommands.robotTechAxisStatus,
-      data: {'axis': axis},
-    );
-  }
-
-  Future<RobotApiResponse> robotTechFindPhase({required int axis}) {
-    return robotCmd(
-      RobotCommands.robotTechFindPhase,
-      data: {'axis': axis},
-    );
-  }
-
-  Future<RobotApiResponse> robotTechStopPhase({required int axis}) {
-    return robotCmd(
-      RobotCommands.robotTechStopPhase,
-      data: {'axis': axis},
-
---- 第 2 页 ---
-    );
-  }
-
-  Future<RobotApiResponse> setElectricCam({
-    required int axis,
-    required int phrase,
-  }) {
-    return robotCmd(
-      RobotCommands.setCamlist,
-      data: {'index': axis, 'value': phrase},
-    );
-  }
-
-  Future<RobotApiResponse> calElectricCam({
-    required int axis,
-    required double offset,
-  }) {
-    return robotCmd(
-      RobotCommands.calCamlist,
-      data: {'index': axis, 'count': offset},
-    );
-  }
-
-  Future<RobotApiResponse> createEtherCAT({required String configType}) {
-    return robotCmd(
-      RobotCommands.createConfigFile,
-      data: {'list': configType},
-    );
-  }
-}
-
-// ===== File: lib/network/http_manager.dart =====
-import '../core/local_app_settings.dart';
-import '../core/robot_api_constants.dart';
-import '../core/robot_clr_zero_state.dart';
-import '../core/robot_point_library.dart';
-import '../core/robot_state.dart';
-import '../core/robot_telemetry.dart';
-import 'api/robot_http_api_mixin.dart';
-import 'api/robot_http_connect.dart';
-import 'api/robot_http_driver.dart';
-import 'api/robot_http_files.dart';
-import 'api/robot_http_motion.dart';
-import 'api/robot_http_plc.dart';
-import 'api/robot_http_points.dart';
-import 'api/robot_http_state.dart';
-import 'api/robot_http_tech.dart';
-import 'robot_api_response.dart';
-import 'robot_http_client.dart';
-
-
---- 第 3 页 ---
-export '../core/robot_api_constants.dart';
-export 'api/robot_http_files.dart' show ServerProgramSyncResult;
-export 'robot_api_response.dart';
-
-/// 机器人 HTTP API 门面（对齐 Android [HttpManager]）。
-///
-/// 底层传输：[RobotHttpClient]（dart:io）。
-/// 分模块 API：`lib/network/api/` 下各 mixin。
-class HttpManager
-    with
-        RobotHttpApiMixin,
-        RobotHttpConnectMixin,
-        RobotHttpFilesMixin,
-        RobotHttpMotionMixin,
-        RobotHttpStateMixin,
-        RobotHttpPlcMixin,
-        RobotHttpPointMixin,
-        RobotHttpDriverMixin,
-        RobotHttpTechMixin {
-  HttpManager._();
-
-  static final HttpManager instance = HttpManager._();
-
-  /// 最近一次成功写入的 main 程序路径。
-  ServerProgramSyncResult? lastProgramSync;
-
-  /// 最近一次同步失败原因（连接仍可能已成功）。
-  Object? lastProgramSyncError;
-
-  @override
-  final RobotHttpClient apiClient = RobotHttpClient.instance;
-
-  @override
-  String get apiBaseUrl => baseUrl;
-
-  String get baseUrl => RobotState.instance.serverBaseUrl;
-
-  set baseUrl(String url) {
-    RobotState.instance.serverBaseUrl = normalizeBaseUrl(url);
-  }
-
-  static String normalizeBaseUrl(String url) {
-    var u = url.trim();
-    if (u.isEmpty) return 'http://${LocalAppSettings.defaultIp}';
-    if (!u.startsWith('http://') && !u.startsWith('https://')) {
-      u = 'http://$u';
-    }
-    while (u.endsWith('/')) {
-      u = u.substring(0, u.length - 1);
-    }
-
---- 第 4 页 ---
-    return u;
-  }
-
-  /// 解析连接响应；成功返回 data 对象，失败抛异常。
-  Map<String, dynamic> parseConnectResponse(Map<String, dynamic> root) {
-    final result = _parseResultCode(root[RobotApiConstants.result]);
-    if (result != RobotApiConstants.resultOk) {
-      final msg = root[RobotApiConstants.msg]?.toString() ?? '连接失败';
-      throw Exception(msg);
-    }
-    final data = _parseDataMap(root[RobotApiConstants.data]);
-    if (data == null) {
-      throw const FormatException('连接响应缺少 data');
-    }
-    final version = data['version']?.toString() ?? '';
-    if (!version.toUpperCase().startsWith('LP')) {
-      throw Exception('APP与机械手控制程序不匹配（固件版本：$version）');
-    }
-    return data;
-  }
-
-  int _parseResultCode(dynamic value) {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value.trim()) ?? -1;
     return -1;
@@ -212,8 +34,6 @@ class HttpManager
       serial = robot[RobotApiConstants.robotSerialNumber]?.toString() ?? '';
       final t = robot[RobotApiConstants.robotType];
       if (t is num) type = t.toInt();
-
---- 第 5 页 ---
     }
 
     RobotState.instance.setConnected(
@@ -236,6 +56,8 @@ class HttpManager
 
     return data;
   }
+
+--- 第 2 页 ---
 
   /// 连接并同步 `config/server/main.*`（阶段 1.6）。
   ///
@@ -264,8 +86,6 @@ class HttpManager
       robotCmd(command, data: data);
 
   Future<String> invokeRaw(String command, {dynamic data}) =>
-
---- 第 6 页 ---
       robotCmdRaw(command, data: data);
 }
 
@@ -288,6 +108,8 @@ class RobotApiResponse {
 
   String get msg => root[RobotApiConstants.msg]?.toString() ?? '';
 
+
+--- 第 3 页 ---
   dynamic get data => root[RobotApiConstants.data];
 
   bool get isOk => result == RobotApiConstants.resultOk;
@@ -316,8 +138,6 @@ class RobotApiResponse {
 
   /// 尝试解析；若 body 非 JSON（如 XML/G 代码直返）则返回 null。
   static RobotApiResponse? tryParse(String body) {
-
---- 第 7 页 ---
     try {
       return parse(body);
     } catch (_) {
@@ -340,13 +160,18 @@ class RobotApiResponse {
 }
 
 // ===== File: lib/network/robot_http_client.dart =====
+
+--- 第 4 页 ---
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'package:flutter/foundation.dart';
+
 import '../core/app_info.dart';
+import '../platform/android_wifi_network_binder.dart';
 import 'robot_api_response.dart';
 import 'robot_tagged_file_upload.dart';
 
@@ -368,8 +193,6 @@ class RobotHttpClient {
     String url,
     Map<String, dynamic> body, {
     Duration? connectTimeoutOverride,
-
---- 第 8 页 ---
     Duration? ioTimeoutOverride,
   }) {
     return postJsonRaw(
@@ -389,6 +212,8 @@ class RobotHttpClient {
     client.idleTimeout = const Duration(seconds: 1);
     return client;
   }
+
+--- 第 5 页 ---
 
   /// 嵌入式控制器兼容头（对齐 OkHttp 行为，禁用 chunked）。
   void _applyLegacyHeaders(HttpClientRequest request) {
@@ -420,8 +245,6 @@ class RobotHttpClient {
         ioTimeoutOverride: ioTimeoutOverride,
       );
     } on SocketException catch (e) {
-
---- 第 9 页 ---
       throw Exception('网络不可达（${e.message}），请确认 PC 与控制器在同一局域网');
     } on TimeoutException {
       throw Exception('连接超时，请检查 IP 是否正确且控制器已开机');
@@ -441,6 +264,8 @@ class RobotHttpClient {
     final body = <String, dynamic>{'command': command};
     if (data != null) {
       body['data'] = data;
+
+--- 第 6 页 ---
     }
     return postJson(
       baseUrl,
@@ -472,8 +297,6 @@ class RobotHttpClient {
         'json',
         charset: 'utf-8',
       );
-
---- 第 10 页 ---
       _writeFixedBody(request, utf8.encode(jsonEncode(payload)));
       final response = await request.close().timeout(ioLimit);
       final bytes = await response.fold<List<int>>(
@@ -493,6 +316,8 @@ class RobotHttpClient {
       return bytes;
     } on SocketException catch (e) {
       throw Exception('网络不可达（${e.message}），请确认 PC 与控制器在同一局域网');
+
+--- 第 7 页 ---
     } on TimeoutException {
       throw Exception('下载超时，请检查文件大小或网络');
     } on HttpException catch (e) {
@@ -524,8 +349,6 @@ class RobotHttpClient {
       final uri = Uri.parse(url);
       final request = await client.getUrl(uri).timeout(connectTimeout);
       _applyLegacyHeaders(request);
-
---- 第 11 页 ---
       return await _readResponse(request, uri);
     } on SocketException catch (e) {
       throw Exception('网络不可达（${e.message}），请确认 PC 与控制器在同一局域网');
@@ -545,6 +368,8 @@ class RobotHttpClient {
       throw Exception(
         'postRawBody 仅允许 multipart/form-data，禁止 $contentType（会覆盖主程序）',
       );
+
+--- 第 8 页 ---
     }
     return _postViaSocket(
       uri,
@@ -576,11 +401,10 @@ class RobotHttpClient {
     } on HttpException catch (e) {
       throw Exception('HTTP 通信异常：${e.message}');
     }
-
---- 第 12 页 ---
   }
 
   /// 原始 Socket POST（嵌入式控制器与 Dart HttpClient 不兼容，curl/Socket 正常）。
+  /// Android：走原生 OkHttp + Wi‑Fi 绑定（对齐老版 HttpManager，直连 192.168.11.11）。
   Future<String> _postViaSocket(
     Uri uri,
     List<int> body,
@@ -590,6 +414,35 @@ class RobotHttpClient {
   }) async {
     final connectLimit = connectTimeoutOverride ?? connectTimeout;
     final ioLimit = ioTimeoutOverride ?? ioTimeout;
+
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        AndroidWifiNetworkBinder.isAndroid) {
+      try {
+        return await AndroidWifiNetworkBinder.httpPost(
+
+--- 第 9 页 ---
+          url: uri.toString(),
+          body: body,
+          contentType: contentType,
+          connectTimeout: connectLimit,
+          readTimeout: ioLimit,
+        );
+      } catch (e) {
+        final msg = e.toString();
+        if (msg.contains('网络不可达') ||
+            msg.contains('Failed to connect') ||
+            msg.contains('ECONNREFUSED') ||
+            msg.contains('ENETUNREACH') ||
+            msg.contains('SocketTimeout') ||
+            msg.contains('timeout') ||
+            msg.contains('Timeout')) {
+          throw Exception('网络不可达（$msg），请确认已连机器人 Wi‑Fi 且 IP 正确');
+        }
+        rethrow;
+      }
+    }
+
     final port = uri.hasPort ? uri.port : 80;
     final socket = await Socket.connect(uri.host, port).timeout(connectLimit);
     try {
@@ -619,6 +472,8 @@ class RobotHttpClient {
       return _parseRawHttpResponse(raw, uri);
     } finally {
       await socket.close();
+
+--- 第 10 页 ---
     }
   }
 
@@ -628,8 +483,6 @@ class RobotHttpClient {
 
   String _parseRawHttpResponseBytes(List<int> rawBytes, Uri uri) {
     final sep = _indexOfCrlfCrlf(rawBytes);
-
---- 第 13 页 ---
     if (sep < 0) {
       throw HttpException('无效 HTTP 响应', uri: uri);
     }
@@ -671,6 +524,8 @@ class RobotHttpClient {
     final json = RobotApiResponse.tryParse(trimmed);
     if (json != null) {
       json.ensureOk();
+
+--- 第 11 页 ---
       return;
     }
     final lower = trimmed.toLowerCase();
@@ -680,8 +535,6 @@ class RobotHttpClient {
       throw Exception(trimmed);
     }
   }
-
---- 第 14 页 ---
 
   /// multipart/form-data 上传（Android [postFile]）。
   ///
@@ -723,6 +576,8 @@ class RobotHttpClient {
 
     final connectLimit = connectTimeout;
     final ioLimit = const Duration(seconds: 180);
+
+--- 第 12 页 ---
     final port = uri.hasPort ? uri.port : 80;
 
     try {
@@ -732,8 +587,6 @@ class RobotHttpClient {
         if (uri.hasQuery) {
           path = '$path?${uri.query}';
         }
-
---- 第 15 页 ---
         final hostHeader = port == 80 ? uri.host : '${uri.host}:$port';
 
         final httpHeader = StringBuffer()
@@ -775,6 +628,8 @@ class RobotHttpClient {
     }
   }
 
+
+--- 第 13 页 ---
   /// OkHttp [MultipartBody.Part.createFormData] 的 quoted-string 规则。
   static String _multipartQuote(String value) {
     final buffer = StringBuffer('"');
@@ -784,8 +639,6 @@ class RobotHttpClient {
         case '\n':
           buffer.write('%0A');
         case '\r':
-
---- 第 16 页 ---
           buffer.write('%0D');
         case '"':
           buffer.write('%22');
@@ -827,6 +680,8 @@ class RobotHttpClient {
       tagPath: tagPath,
       onAttempt: onAttempt,
     );
+
+--- 第 14 页 ---
   }
 
   Future<String> _readResponse(HttpClientRequest request, Uri uri) async {
@@ -836,8 +691,6 @@ class RobotHttpClient {
       final snippet = text.length > 120 ? '${text.substring(0, 120)}…' : text;
       throw HttpException(
         'HTTP ${response.statusCode}${snippet.isEmpty ? '' : ' · $snippet'}',
-
---- 第 17 页 ---
         uri: uri,
       );
     }
@@ -879,6 +732,8 @@ class RobotTaggedFileUpload {
 
   static Future<String> upload({
     required String baseUrl,
+
+--- 第 15 页 ---
     required File file,
     required String tagPath,
     Future<bool> Function()? verifyOnDevice,
@@ -888,8 +743,6 @@ class RobotTaggedFileUpload {
     final remoteFullName = _remoteFilename(tagPath, file);
     if (allowProtectedProgramNames) {
       _assertPathFormatOnly(remoteFullName);
-
---- 第 18 页 ---
     } else {
       _assertSafeRemoteFilename(remoteFullName);
     }
@@ -931,6 +784,8 @@ class RobotTaggedFileUpload {
   }
 
   static String _remoteFilename(String tagPath, File file) {
+
+--- 第 16 页 ---
     return tagPath + p.basename(file.path);
   }
 
@@ -940,8 +795,6 @@ class RobotTaggedFileUpload {
     }
     final slash = remoteFullName.indexOf('/', 1);
     if (slash < 0 || slash >= remoteFullName.length - 1) {
-
---- 第 19 页 ---
       throw Exception('恢复路径无效：$remoteFullName');
     }
   }
@@ -983,6 +836,8 @@ class RobotTaggedFileUpload {
     required String baseUrl,
     required File file,
     required String remoteFullName,
+
+--- 第 17 页 ---
   }) async {
     final fileBytes = await file.readAsBytes();
     if (fileBytes.isEmpty) {
@@ -992,8 +847,6 @@ class RobotTaggedFileUpload {
     final boundary = _uuidLike();
     final body = _buildMultipart(
       boundary: boundary,
-
---- 第 20 页 ---
       parts: [
         _Part(
           disposition:
@@ -1035,6 +888,8 @@ class RobotTaggedFileUpload {
   }
 
   static String _quoteOkHttp(String value) {
+
+--- 第 18 页 ---
     final b = StringBuffer('"');
     for (final codeUnit in value.codeUnits) {
       final ch = String.fromCharCode(codeUnit);
@@ -1044,8 +899,6 @@ class RobotTaggedFileUpload {
         case '\r':
           b.write('%0D');
         case '"':
-
---- 第 21 页 ---
           b.write('%22');
         default:
           b.write(ch);
@@ -1076,75 +929,222 @@ class _Part {
   final List<int> body;
 }
 
+// ===== File: lib/platform/android_storage_access.dart =====
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+/// Android 外置存储 / 全部文件访问（文件管理页浏览整机目录用）。
+class AndroidStorageAccess {
+  AndroidStorageAccess._();
+
+  static const _channel = MethodChannel('com.lstech.lprobot/storage');
+
+  static bool get isAndroid =>
+
+--- 第 19 页 ---
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// 是否已具备浏览公共目录的权限。
+  static Future<bool> hasAccess() async {
+    if (!isAndroid) return true;
+    try {
+      final ok = await _channel.invokeMethod<bool>('hasAllFilesAccess');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 请求权限：Android 11+ 跳转「所有文件访问」设置；更低版本申请读写存储。
+  /// 返回最终是否已授权。
+  static Future<bool> requestAccess() async {
+    if (!isAndroid) return true;
+    try {
+      final ok = await _channel.invokeMethod<bool>('requestAllFilesAccess');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 若尚未授权则请求一次；已授权则直接 true。
+  static Future<bool> ensureAccess() async {
+    if (!isAndroid) return true;
+    if (await hasAccess()) return true;
+    return requestAccess();
+  }
+}
+
+// ===== File: lib/platform/android_wifi_network_binder.dart =====
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+/// Android 网络桥：对齐老版 ConnectActivity / HttpManager。
+///
+/// - [bindWifi]：进程绑定到当前 Wi‑Fi（失败不抛，返回 false）
+/// - [httpPost]：OkHttp + Wi‑Fi socketFactory 直连控制器（如 192.168.11.11）
+class AndroidWifiNetworkBinder {
+  AndroidWifiNetworkBinder._();
+
+  static const _channel = MethodChannel('com.lstech.lprobot/network');
+
+  static bool get isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// 绑定到当前 Wi‑Fi。失败返回 false（对齐老项目：不阻断后续直连）。
+
+--- 第 20 页 ---
+  static Future<bool> bindWifi() async {
+    if (!isAndroid) return true;
+    try {
+      final ok = await _channel.invokeMethod<bool>('bindWifiNetwork');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> unbind() async {
+    if (!isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('unbindNetwork');
+    } catch (_) {}
+  }
+
+  static Future<String?> wifiSsid() async {
+    if (!isAndroid) return null;
+    try {
+      return await _channel.invokeMethod<String>('getWifiSsid');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 原生 OkHttp POST，强制走已绑定的 Wi‑Fi（与老版 HttpManager.postJson 一致）。
+  static Future<String> httpPost({
+    required String url,
+    required List<int> body,
+    required String contentType,
+    Duration connectTimeout = const Duration(seconds: 30),
+    Duration readTimeout = const Duration(seconds: 45),
+  }) async {
+    if (!isAndroid) {
+      throw UnsupportedError('httpPost 仅 Android 可用');
+    }
+    try {
+      final text = await _channel.invokeMethod<String>('httpPost', {
+        'url': url,
+        'body': Uint8List.fromList(body),
+        'contentType': contentType,
+        'connectTimeoutMs': connectTimeout.inMilliseconds,
+        'readTimeoutMs': readTimeout.inMilliseconds,
+      });
+      return text ?? '';
+    } on PlatformException catch (e) {
+      throw Exception(e.message ?? e.code);
+    }
+  }
+
+--- 第 21 页 ---
+}
+
 // ===== File: lib/platform/robot_paths_android.dart =====
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../core/robot_path_layout.dart';
 import 'robot_paths_base.dart';
 
-/// Android 数据根：旧版外置 `LPRobot/` 仅当可写时使用；否则应用专属目录。
+/// Android 数据根：优先应用专属目录（可写）。
+///
+/// 旧版公共目录 `/storage/emulated/0/LPRobot` 在 Android 10+ 常出现
+/// `Operation not permitted (errno=1)`，会导致连接成功后保存 IP 失败。
+/// 函数库/工程若旧目录确实可写，仍优先落到旧路径，便于现场找文件。
 class RobotPathsAndroid extends RobotPathsBase {
   static const String _legacyRoot = '/storage/emulated/0/LPRobot';
   static const String _dataDirName = 'LPRobot';
-  static const String _writeProbeDir = '.lp_write_probe';
+  static const String _writeProbeFile = '.lp_write_probe';
+
+  /// 旧版 APP 函数库相对路径（相对 installRoot / 旧根）。
+  static const String appFunLibRel = 'LPRobotCustomParam/ProgramProject/FunLib';
+
+  /// 旧版 APP 工程目录（XML 库）。
+  static const String appProgramRel = 'LPRobotCustomParam/ProgramProject';
 
   @override
   Future<String> resolveInstallRoot() async {
-    final legacy = await _tryLegacyRoot();
-    if (legacy != null) return legacy;
+    // 始终使用应用专属目录作为可写根，避免公共存储权限问题。
+    final scoped = p.join((await _appStorageBase()).path, _dataDirName);
+    final dir = Directory(scoped);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    // 启动时做一次真实写文件探测，失败则退到 documents
+    if (!await _canWriteFileUnder(scoped)) {
+      final docs = await getApplicationDocumentsDirectory();
+      final fallback = Directory(p.join(docs.path, _dataDirName));
+      if (!await fallback.exists()) {
+        await fallback.create(recursive: true);
+      }
+      return p.normalize(fallback.path);
+    }
+    return p.normalize(dir.path);
+  }
+
+  /// 函数库：旧目录可写则用旧路径，否则落在应用专属根下。
+  @override
+  Future<String> funLibDir() => _preferLegacyOrScoped(appFunLibRel);
 
 
 --- 第 22 页 ---
-    final scoped = p.join((await _appStorageBase()).path, _dataDirName);
-    final dir = Directory(scoped);
+  /// XML 工程库：同上。
+  @override
+  Future<String> xmlLibraryDir() => _preferLegacyOrScoped(appProgramRel);
+
+  Future<String> _preferLegacyOrScoped(String relative) async {
+    final legacyPath = p.join(_legacyRoot, relative);
+    if (await _canWriteFileUnder(legacyPath)) {
+      return p.normalize(legacyPath);
+    }
+    return _ensureAndroidSubdir(relative);
+  }
+
+  Future<String> _ensureAndroidSubdir(String relative) async {
+    final dir = Directory(p.join(await installRoot(), relative));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     return p.normalize(dir.path);
   }
 
-  /// 旧版原生 APK 的公共目录；目录已存在但不可写时（模拟器/高版本 Android）不使用。
-  Future<String?> _tryLegacyRoot() async {
-    final dir = Directory(_legacyRoot);
-    if (!await dir.exists()) {
-      try {
-        await dir.create(recursive: true);
-      } catch (_) {
-        return null;
-      }
-    }
-    if (!await _canWriteUnder(_legacyRoot)) {
-      return null;
-    }
-    return p.normalize(_legacyRoot);
-  }
-
-  /// 探测能否在根下创建 [RobotPathLayout.configDir]（与 ensureLayout 一致）。
-  Future<bool> _canWriteUnder(String root) async {
-    final probe = Directory(p.join(root, RobotPathLayout.configDir, _writeProbeDir));
+  /// 真实写文件探测（仅 create 目录在部分机型上会误判为可写）。
+  Future<bool> _canWriteFileUnder(String dirPath) async {
+    final dir = Directory(dirPath);
+    final probe = File(p.join(dirPath, _writeProbeFile));
     try {
-      if (await probe.exists()) {
-        await probe.delete(recursive: true);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
       }
-      await probe.create(recursive: true);
-      await probe.delete(recursive: true);
-      return true;
+      await probe.writeAsString('ok', flush: true);
+      final ok = await probe.exists() && (await probe.readAsString()) == 'ok';
+      try {
+        if (await probe.exists()) await probe.delete();
+      } catch (_) {}
+      return ok;
     } catch (_) {
       try {
-        if (await probe.exists()) {
-          await probe.delete(recursive: true);
-        }
+        if (await probe.exists()) await probe.delete();
       } catch (_) {}
       return false;
     }
   }
 
   Future<Directory> _appStorageBase() async {
-    final external = await getExternalStorageDirectory();
-    if (external != null) return external;
+    try {
+      final external = await getExternalStorageDirectory();
+      if (external != null) return external;
+    } catch (_) {}
     return getApplicationDocumentsDirectory();
   }
 }
