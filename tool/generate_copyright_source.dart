@@ -4,7 +4,7 @@
 import 'dart:io';
 
 const softwareName = '领鹏智能机器人上位机软件';
-const version = '1.8.7';
+const version = '2.0.5';
 const pages = 30;
 const linesPerPage = 50;
 

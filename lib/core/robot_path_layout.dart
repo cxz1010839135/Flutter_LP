@@ -74,6 +74,12 @@ class RobotPathLayout {
   static const String pointLibDeleteOff = 'edit-right4-1.png';
   static const String pointLibDeleteOn = 'edit-right4-2.png';
 
+  /// 编程页顶栏（优先 `config/imgs/切图1/bian-top-icon*`）。
+  static const String blocklyAiOff = 'bian-top-icon1-1.png';
+  static const String blocklyAiOn = 'bian-top-icon1-2.png';
+  static const String blocklyRefreshOff = 'bian-top-icon2-1.png';
+  static const String blocklyRefreshOn = 'bian-top-icon2-2.png';
+
   /// 控制器侧程序配置：`config/server/{name}.xml`、`.rp4`
   static const String serverDir = 'config/server';
 

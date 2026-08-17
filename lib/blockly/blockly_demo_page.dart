@@ -14,11 +14,13 @@ import 'lp_blockly_progress_overlay.dart';
 import 'lp_blockly_webview2_check.dart';
 import 'lp_blockly_webview_visibility.dart';
 import '../app/lp_robot_colors.dart';
+import '../app/widgets/lp_robot_pose_bar.dart';
 import '../core/robot_path_layout.dart';
 import '../core/robot_paths.dart';
 import '../core/robot_state.dart';
 import '../network/http_manager.dart';
 import '../features/connect/connect_page.dart';
+import '../features/control/control_assets.dart';
 import '../features/control/project_catalog.dart';
 import 'ai/lp_blockly_ai_controller.dart';
 import 'ai/lp_blockly_ai_panel.dart';
@@ -769,37 +771,41 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
           },
           child: Scaffold(
             backgroundColor: LpRobotColors.background,
-            appBar: AppBar(
-              title: const Text('领鹏智能编程'),
-              backgroundColor: LpRobotColors.primary,
-              foregroundColor: Colors.white,
-              automaticallyImplyLeading: false,
-              leading: IconButton(
-                icon: const BackButtonIcon(),
-                tooltip: '返回',
-                onPressed: _showProgressOverlay ? null : _triggerBlocklyReturn,
-              ),
-              actions: [
-                if (_controller != null)
-                  IconButton(
-                    icon: Icon(
-                      _aiPanelOpen
-                          ? Icons.auto_awesome
-                          : Icons.auto_awesome_outlined,
-                    ),
-                    tooltip: 'AI 编程助手',
-                    onPressed: _toggleAiPanel,
-                  ),
-                if (_controller != null)
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: '刷新',
-                    onPressed:
-                        (_loading || _taskActive) ? null : _refreshBlockly,
-                  ),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 标题靠左（同其它内页）；AI/刷新紧挨「返回」左侧；返回在最右
+                LpRobotPoseBar(
+                  pageTitle: '领鹏智能编程',
+                  titleBarOnly: true,
+                  onBack:
+                      _showProgressOverlay ? null : _triggerBlocklyReturn,
+                  trailing: _controller == null
+                      ? null
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _BlocklyTopCutIconButton(
+                              tooltip: 'AI 编程助手',
+                              configName: RobotPathLayout.blocklyAiOn,
+                              assetName: ControlAssets.blocklyAiOn,
+                              forceOn: _aiPanelOpen,
+                              onPressed: _toggleAiPanel,
+                            ),
+                            _BlocklyTopCutIconButton(
+                              tooltip: '刷新',
+                              configName: RobotPathLayout.blocklyRefreshOn,
+                              assetName: ControlAssets.blocklyRefreshOn,
+                              onPressed: (_loading || _taskActive)
+                                  ? null
+                                  : _refreshBlockly,
+                            ),
+                          ],
+                        ),
+                ),
+                Expanded(child: _buildBody()),
               ],
             ),
-            body: _buildBody(),
           ),
         );
       },
@@ -862,7 +868,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
               dimmed: _taskActive,
             ),
           ),
-        if (_pathHint != null && !_showProgressOverlay)
+        // 安卓隐藏左下角「在线|控制器…」提示，避免挡工具箱与工作区。
+        if (!Platform.isAndroid &&
+            _pathHint != null &&
+            !_showProgressOverlay)
           Positioned(
             left: 8,
             bottom: 8,
@@ -969,6 +978,90 @@ class _ErrorPanel extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 编程页顶栏切图键（优先 `config/imgs/切图1/bian-top-icon*-2` 橙色态）。
+class _BlocklyTopCutIconButton extends StatefulWidget {
+  const _BlocklyTopCutIconButton({
+    required this.tooltip,
+    required this.configName,
+    required this.assetName,
+    required this.onPressed,
+    this.forceOn = false,
+  });
+
+  final String tooltip;
+  final String configName;
+  final String assetName;
+  final VoidCallback? onPressed;
+  final bool forceOn;
+
+  @override
+  State<_BlocklyTopCutIconButton> createState() =>
+      _BlocklyTopCutIconButtonState();
+}
+
+class _BlocklyTopCutIconButtonState extends State<_BlocklyTopCutIconButton> {
+  late final Future<File?> _fileFuture;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fileFuture = RobotPaths.findMainNavImageFile(widget.configName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null;
+    final highlight = widget.forceOn || _pressed;
+    return Opacity(
+      opacity: enabled ? 1 : 0.42,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: InkWell(
+          onTap: widget.onPressed,
+          onHighlightChanged:
+              enabled ? (v) => setState(() => _pressed = v) : null,
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: FutureBuilder<File?>(
+              future: _fileFuture,
+              builder: (context, snapshot) {
+                final file = snapshot.data;
+                final image = file != null
+                    ? Image.file(
+                        file,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, error, stackTrace) => Image.asset(
+                          widget.assetName,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                        ),
+                      )
+                    : Image.asset(
+                        widget.assetName,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      );
+                return Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 120),
+                    opacity: highlight ? 1 : 0.92,
+                    child: image,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }

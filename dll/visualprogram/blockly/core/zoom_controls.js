@@ -58,14 +58,14 @@ Blockly.ZoomControls.prototype.HEIGHT_ = 110;
  * @type {number}
  * @private
  */
-Blockly.ZoomControls.prototype.MARGIN_BOTTOM_ = 20;
+Blockly.ZoomControls.prototype.MARGIN_BOTTOM_ = 16;
 
 /**
  * Distance between zoom controls and right edge of workspace.
  * @type {number}
  * @private
  */
-Blockly.ZoomControls.prototype.MARGIN_SIDE_ = 40;//20;
+Blockly.ZoomControls.prototype.MARGIN_SIDE_ = 40;
 
 /**
  * The SVG group containing the zoom controls.

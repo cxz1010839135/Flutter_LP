@@ -24,6 +24,7 @@ class LpRobotPoseBar extends StatelessWidget {
     this.showPoseRows = true,
     this.titleBarOnly = false,
     this.titleBarLeadingBack = false,
+    this.centerPageTitle = false,
     this.showConnectionActions = false,
     this.onDisconnect,
     this.onBackToConnect,
@@ -39,15 +40,21 @@ class LpRobotPoseBar extends StatelessWidget {
   final bool titleBarOnly;
   /// [titleBarOnly] 时：返回在左、标题靠右（对齐 Android DriverActivity）。
   final bool titleBarLeadingBack;
+  /// [titleBarOnly] 时标题居中（编程页等）；默认靠第二色块左侧。
+  final bool centerPageTitle;
   final bool showConnectionActions;
   final VoidCallback? onDisconnect;
   final VoidCallback? onBackToConnect;
 
   static const double _barHeight = 82;
   /// 顶栏三区宽度比（图1标注）：Logo 20.47% · 坐标 68.06% · 返回 11.47%。
-  static const double _brandWidthFactor = 0.2047;
-  static const double _poseWidthFactor = 0.6806;
-  static const double _trailingWidthFactor = 0.1147;
+  /// 内页 `neiye-topbg` 同为左橙 / 中褐 / 右返回三色块，页标题靠第二块左侧。
+  static const double brandWidthFactor = 0.2047;
+  static const double poseWidthFactor = 0.6806;
+  static const double trailingWidthFactor = 0.1147;
+  static const double _brandWidthFactor = brandWidthFactor;
+  static const double _poseWidthFactor = poseWidthFactor;
+  static const double _trailingWidthFactor = trailingWidthFactor;
 
   /// 整块 logo（图标+字）在橙色区内：约宽 76%、高 56%，居中。
   /// （图标注的 48% 是纯文字宽，不能直接套到含图标的整图上。）
@@ -88,6 +95,7 @@ class LpRobotPoseBar extends StatelessWidget {
             onBack: onBack,
             trailing: trailing,
             leadingBack: titleBarLeadingBack,
+            centerTitle: centerPageTitle,
           );
         }
 
@@ -192,13 +200,14 @@ class _PoseBarData {
   }
 }
 
-/// 向导/配置页顶栏：居中标题 + 右侧返回（与其他子页一致）。
+/// 向导/配置页顶栏：默认标题靠第二色块左；[centerTitle] 时居中（编程页）。
 class _PageTitleBar extends StatelessWidget {
   const _PageTitleBar({
     required this.title,
     required this.onBack,
     required this.trailing,
     this.leadingBack = false,
+    this.centerTitle = false,
   });
 
   static const double height = 48;
@@ -207,6 +216,7 @@ class _PageTitleBar extends StatelessWidget {
   final VoidCallback? onBack;
   final Widget? trailing;
   final bool leadingBack;
+  final bool centerTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -271,45 +281,70 @@ class _PageTitleBar extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 三区：左空位 / 中标题 / 右返回（与主页分栏比例一致）。
             final trailingW =
                 (constraints.maxWidth * LpRobotPoseBar._trailingWidthFactor)
                     .clamp(120.0, 168.0);
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            // 居中：左右同宽（编程页）；靠左：左橙很窄，标题贴中褐左缘。
+            final leadingW = centerTitle
+                ? trailingW
+                : constraints.maxWidth * 0.045;
+
+            Widget? titleChild;
+            if (title.isNotEmpty) {
+              final text = Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: centerTitle ? TextAlign.center : TextAlign.left,
+                style: LpAppFonts.style(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: LpRobotColors.textDark,
+                ),
+              );
+              titleChild = centerTitle
+                  ? Center(child: text)
+                  : Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4, right: 8),
+                        child: text,
+                      ),
+                    );
+            }
+
+            // 安卓横屏：返回勿贴死右缘（模拟器/平板边栏旁更易误触与裁切）。
+            final backRightPad = Platform.isAndroid ? 16.0 : 0.0;
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                SizedBox(width: trailingW),
-                Expanded(
-                  child: title.isEmpty
-                      ? const SizedBox.shrink()
-                      : Center(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: LpAppFonts.style(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: LpRobotColors.textDark,
-                            ),
-                          ),
-                        ),
-                ),
-                SizedBox(
-                  width: trailingW,
-                  child: onBack == null && trailing == null
-                      ? const SizedBox.shrink()
-                      : trailing != null
-                          ? Align(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(width: leadingW),
+                    Expanded(child: titleChild ?? const SizedBox.shrink()),
+                    SizedBox(
+                      width: trailingW,
+                      child: onBack == null
+                          ? const SizedBox.shrink()
+                          : Align(
                               alignment: Alignment.centerRight,
-                              child: _SubpageTrailing(
-                                onBack: onBack,
-                                extra: trailing,
+                              child: Padding(
+                                padding: EdgeInsets.only(right: backRightPad),
+                                child: _NeiyePageBackButton(onTap: onBack!),
                               ),
-                            )
-                          : _NeiyePageBackButton(onTap: onBack!),
+                            ),
+                    ),
+                  ],
                 ),
+                // AI/刷新等：紧挨「返回」左侧，不挤进返回槽、不换主页返回样式。
+                if (trailing != null)
+                  Positioned(
+                    right: trailingW + 4 + backRightPad,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(child: trailing),
+                  ),
               ],
             );
           },

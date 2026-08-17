@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../app/lp_app_assets.dart';
 import '../../../app/lp_robot_colors.dart';
+import '../../../app/widgets/lp_robot_pose_bar.dart';
 import '../driver_ui_style.dart';
 
-/// 驱动器/内页顶栏：neiye-topbg 背景，左空 / 中标题 / 右返回（与主页三区分栏一致）。
+/// 驱动器/内页顶栏：与主页同三区比例；标题靠第二块左侧，返回在第三块。
 class DriverTitleBar extends StatelessWidget {
   const DriverTitleBar({
     super.key,
@@ -15,7 +16,7 @@ class DriverTitleBar extends StatelessWidget {
   static const double height = 48;
 
   /// 与主页右侧返回区同比例。
-  static const double trailingWidthFactor = 0.1147;
+  static const double trailingWidthFactor = LpRobotPoseBar.trailingWidthFactor;
 
   final String title;
   final VoidCallback? onBack;
@@ -34,25 +35,29 @@ class DriverTitleBar extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.maxWidth;
+            // 与 neiye-topbg 实测一致：左橙很窄，标题贴中褐左缘。
+            final leadingW = w * 0.045;
             final trailingW =
                 (w * trailingWidthFactor).clamp(120.0, 168.0);
-            // 左侧占位与右侧同宽，保证中间标题视觉居中；内容暂空。
-            final leadingW = trailingW;
 
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(width: leadingW),
                 Expanded(
-                  child: Center(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: DriverUiStyle.pageLabelStyle.copyWith(
-                        fontSize: 18,
-                        color: LpRobotColors.textDark,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 8),
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.left,
+                        style: DriverUiStyle.pageLabelStyle.copyWith(
+                          fontSize: 18,
+                          color: LpRobotColors.textDark,
+                        ),
                       ),
                     ),
                   ),

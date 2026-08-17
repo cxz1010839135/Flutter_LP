@@ -2,7 +2,7 @@
 # 用法：powershell -NoProfile -ExecutionPolicy Bypass -File .\tool\generate_copyright_source.ps1
 
 param(
-    [string]$Version = "1.8.7",
+    [string]$Version = "2.0.5",
     [string]$SoftwareName = "领鹏智能机器人上位机软件",
     [int]$Pages = 30,
     [int]$LinesPerPage = 50

@@ -71,7 +71,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     height: 1.05,
   );
 
-  ControlJogMode _jogMode = ControlJogMode.continuous;
+  ControlJogMode _jogMode = ControlJogMode.mediumDistance;
   int _jointAxisIndex = 0;
   final _longDistance = TextEditingController(text: '10.0');
   final _midDistance = TextEditingController(text: '1.0');

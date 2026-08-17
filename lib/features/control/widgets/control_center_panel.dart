@@ -18,8 +18,9 @@ class ControlCenterPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (section.showsJogPanel) {
+      // 共用同一 State：切换 X/Y/Z/关节时保留连续/长/中/短选中，避免回到「连续」。
       return ControlAxisJogPanel(
-        key: ValueKey(section.controlIndex),
+        key: const ValueKey('control-jog'),
         section: section,
         axisIndex: section.jogAxisIndex ?? 0,
         axisLabel: section.axisLabel,

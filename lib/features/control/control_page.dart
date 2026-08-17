@@ -23,7 +23,8 @@ class ControlPage extends StatefulWidget {
 }
 
 class _ControlPageState extends State<ControlPage> {
-  ControlSection _section = ControlSection.cartesianX;
+  /// 默认进入：左侧保留 X，右侧选中「关节」（两侧同时高亮），点动模式默认中距离。
+  ControlSection _section = ControlSection.joint;
   ControlSection _lastLeftSection = ControlSection.cartesianX;
 
   @override

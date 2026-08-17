@@ -470,8 +470,10 @@ Code.recomputeWorkspaceBlockLayout_ = function () {
 };
 
 /**
- * AI 侧栏改变 WebView 宽度后，拖拽松手时块栈可能散架。
- * 在拖拽开始刷新 startXY_ 并重绘根块，松手后稳定根块栈（等同手动折叠/展开）。
+ * 拖拽坐标校正（Win WebView2 / 安卓 Virtual Display 通用轻量路径）。
+ * 起拖：刷新屏幕换算与 startXY_；松手：updateScreenCalculations_ + 轻量 render。
+ * 不再在每次松手折叠/展开块栈（安卓会闪、Windows 会卡），散架修复留给 AI 侧栏
+ * 开合后的 recomputeWorkspaceBlockLayout_ / 加载后的 scheduleWorkspaceRerenderAfterLoad_。
  */
 Code._dragRelayoutFixInstalled_ = false;
 
@@ -485,14 +487,6 @@ Code.installDragRelayoutFix_ = function () {
   Blockly.BlockDragger.prototype.startBlockDrag = function (currentDragDeltaXY) {
     if (this.workspace_ && this.workspace_.updateScreenCalculations_) {
       this.workspace_.updateScreenCalculations_();
-    }
-    try {
-      var dragRoot = this.draggingBlock_ && this.draggingBlock_.getRootBlock();
-      if (dragRoot && !dragRoot.disposed && typeof dragRoot.render === 'function') {
-        dragRoot.render(false);
-      }
-    } catch (preErr) {
-      console.warn('drag start render', preErr);
     }
     this.startXY_ = this.draggingBlock_.getRelativeToSurfaceXY();
     origStart.call(this, currentDragDeltaXY);
@@ -510,14 +504,9 @@ Code.installDragRelayoutFix_ = function () {
       if (root.workspace.updateScreenCalculations_) {
         root.workspace.updateScreenCalculations_();
       }
-      Code.stabilizeBlockStack_(root);
-      var bumpDelay = (typeof Blockly.BUMP_DELAY === 'number') ?
-          Blockly.BUMP_DELAY + 40 : 290;
-      window.setTimeout(function () {
-        if (root.workspace && !root.disposed) {
-          Code.stabilizeBlockStack_(root);
-        }
-      }, bumpDelay);
+      if (typeof root.render === 'function') {
+        root.render(false);
+      }
     } catch (err) {
       console.warn('drag relayout fix', err);
     }
@@ -799,7 +788,7 @@ Code.init = function () {
       media: '../../media/',//资源路径
       rtl: rtl,
       toolbox: toolboxXml,
-      trashcan: false,
+      trashcan: true,
       sounds: false,
       scrollbars: true,
       zoom:
@@ -860,133 +849,104 @@ Code.init = function () {
 
   var ParentWidth = divcontainer.offsetWidth || window.innerWidth || 800;
 
-  // 给按钮/输入框一个最小可用尺寸，避免高度过小导致“无法输入/按钮不见”
+  // 顶栏图标：统一尺寸与间距，避免橙色键挤成一条色带
   var IconHeight = Math.max(24, ParentHeight * Blockly.CustomConfig.DocIcon_Height);
-  var IconTop = Math.max(4, ParentHeight * Blockly.CustomConfig.DocIcon_Top);
-  var rightpos = 6.7 * IconHeight;
+  var IconTop = Math.max(8, ParentHeight * Blockly.CustomConfig.DocIcon_Top + 4);
+  var btnSize = Math.max(30, Math.round(IconHeight * 1.35));
+  var btnGap = Math.max(8, Math.round(btnSize * 0.28));
+  var toolbarRight = 12;
+
+  function placeToolbarBtn_(el, size, right, top) {
+    el.style.height = size + 'px';
+    el.style.width = size + 'px';
+    el.style.top = top + 'px';
+    el.style.right = right + 'px';
+    return right + size + btnGap;
+  }
+
   SaveDocDiv.setAttribute('class', 'SaveDocDiv');
-  SaveDocDiv.style.height = IconHeight * 1.3 + 'px';
-  SaveDocDiv.style.width = IconHeight * 1.3 + 'px';
-  SaveDocDiv.style.top = IconTop + 'px';
-  SaveDocDiv.style.right = rightpos + 'px';
-  //SaveDocDiv.style.backgroundColor = Blockly.CustomConfig.SaveDoc_BackGroundColor_RGB;
   SaveDocDiv.title = "保存";
 
   var NewDocDiv = document.createElement("div");
   NewDocDiv.setAttribute('class', 'NewDocDiv');
-  NewDocDiv.style.height = IconHeight * 1.3 + 'px';
-  NewDocDiv.style.width = IconHeight * 1.3 + 'px';
-  NewDocDiv.style.top = IconTop + 'px';
-  rightpos = 1.5*IconHeight;
-  NewDocDiv.style.right = rightpos + 'px';
-  //NewDocDiv.style.backgroundColor = Blockly.CustomConfig.NewDoc_BackGroundColor_RGB;
   NewDocDiv.title = "返回";
 
   var HelperDiv = document.createElement("div");
   HelperDiv.setAttribute('class', 'HelperDiv');
-  HelperDiv.style.height = IconHeight * 1.3 + 'px';
-  HelperDiv.style.width = IconHeight * 1.3 + 'px';
-  HelperDiv.style.top = IconTop + 'px';
-  rightpos = IconHeight * 3.3;
-  HelperDiv.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
   HelperDiv.title = "帮助";
 
   var BlueToothDiv = document.createElement("div");
   BlueToothDiv.setAttribute('class', 'BlueToothDiv');
-  BlueToothDiv.style.height = IconHeight * 1.3 + 'px';
-  BlueToothDiv.style.width = IconHeight * 1.3 + 'px';
-  BlueToothDiv.style.top = IconTop + 'px';
-  rightpos = 5.1 * IconHeight;
-  BlueToothDiv.style.right = rightpos + 'px';
-  //BlueToothDiv.style.backgroundColor = Blockly.CustomConfig.BlueTooth_BackGroundColor_RGB;
   BlueToothDiv.title = "函数";
 
+  // 主工具行（右→左）：返回 | 帮助 | 函数 | 保存 | 搜索开关
+  toolbarRight = placeToolbarBtn_(NewDocDiv, btnSize, toolbarRight, IconTop);
+  toolbarRight = placeToolbarBtn_(HelperDiv, btnSize, toolbarRight, IconTop);
+  toolbarRight = placeToolbarBtn_(BlueToothDiv, btnSize, toolbarRight, IconTop);
+  toolbarRight = placeToolbarBtn_(SaveDocDiv, btnSize, toolbarRight, IconTop);
 
-
-  //搜索框
-  var Searchbg = document.createElement("div");
-  Searchbg.className = "Searchbg"
-  Searchbg.style.height = IconHeight * 1.6 + 'px';
-  Searchbg.style.width = IconHeight * 9.5 + 'px';
-  Searchbg.style.top = IconTop * 0.6 + 'px';
-  rightpos = 8.3 * IconHeight;
-  Searchbg.style.right = rightpos + 'px';
-  Searchbg.id = "Searchbg";
-
-
-
-  var SearchInput = document.createElement("input");
-  SearchInput.className = "SearchInput"
-  SearchInput.style.height = IconHeight + 'px';
-  SearchInput.style.width = IconHeight * 3.5 + 'px';
-  SearchInput.style.top = IconTop * 1.35 + 'px';
-  rightpos = 13.8 * IconHeight;
-  SearchInput.style.right = rightpos + 'px';
-  SearchInput.id = "searchInput";
-
-
-  var SearchButton = document.createElement("div");
-  SearchButton.setAttribute('class', 'SearchButton');
-  SearchButton.style.height = IconHeight * 1 + 'px';
-  SearchButton.style.width = IconHeight * 1 + 'px';
-  SearchButton.style.top = IconTop * 1.5 + 'px';
-  rightpos = 12.4 * IconHeight;
-  SearchButton.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
-  SearchButton.title = "搜索";
-
-
-
+  var searchToggleRight = toolbarRight;
   var SearchGrup = document.createElement("div");
   SearchGrup.setAttribute('class', 'SearchGrup');
-  SearchGrup.style.height = IconHeight * 1 + 'px';
-  SearchGrup.style.width = IconHeight * 1 + 'px';
-  SearchGrup.style.top = IconTop * 1.5 + 'px';
-  rightpos = 8.3 * IconHeight;
-  SearchGrup.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
-  SearchGrup.title = "关闭";
+  SearchGrup.title = "关闭搜索";
+  placeToolbarBtn_(SearchGrup, btnSize, searchToggleRight, IconTop);
 
   var SearchGrup_open = document.createElement("div");
   SearchGrup_open.setAttribute('class', 'SearchGrup_open');
-  SearchGrup_open.style.height = IconHeight * 1 + 'px';
-  SearchGrup_open.style.width = IconHeight * 1 + 'px';
-  SearchGrup_open.style.top = IconTop * 1.5 + 'px';
-  rightpos = 8.3 * IconHeight;
-  SearchGrup_open.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
-  SearchGrup_open.title = "打开";
+  SearchGrup_open.title = "打开搜索";
+  placeToolbarBtn_(SearchGrup_open, btnSize, searchToggleRight, IconTop);
+  toolbarRight = searchToggleRight + btnSize + btnGap;
 
+  // 搜索展开区：在搜索开关左侧，默认收起
+  var searchBtnSize = Math.max(26, Math.round(btnSize * 0.9));
+  var searchTop = IconTop + Math.round((btnSize - searchBtnSize) / 2);
+  var searchRight = toolbarRight;
 
-
-  var SearchUpButton = document.createElement("div");
-  SearchUpButton.setAttribute('class', 'SearchUpButton');
-  SearchUpButton.style.height = IconHeight * 1 + 'px';
-  SearchUpButton.style.width = IconHeight * 1 + 'px';
-  SearchUpButton.style.top = IconTop * 1.5 + 'px';
-  rightpos = 9.6 * IconHeight;
-  SearchUpButton.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
-  SearchUpButton.title = "下一个";
-
+  var SearchButton = document.createElement("div");
+  SearchButton.setAttribute('class', 'SearchButton');
+  SearchButton.title = "搜索";
+  searchRight = placeToolbarBtn_(SearchButton, searchBtnSize, searchRight, searchTop);
 
   var SearchDownButton = document.createElement("div");
   SearchDownButton.setAttribute('class', 'SearchDownButton');
-  SearchDownButton.style.height = IconHeight * 1 + 'px';
-  SearchDownButton.style.width = IconHeight * 1 + 'px';
-  SearchDownButton.style.top = IconTop * 1.5 + 'px';
-  rightpos = 10.9 * IconHeight;
-  SearchDownButton.style.right = rightpos + 'px';
-  //HelperDiv.style.backgroundColor = Blockly.CustomConfig.Helper_BackGroundColor_RGB;
   SearchDownButton.title = "上一个";
+  searchRight = placeToolbarBtn_(SearchDownButton, searchBtnSize, searchRight, searchTop);
+
+  var SearchUpButton = document.createElement("div");
+  SearchUpButton.setAttribute('class', 'SearchUpButton');
+  SearchUpButton.title = "下一个";
+  searchRight = placeToolbarBtn_(SearchUpButton, searchBtnSize, searchRight, searchTop);
+
+  var SearchInput = document.createElement("input");
+  SearchInput.className = "SearchInput";
+  SearchInput.id = "searchInput";
+  SearchInput.style.height = searchBtnSize + 'px';
+  SearchInput.style.width = Math.max(120, btnSize * 3.2) + 'px';
+  SearchInput.style.top = searchTop + 'px';
+  SearchInput.style.right = searchRight + 'px';
+  SearchInput.style.boxSizing = 'border-box';
+  SearchInput.style.padding = '0 10px';
+  SearchInput.style.border = '1px solid #f0ad4e';
+  SearchInput.style.borderRadius = '8px';
+  SearchInput.style.background = '#fff';
+  SearchInput.style.outline = 'none';
+  var searchInputWidth = Math.max(120, btnSize * 3.2);
+  searchRight += searchInputWidth + btnGap;
+
+  var Searchbg = document.createElement("div");
+  Searchbg.className = "Searchbg";
+  Searchbg.id = "Searchbg";
+  Searchbg.style.height = (btnSize + 8) + 'px';
+  Searchbg.style.width = (searchRight - toolbarRight + 8) + 'px';
+  Searchbg.style.top = (IconTop - 4) + 'px';
+  Searchbg.style.right = (toolbarRight - 4) + 'px';
 
   var SearchResultsPanel = document.createElement('div');
   SearchResultsPanel.className = 'SearchResultsPanel';
   SearchResultsPanel.id = 'searchResultsPanel';
-  SearchResultsPanel.style.top = (IconTop * 0.6 + IconHeight * 1.9 + 4) + 'px';
-  SearchResultsPanel.style.right = (8.3 * IconHeight) + 'px';
-  SearchResultsPanel.style.width = (IconHeight * 14) + 'px';
+  SearchResultsPanel.style.top = (IconTop + btnSize + 8) + 'px';
+  SearchResultsPanel.style.right = toolbarRight + 'px';
+  SearchResultsPanel.style.width = Math.max(260, searchInputWidth + searchBtnSize * 3 + 40) + 'px';
   var SearchResultsHeader = document.createElement('div');
   SearchResultsHeader.className = 'SearchResultsHeader';
   SearchResultsHeader.id = 'searchResultsHeader';
@@ -1019,13 +979,23 @@ Code.init = function () {
   SearchResultsExpandBtn.type = 'button';
   SearchResultsExpandBtn.title = '展开搜索结果';
   SearchResultsExpandBtn.style.display = 'none';
-  SearchResultsExpandBtn.style.top = (IconTop * 0.6 + IconHeight * 1.9 + 4) + 'px';
-  SearchResultsExpandBtn.style.right = (8.3 * IconHeight) + 'px';
+  SearchResultsExpandBtn.style.top = (IconTop + btnSize + 8) + 'px';
+  SearchResultsExpandBtn.style.right = toolbarRight + 'px';
   SearchResultsExpandBtn.addEventListener('click', function (e) {
     e.stopPropagation();
     Code.showSearchResultsPanel();
   }, true);
   Code.searchResultsExpandBtn = SearchResultsExpandBtn;
+
+  // 默认收起搜索：只保留「打开搜索」+ 保存/函数/帮助/返回
+  Code.workspace.hid_group = true;
+  Searchbg.style.display = 'none';
+  SearchInput.style.display = 'none';
+  SearchButton.style.display = 'none';
+  SearchDownButton.style.display = 'none';
+  SearchUpButton.style.display = 'none';
+  SearchGrup.style.display = 'none';
+  SearchGrup_open.style.display = 'block';
 
   //添加鼠标单击事件
   SaveDocDiv.addEventListener('click', Code.SaveDoc, true);
@@ -1063,28 +1033,65 @@ Code.init = function () {
     if (!treerow || !Blockly.CustomConfig) {
       return;
     }
-    for (var j = 0; j < Blockly.CustomConfig.BlocklyTreeDivNum; j++) {
-      var row = document.getElementById(':' + (j + 1).toString());
-      if (!row || !row.firstChild || !row.firstChild.childNodes[1]) {
-        continue;
-      }
-      var spans = row.firstChild.childNodes[1];
-      var height = treerow.offsetHeight / Blockly.CustomConfig.BlocklyTreeDivNum;
-      var spanwidth = height * 1.0;
-      spans.style.boxSizing = 'border-box';
-      spans.style.width = spanwidth + 'px';
-      spans.style.lineHeight = height + 'px';
-      var spanlabel = document.getElementById(':' + (j + 1).toString() + '.label');
-      if (spanlabel) {
-        spanlabel.style.boxSizing = 'border-box';
-        spanlabel.style.lineHeight = height + 'px';
-        spanlabel.style.width = (height * 0.5) + 'px';
-      }
-    }
+    // bian-lefticontxt 143×157：全高等分槽位，图标等比例居中（不拉伸、不堆顶留白）
+    var iconAspect = 143 / 157;
+    var n = Blockly.CustomConfig.BlocklyTreeDivNum;
+    var totalH = treerow.offsetHeight;
+    var slotH = totalH / n;
+    // 槽内图标约占槽高 80%，保持切图宽高比
+    var iconH = Math.max(48, Math.round(slotH * 0.8));
+    var iconW = Math.round(iconH * iconAspect);
     var divblocklyToolboxDivs = document.getElementsByClassName('blocklyToolboxDiv');
     if (divblocklyToolboxDivs.length > 0) {
-      var divwidth = treerow.offsetHeight * 0.78 / Blockly.CustomConfig.BlocklyTreeDivNum;
-      divblocklyToolboxDivs[0].style.width = divwidth + 'px';
+      divblocklyToolboxDivs[0].style.width = iconW + 'px';
+      divblocklyToolboxDivs[0].style.height = totalH + 'px';
+      divblocklyToolboxDivs[0].style.background = 'transparent';
+    }
+    var treeRoot = document.querySelector('.blocklyTreeRoot');
+    if (treeRoot) {
+      treeRoot.style.background = 'transparent';
+      treeRoot.style.height = totalH + 'px';
+      treeRoot.style.paddingTop = '0';
+    }
+    var catWrap = document.querySelector('.blocklyTreeRoot > div:nth-child(2)');
+    if (catWrap) {
+      catWrap.style.height = totalH + 'px';
+      catWrap.style.background = 'transparent';
+      catWrap.style.display = 'flex';
+      catWrap.style.flexDirection = 'column';
+      catWrap.style.justifyContent = 'space-evenly';
+      catWrap.style.alignItems = 'center';
+      catWrap.style.boxSizing = 'border-box';
+    }
+    for (var j = 0; j < n; j++) {
+      var row = document.getElementById(':' + (j + 1).toString());
+      if (!row) {
+        continue;
+      }
+      row.style.height = iconH + 'px';
+      row.style.width = iconW + 'px';
+      row.style.margin = '0';
+      row.style.flex = '0 0 auto';
+      row.style.background = 'transparent';
+      row.style.padding = '0';
+      var treeRow = row.querySelector('.blocklyTreeRow');
+      if (treeRow) {
+        treeRow.style.width = iconW + 'px';
+        treeRow.style.height = iconH + 'px';
+        treeRow.style.margin = '0';
+        treeRow.style.padding = '0';
+        treeRow.style.backgroundColor = 'transparent';
+      }
+      if (row.firstChild && row.firstChild.childNodes[1]) {
+        var spans = row.firstChild.childNodes[1];
+        spans.style.boxSizing = 'border-box';
+        spans.style.width = iconW + 'px';
+        spans.style.lineHeight = iconH + 'px';
+      }
+      var spanlabel = document.getElementById(':' + (j + 1).toString() + '.label');
+      if (spanlabel) {
+        spanlabel.style.display = 'none';
+      }
     }
   };
 
@@ -1685,7 +1692,7 @@ Code.SearchData = function () {
 
 };
 
-Code.SearchGrup_none = function () {
+Code.setSearchPanelOpen_ = function (open) {
   var SearchbgObj = document.getElementsByClassName('Searchbg')[0];
   var SearchInputObj = document.getElementsByClassName('SearchInput')[0];
   var SearchButtonObj = document.getElementsByClassName('SearchButton')[0];
@@ -1693,47 +1700,30 @@ Code.SearchGrup_none = function () {
   var SearchUpButtonObj = document.getElementsByClassName('SearchUpButton')[0];
   var SearchGrup_openObj = document.getElementsByClassName('SearchGrup_open')[0];
   var SearchGrupObj = document.getElementsByClassName('SearchGrup')[0];
-  //    SearchbgObj.style.display='block';
-  //    SearchInputObj.style.display='block';
-  //    SearchButtonObj.style.display='block';
-  //    SearchDownButtonObj.style.display='block';
-  //    SearchUpButtonObj.style.display='block';
-  if (Code.workspace.hid_group) {
-    SearchbgObj.style.display = 'block';
-    SearchInputObj.style.display = 'block';
-    SearchButtonObj.style.display = 'block';
-    SearchDownButtonObj.style.display = 'block';
-    SearchUpButtonObj.style.display = 'block';
-    Code.workspace.hid_group = false;
-  } else {
-    SearchbgObj.style.display = 'none';
-    SearchInputObj.style.display = 'none';
-    SearchButtonObj.style.display = 'none';
-    SearchDownButtonObj.style.display = 'none';
-    SearchUpButtonObj.style.display = 'none';
+  var show = open ? 'block' : 'none';
+  if (SearchbgObj) SearchbgObj.style.display = show;
+  if (SearchInputObj) SearchInputObj.style.display = show;
+  if (SearchButtonObj) SearchButtonObj.style.display = show;
+  if (SearchDownButtonObj) SearchDownButtonObj.style.display = show;
+  if (SearchUpButtonObj) SearchUpButtonObj.style.display = show;
+  if (SearchGrupObj) SearchGrupObj.style.display = open ? 'block' : 'none';
+  if (SearchGrup_openObj) SearchGrup_openObj.style.display = open ? 'none' : 'block';
+  Code.workspace.hid_group = !open;
+  if (!open) {
     Code.hideSearchResultsPanel();
-    Code.workspace.hid_group = true;
+  } else if (SearchInputObj) {
+    setTimeout(function () { SearchInputObj.focus(); }, 0);
   }
-
-
 };
 
-
+Code.SearchGrup_none = function () {
+  // 关闭按钮：收起搜索
+  Code.setSearchPanelOpen_(false);
+};
 
 Code.SearchGrup_block = function () {
-  var SearchbgObj = document.getElementsByClassName('Searchbg')[0];
-  var SearchInputObj = document.getElementsByClassName('SearchInput')[0];
-  var SearchButtonObj = document.getElementsByClassName('SearchButton')[0];
-  var SearchDownButtonObj = document.getElementsByClassName('SearchDownButton')[0];
-  var SearchUpButtonObj = document.getElementsByClassName('SearchUpButton')[0];
-  var SearchGrup_openObj = document.getElementsByClassName('SearchGrup_open')[0];
-  var SearchGrupObj = document.getElementsByClassName('SearchGrup')[0];
-  SearchbgObj.style.display = 'block';
-  SearchInputObj.style.display = 'block';
-  SearchButtonObj.style.display = 'block';
-  SearchDownButtonObj.style.display = 'block';
-  SearchUpButtonObj.style.display = 'block';
-
+  // 打开按钮：展开搜索
+  Code.setSearchPanelOpen_(true);
 };
 
 Code.SearchDataUp = function () {

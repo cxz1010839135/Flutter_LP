@@ -369,11 +369,12 @@ Blockly.WorkspaceSvg.prototype.createDom = function(opt_backgroundClass) {
   this.svgBubbleCanvas_ = Blockly.utils.createSvgElement('g',
       {'class': 'blocklyBubbleCanvas'}, this.svgGroup_, this);
   var bottom = Blockly.Scrollbar.scrollbarThickness;
-  if (this.options.hasTrashcan) {
-    bottom = this.addTrashcan_(bottom);
-  }
+  // 先缩放、后垃圾桶：屏幕上垃圾桶在缩放键上方（与 sprites 竖向排布一致）
   if (this.options.zoomOptions && this.options.zoomOptions.controls) {
     bottom = this.addZoomControls_(bottom);
+  }
+  if (this.options.hasTrashcan) {
+    bottom = this.addTrashcan_(bottom);
   }
 
   if (!this.isFlyout) {

@@ -174,7 +174,6 @@ class _ToolPageState extends State<ToolPage> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 顶部保持不变：内页标题栏「配置」+ 返回。
               LpRobotPoseBar(
                 pageTitle: '配置',
                 titleBarOnly: true,

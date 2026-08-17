@@ -191,98 +191,89 @@ button {
 .SaveDocDiv{
   /*top: 100px;*/
   /*left: calc(100% - 400px);*/
-  border-radius: 50%;
-  background:url('media/save@1x.png') /*no-repeat #dddde1*/; /*no-repeat var(--DocIcon-backgroundcolor);*/
-  background-size: 100% auto;
+  border-radius: 10px;
+  /* boxicon*-1 为白图标；白底工作区始终用橙色 *-2 */
+  background:url('media/bian-boxicon5-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
+}
+
+.SaveDocDiv:hover{
+  background:url('media/bian-boxicon5-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 
 .SearchButton{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_icon1@2x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon1-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .SearchButton:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/new/search_input_icon1@2x.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon1-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 .SearchInput{
-  /*top: 100px;*/
-  /*left: calc(100% - 400px);*/
-  border-radius: 20%;
-  background-size: 100% auto;
   position:absolute;
-  border: #fff9dcc6;
-  z-index: 10;
-}
-
-.SearchInput:hover{
-  /*top: 100px;*/
-  /*left: calc(100% - 400px);*/
-  border-radius: 20%;
-  border: #fff9dcc6;
-  background-size: 100% auto;
+  z-index: 11;
+  box-sizing: border-box;
 }
 .SearchGrup{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_icon4@2x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon4-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .SearchGrup:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/new/search_input_icon4@2x.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon4-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
   z-index: 10;
-
 }
 
 .SearchGrup_open{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_icon4@2x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon4-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
-
   z-index: 10;
+  cursor: pointer;
 }
 
 .SearchGrup_open:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/new/search_input_icon4@2x.png');
-  background-size: 100% auto;
-  visibility: hidden;
+  background:url('media/bian-boxicon4-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 
 
 .Searchbg{
-  /*top: 100px;*/
-  /*left: calc(100% - 100px);*/
-
-  border-radius: 0%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_bg@2x.png') /*no-repeat #dddde1*/;
-  background-size: 120% auto;
+  border-radius: 12px;
+  background: rgba(255, 248, 240, 0.92);
+  border: 1px solid #ffd7a8;
+  box-shadow: 0 2px 8px rgba(240, 140, 40, 0.12);
   position:absolute;
-  z-index: 10;
+  z-index: 9;
+  pointer-events: none;
 }
 
 
@@ -291,36 +282,36 @@ button {
 .SearchUpButton{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_icon3@2x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon2-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .SearchUpButton:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/new/search_input_icon3@2x.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon2-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 
 .SearchDownButton{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/new/search_input_icon2@2x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon3-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .SearchDownButton:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/new/search_input_icon2@2x.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon3-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 /* 搜索结果简表（类似 Cursor 侧栏列表，点击定位） */
@@ -457,68 +448,69 @@ button {
 .NewDocDiv{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/back@1x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  /* 返回：切图无对应项，仍用原返回图标；刷新切图见 bian-top-icon2 */
+  background:url('media/back@1x.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .NewDocDiv:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/back2@1x.png');
-  background-size: 100% auto;
+  background:url('media/back2@1x.png') no-repeat center center;
+  background-size: 100% 100%;
 }
 
 
 .NewDocDiv1{
   /*top: 100px;*/
   /*left: calc(100% - 100px);*/
-  border-radius: 50%;
- /* background:url('media/new.png') no-repeat #dddde1;*/ /*no-repeat*/
-  background:url('media/back@1x.png') /*no-repeat #dddde1*/;
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/back@1x.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .NewDocDiv1:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/back2@1x.png');
-  background-size: 100% auto;
+  background:url('media/back2@1x.png') no-repeat center center;
+  background-size: 100% 100%;
 }
 
 .BlueToothDiv{
   /*top: 100px;*/
   /*left: calc(100% - 300px);*/
-  border-radius: 50%;
-  background:url('media/invokefun.png') /*no-repeat #dddde1*/; /*no-repeat*/
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon6-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .BlueToothDiv:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/invokefun@1.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon6-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 .HelperDiv{
   /*top: 100px;*/
   /*left: calc(100% - 200px);*/
-  border-radius: 50%;
-  background:url('media/help@1x.png') /*no-repeat #dddde1*/; /*no-repeat*/
-  background-size: 100% auto;
+  border-radius: 10px;
+  background:url('media/bian-boxicon7-2.png') no-repeat center center;
+  background-size: 100% 100%;
   position:absolute;
   z-index: 10;
+  cursor: pointer;
 }
 
 .HelperDiv:hover{
-  /*background-color: var(--DocIcon-hovercolor);*/
-  background:url('media/help2@1x.png');
-  background-size: 100% auto;
+  background:url('media/bian-boxicon7-2.png') no-repeat center center;
+  background-size: 100% 100%;
+  filter: brightness(1.05);
 }
 
 
@@ -552,25 +544,24 @@ button {
 .blocklyToolboxDiv{
   width: 3%;/*120px*/
   /*border-right:1px solid var(--toolbox-bordercolor);*/
-  border-radius: 0 5px 5px 0;
+  border-radius: 0;
   padding:0;
   margin:0;
-  /*background-color:var(--toolbox-backgroundcolor);*/
+  background: transparent !important;
+  background-color: transparent !important;
   box-sizing: border-box;
 }
 
 .blocklyTreeRoot{
   width: 100%;
-  height: calc(100%);
-  height: -moz-calc(100%);
-  height: -webkit-calc(100%);
+  height: auto;
   display: block;
   padding: 0;
   margin: 0;
-  border-radius: 0 25px 5px 0;
+  border-radius: 0;
   box-sizing: border-box;
-  /*background:url('media/bian_bg.png') no-repeat ;*/
-  background-size: 100% 100%;
+  background: transparent !important;
+  background-image: none !important;
 }
 
 /*.blocklyTreeRow.blocklyHidden{
@@ -582,23 +573,34 @@ button {
   height: 100%;
   width: 100%;
   text-align: center;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
   margin: 0;
   box-sizing: border-box;
+  background: transparent !important;
 }
 
 .blocklyTreeRoot>div:nth-child(2)>div{
-  height: 25.0%;
-  width: 99%;
+  /* 行高由 JS 按切图比例设置；父级 flex 全高等分 */
+  width: auto;
   text-align: center;
   box-sizing: border-box;
-  padding-top: 2px;
-  padding-bottom: 2px;
+  padding: 0;
+  flex: 0 0 auto;
+  background: transparent !important;
 }
 
 .blocklyTreeRoot>div:nth-child(2)>div>div.blocklyTreeRow{
   width: 100%;
   height: 100%;
+  background-color: transparent !important;
+}
+
+/* 去掉悬停灰底，避免切图后露出多余色块 */
+.blocklyTreeRow:not(.blocklyTreeSelected):hover{
+  background-color: transparent !important;
 }
 
 
@@ -630,101 +632,62 @@ button {
   /*margin: 0;*/
 /*}*/
 
-#\:1>.blocklyTreeRow{
-  background:url('media/home2_leftmenu2_1_new.png') no-repeat center center;
-  background-size: 100% 100%;
-  display: inline-block;
-  float: left;
-  height: 100%;
-  margin: 0;
-}
-#mainToolName_Logic{
-  position: absolute;
-  top: 13%;
-  left: 4.5%;
-  transform: translate(-50%, -50%);
-  font-size: 17px;
-  color: rgb(255, 140, 0);
-  z-index: 999;
-}
-
-#\:2>.blocklyTreeRow{
-  background:url('media/home2_leftmenu3_1_new.png') no-repeat center center;
-  background-size: 100% 100%;
-  display: inline-block;
-  float: left;
-  height: 100%;
-  margin: 0;
-}
-#mainToolName_Variable{
-  position: absolute;
-  top: 39%;
-  left: 4.5%;
-  transform: translate(-50%, -50%);
-  font-size: 17px;
-  color: rgb(255, 140, 0);
-  z-index: 999;
-}
-
-#\:3>.blocklyTreeRow{
-  background:url('media/home2_leftmenu1_1_new.png') no-repeat center center;
-  background-size: 100% 100%;
-  display: inline-block;
-  float: left;
-  height: 100%;
-  margin: 0;
-}
-#mainToolName_Move{
-  position: absolute;
-  top: 62.5%;
-  left: 4.5%;
-  transform: translate(-50%, -50%);
-  font-size: 17px;
-  color: rgb(255, 140, 0);
-  z-index: 999;
-}
-
+/* 左侧分类：切图 143×157，contain 等比例，不拉伸 */
+#\:1>.blocklyTreeRow,
+#\:2>.blocklyTreeRow,
+#\:3>.blocklyTreeRow,
 #\:4>.blocklyTreeRow{
-  background:url('media/home2_leftmenu4_1_new.png') no-repeat center center;
-  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
   display: inline-block;
   float: left;
   height: 100%;
   margin: 0;
 }
+#\:1>.blocklyTreeRow{
+  background-image:url('media/bian-lefticontxt1-1.png');
+}
+#\:2>.blocklyTreeRow{
+  background-image:url('media/bian-lefticontxt2-1.png');
+}
+#\:3>.blocklyTreeRow{
+  background-image:url('media/bian-lefticontxt3-1.png');
+}
+#\:4>.blocklyTreeRow{
+  background-image:url('media/bian-lefticontxt4-1.png');
+}
+#mainToolName_Logic,
+#mainToolName_Variable,
+#mainToolName_Move,
 #mainToolName_Custom{
-  position: absolute;
-  top: 89%;
-  left: 4.5%;
-  transform: translate(-50%, -50%);
-  font-size: 17px;
-  color: rgb(255, 140, 0);
-  z-index: 999;
+  display: none;
 }
 
+/* 隐藏 Blockly 自带分类文字，避免与带字切图重叠 */
+.blocklyToolboxDiv .blocklyTreeLabel{
+  display: none !important;
+}
+.blocklyToolboxDiv .blocklyTreeIcon{
+  display: none !important;
+}
 
-
-/*切换鼠标点击返回 运动 控制等的图标颜色 变成白色*/
-/*#\:1>.blocklyTreeSelected>span.blocklyTreeIcon.blocklyTreeIconNone{*/
-  /*background:url('media/return.png') no-repeat center center;*/
-  /*background-size: var(--toolbox-backgroundpercent) var(--toolbox-backgroundpercent);*/
-/*}*/
+/* 选中态：-2 橙色底 */
 #\:1>.blocklyTreeSelected{
-  background:url('media/home2_leftmenu2_2_new.png') no-repeat center center;
-  background-size: var(--toolbox-backgroundpercent) 100%;
+  background-image:url('media/bian-lefticontxt1-2.png');
+  background-size: contain;
 }
 #\:2>.blocklyTreeSelected{
-  background:url('media/home2_leftmenu3_2_new.png') no-repeat center center;
-  background-size: var(--toolbox-backgroundpercent) 100%;
+  background-image:url('media/bian-lefticontxt2-2.png');
+  background-size: contain;
 }
 #\:3>.blocklyTreeSelected{
-  background:url('media/home2_leftmenu1_2_new.png') no-repeat center center;
-  background-size: var(--toolbox-backgroundpercent) 100%;
+  background-image:url('media/bian-lefticontxt3-2.png');
+  background-size: contain;
 }
-
 #\:4>.blocklyTreeSelected{
-  background:url('media/home2_leftmenu4_2_new.png') no-repeat center center;
-  background-size: var(--toolbox-backgroundpercent) 100%;
+  background-image:url('media/bian-lefticontxt4-2.png');
+  background-size: contain;
 }
 
 

@@ -470,15 +470,22 @@ Blockly.Css.CONTENT = [
   '}',
 
   '.blocklyZoom>image {',
-    'opacity: .4;',
+    'opacity: 1;',
   '}',
 
   '.blocklyZoom>image:hover {',
-    'opacity: .6;',
+    'opacity: 1;',
+    'filter: brightness(1.08);',
   '}',
 
   '.blocklyZoom>image:active {',
-    'opacity: .8;',
+    'opacity: 1;',
+    'filter: brightness(1.12);',
+  '}',
+
+  '.blocklyTrash {',
+    'opacity: 1 !important;',
+    'cursor: pointer;',
   '}',
 
   /* Darken flyout scrollbars due to being on a grey background. */
@@ -574,7 +581,7 @@ Blockly.Css.CONTENT = [
   '}',
 
   '.blocklyTreeRow:not(.blocklyTreeSelected):hover {',
-    'background-color: #e4e4e4;',
+    'background-color: transparent;',
   '}',
 
   '.blocklyTreeSeparator {',

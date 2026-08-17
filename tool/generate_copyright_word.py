@@ -17,7 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 ROOT = Path(__file__).resolve().parent.parent
 COPYRIGHT_DIR = ROOT / "docs" / "copyright"
 SOFTWARE_FULL = "领鹏智能机器人上位机软件"
-VERSION = "V1.8.7"
+VERSION = "V2.0.5"
 HEADER_TEXT = f"{SOFTWARE_FULL} {VERSION}"
 
 # 待填写占位符（后续由用户告知后替换或直接在 Word 中填写）
@@ -356,19 +356,24 @@ def build_source_doc(txt_name: str, out_name: str) -> Document:
 
 
 def main():
+    skip_manual = "--skip-manual" in sys.argv
     COPYRIGHT_DIR.mkdir(parents=True, exist_ok=True)
 
     manual_path = COPYRIGHT_DIR / "软件说明书.docx"
     reg_path = COPYRIGHT_DIR / "登记信息表.docx"
 
-    build_manual_doc().save(manual_path)
+    if not skip_manual:
+        build_manual_doc().save(manual_path)
     build_registration_doc().save(reg_path)
 
     front_path = build_source_doc("源程序-前30页.txt", "源程序-前30页.docx")
     back_path = build_source_doc("源程序-后30页.txt", "源程序-后30页.docx")
 
     print("Generated Word documents:")
-    print(f"  {manual_path}")
+    if skip_manual:
+        print(f"  (skipped) {manual_path} — use generate_copyright_manual_with_shots.py")
+    else:
+        print(f"  {manual_path}")
     print(f"  {reg_path}")
     print(f"  {front_path}")
     print(f"  {back_path}")

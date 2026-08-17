@@ -64,6 +64,12 @@ abstract final class ControlAssets {
   static const clearUiOff = '$_cut1/main-righticon5-1.png';
   static const clearUiOn = '$_cut1/main-righticon5-2.png';
 
+  /// 编程页顶栏 AI / 刷新（切图1 `bian-top-icon*`）。
+  static const blocklyAiOff = '$_cut1/bian-top-icon1-1.png';
+  static const blocklyAiOn = '$_cut1/bian-top-icon1-2.png';
+  static const blocklyRefreshOff = '$_cut1/bian-top-icon2-1.png';
+  static const blocklyRefreshOn = '$_cut1/bian-top-icon2-2.png';
+
   static (String on, String off) modeAssets(ControlJogMode mode) =>
       switch (mode) {
         ControlJogMode.continuous => (continuePressed, continueUnpressed),
