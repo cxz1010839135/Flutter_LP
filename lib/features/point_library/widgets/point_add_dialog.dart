@@ -60,8 +60,8 @@ class _PointAddDialogState extends State<PointAddDialog> {
 
   void _submit() {
     final index = int.tryParse(_indexController.text.trim());
-    if (index == null || index < 1) {
-      _showError('请输入有效点编号');
+    if (index == null || index < 0 || index > 999) {
+      _showError('请输入有效点编号（0–999）');
       return;
     }
     final label = _labelController.text.trim();

@@ -71,11 +71,11 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     height: 1.05,
   );
 
-  ControlJogMode _jogMode = ControlJogMode.mediumDistance;
-  int _jointAxisIndex = 0;
-  final _longDistance = TextEditingController(text: '10.0');
-  final _midDistance = TextEditingController(text: '1.0');
-  final _shortDistance = TextEditingController(text: '0.1');
+  late ControlJogMode _jogMode;
+  late int _jointAxisIndex;
+  late final TextEditingController _longDistance;
+  late final TextEditingController _midDistance;
+  late final TextEditingController _shortDistance;
 
   int get _activeAxisIndex =>
       widget.isJointMode ? _jointAxisIndex : widget.axisIndex;
@@ -84,7 +84,24 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
       widget.isJointMode ? 'J${_jointAxisIndex + 1}' : widget.axisLabel;
 
   @override
+  void initState() {
+    super.initState();
+    _jogMode = ControlJogUiState.mode;
+    _jointAxisIndex = ControlJogUiState.jointAxisIndex;
+    _longDistance =
+        TextEditingController(text: ControlJogUiState.longDistance);
+    _midDistance = TextEditingController(text: ControlJogUiState.midDistance);
+    _shortDistance =
+        TextEditingController(text: ControlJogUiState.shortDistance);
+  }
+
+  @override
   void dispose() {
+    ControlJogUiState.mode = _jogMode;
+    ControlJogUiState.jointAxisIndex = _jointAxisIndex;
+    ControlJogUiState.longDistance = _longDistance.text;
+    ControlJogUiState.midDistance = _midDistance.text;
+    ControlJogUiState.shortDistance = _shortDistance.text;
     _longDistance.dispose();
     _midDistance.dispose();
     _shortDistance.dispose();
@@ -174,12 +191,18 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
 
   void _selectMode(ControlJogMode mode) {
     if (_jogMode == mode) return;
-    setState(() => _jogMode = mode);
+    setState(() {
+      _jogMode = mode;
+      ControlJogUiState.mode = mode;
+    });
   }
 
   void _onJointAxisChanged(int index) {
     if (_jointAxisIndex == index) return;
-    setState(() => _jointAxisIndex = index);
+    setState(() {
+      _jointAxisIndex = index;
+      ControlJogUiState.jointAxisIndex = index;
+    });
   }
 
   double _maxSpeed(RobotTelemetry telemetry) {
@@ -200,7 +223,10 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
         if (_jointAxisIndex >= axisCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            setState(() => _jointAxisIndex = axisCount - 1);
+            setState(() {
+              _jointAxisIndex = axisCount - 1;
+              ControlJogUiState.jointAxisIndex = _jointAxisIndex;
+            });
           });
         }
 

@@ -85,3 +85,14 @@ enum ControlJogMode {
   mediumDistance,
   shortDistance,
 }
+
+/// 操控页会话级点动 UI 状态：切到门型 / 直线 / IO 再返回时仍保留选中。
+class ControlJogUiState {
+  ControlJogUiState._();
+
+  static ControlJogMode mode = ControlJogMode.mediumDistance;
+  static int jointAxisIndex = 0;
+  static String longDistance = '10.0';
+  static String midDistance = '1.0';
+  static String shortDistance = '0.1';
+}

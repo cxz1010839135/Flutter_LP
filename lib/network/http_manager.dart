@@ -4,6 +4,7 @@ import '../core/robot_clr_zero_state.dart';
 import '../core/robot_point_library.dart';
 import '../core/robot_state.dart';
 import '../core/robot_telemetry.dart';
+import '../core/robot_types.dart';
 import 'api/robot_http_api_mixin.dart';
 import 'api/robot_http_connect.dart';
 import 'api/robot_http_driver.dart';
@@ -110,12 +111,13 @@ class HttpManager
     var model = '';
     var serial = '';
     var type = 0;
-    final robot = data[RobotApiConstants.robot];
-    if (robot is Map<String, dynamic>) {
+    final robotRaw = data[RobotApiConstants.robot];
+    final robot = robotRaw is Map ? Map<String, dynamic>.from(robotRaw) : null;
+    if (robot != null) {
       model = robot[RobotApiConstants.robotModel]?.toString() ?? '';
       serial = robot[RobotApiConstants.robotSerialNumber]?.toString() ?? '';
-      final t = robot[RobotApiConstants.robotType];
-      if (t is num) type = t.toInt();
+      // 对齐 Android ConnectActivity：协议 type → 内部 RobotType。
+      type = _mapProtocolRobotType(robot[RobotApiConstants.robotType]);
     }
 
     RobotState.instance.setConnected(
@@ -132,8 +134,9 @@ class HttpManager
     }
 
     RobotTelemetry.instance.applyConnectConfig(data);
-    RobotClrZeroState.instance.applyConnectConfig(data);
-    RobotClrZeroState.instance.applyTypeDefaultsIfNeeded();
+    // 对齐 Android ConnectActivity.initAll：
+    // initRobotParam(zeroangle) → initCustomParam(按 type/model 写死覆盖)。
+    RobotClrZeroState.instance.applyFromConnect(data);
     RobotPointLibrary.instance.applyFromConnect(data);
 
     return data;
@@ -167,4 +170,29 @@ class HttpManager
 
   Future<String> invokeRaw(String command, {dynamic data}) =>
       robotCmdRaw(command, data: data);
+
+  /// 对齐 Android [ConnectActivity.initCustomParam] 的 type 映射。
+  static int _mapProtocolRobotType(dynamic raw) {
+    final protocol = switch (raw) {
+      num n => n.toInt(),
+      String s => int.tryParse(s.trim()) ?? 0,
+      _ => 0,
+    };
+    return switch (protocol) {
+      1 => RobotTypes.libot,
+      2 => RobotTypes.scara,
+      3 => RobotTypes.parallelScara,
+      4 => RobotTypes.stack,
+      5 => RobotTypes.delta,
+      6 => RobotTypes.xyTheta,
+      7 => RobotTypes.newStack,
+      8 || 18 || 19 => RobotTypes.maDuo,
+      50 || 51 => RobotTypes.axis5,
+      60 => RobotTypes.axis6,
+      30 => RobotTypes.xyBot,
+      70 => RobotTypes.nslBot,
+      71 => RobotTypes.nsBot,
+      _ => RobotTypes.none,
+    };
+  }
 }

@@ -32,7 +32,7 @@ class _PointLibraryPageState extends State<PointLibraryPage> {
 
   int _suggestNextIndex() {
     final points = RobotPointLibrary.instance.points;
-    if (points.isEmpty) return 1;
+    if (points.isEmpty) return 0;
     return points.map((p) => p.index).reduce((a, b) => a > b ? a : b) + 1;
   }
 

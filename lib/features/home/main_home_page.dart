@@ -74,6 +74,34 @@ class _MainHomePageState extends State<MainHomePage> {
   }
 
   Future<void> _openBlockly() async {
+    // 自动运行中进入编程：对齐 Android 提示，确认后再进。
+    if (RobotTelemetry.instance.isRobotMoving) {
+      final go = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('提示信息'),
+          content: const Text(
+            '请在离线模式编程保存好后再在线进入更换函数，谨慎在线直接修改可能会闪退，是否进入',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('否'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: LpRobotColors.primary,
+              ),
+              child: const Text('是'),
+            ),
+          ],
+        ),
+      );
+      if (go != true || !mounted) return;
+    }
+
     final message = await Navigator.of(context).push<String>(
       MaterialPageRoute<String>(
         // 与 v1.8.9 一致的编程页；route name 供跳过 UniformAppViewport。

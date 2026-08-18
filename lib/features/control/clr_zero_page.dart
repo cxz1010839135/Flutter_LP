@@ -4,12 +4,13 @@ import 'package:flutter/services.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../core/lp_status_log.dart';
+import '../../core/robot_clr_zero_state.dart';
 import '../../core/robot_state.dart';
 import '../../network/http_manager.dart';
 import 'clr_zero_assets.dart';
 import 'clr_zero_axis_config.dart';
 
-/// 界面清零（对齐 Android [ClrZeroActivity]，角度均为输入框）。
+/// 界面清零（对齐 Android [ClrZeroActivity]：有预设的轴用下拉，其余为输入框）。
 class ClrZeroPage extends StatefulWidget {
   const ClrZeroPage({super.key});
 
@@ -31,21 +32,27 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
   final _etGenericAxis = TextEditingController();
   final _etGeneric = TextEditingController();
 
+  late ClrZeroAxisConfig _cfg;
+
   @override
   void initState() {
     super.initState();
+    // 已连接时再跑一遍机型默认覆盖（对齐安卓进页前 _ClrZeroAngle 已是最终值）。
+    if (RobotState.instance.isConnected) {
+      RobotClrZeroState.instance.applyTypeDefaults();
+    }
     _applyConfigDefaults();
   }
 
   void _applyConfigDefaults() {
-    final cfg = ClrZeroAxisConfig.forCurrentRobot();
-    _et0.text = cfg.defaultEt0;
-    _et1.text = cfg.defaultEt1;
-    _et2.text = cfg.defaultEt2;
-    _et3.text = cfg.defaultEt3;
-    _et4.text = cfg.defaultEt4;
-    _et5.text = cfg.defaultEt5;
-    _etGenericAxis.text = cfg.defaultGenericAxis;
+    _cfg = ClrZeroAxisConfig.forCurrentRobot();
+    _et0.text = _cfg.defaultEt0;
+    _et1.text = _cfg.defaultEt1;
+    _et2.text = _cfg.defaultEt2;
+    _et3.text = _cfg.defaultEt3;
+    _et4.text = _cfg.defaultEt4;
+    _et5.text = _cfg.defaultEt5;
+    _etGenericAxis.text = _cfg.defaultGenericAxis;
   }
 
   @override
@@ -111,8 +118,6 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cfg = ClrZeroAxisConfig.forCurrentRobot();
-
     return Scaffold(
       backgroundColor: LpRobotColors.pageBackground,
       body: Column(
@@ -141,19 +146,19 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
                         children: [
                           _AxisRow(
                             title: '1 轴',
-                            field: _angleField(_et0),
+                            field: _angleEditor(_et0, _cfg.presets0),
                             buttonLabel: '1 轴清零',
                             onPressed: _busy ? null : () => _onAxisButton(0),
                           ),
                           _AxisRow(
                             title: '2 轴',
-                            field: _angleField(_et1),
+                            field: _angleEditor(_et1, _cfg.presets1),
                             buttonLabel: '2 轴清零',
                             onPressed: _busy ? null : () => _onAxisButton(1),
                           ),
                           _AxisRow(
                             title: '3 轴',
-                            field: _angleField(_et2),
+                            field: _angleEditor(_et2, _cfg.presets2),
                             buttonLabel: '3 轴清零',
                             onPressed: _busy ? null : () => _onAxisButton(2),
                           ),
@@ -163,14 +168,14 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
                             buttonLabel: '4 轴清零',
                             onPressed: _busy ? null : () => _onAxisButton(3),
                           ),
-                          if (cfg.showAxis5)
+                          if (_cfg.showAxis5)
                             _AxisRow(
                               title: '5 轴',
                               field: _angleField(_et4),
                               buttonLabel: '5 轴清零',
                               onPressed: _busy ? null : () => _onAxisButton(4),
                             ),
-                          if (cfg.showAxis6)
+                          if (_cfg.showAxis6)
                             _AxisRow(
                               title: '6 轴',
                               field: _angleField(_et5),
@@ -206,6 +211,51 @@ class _ClrZeroPageState extends State<ClrZeroPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _angleEditor(TextEditingController controller, List<String> presets) {
+    final items = <String>[];
+    for (final p in presets) {
+      if (p.isEmpty) continue;
+      if (!items.contains(p)) items.add(p);
+    }
+    if (items.length <= 1) {
+      return _angleField(controller);
+    }
+    // 前面可输入，右侧箭头弹出预设（对齐安卓「输入框 + 下拉选项」习惯）。
+    return TextField(
+      controller: controller,
+      enabled: !_busy,
+      keyboardType: const TextInputType.numberWithOptions(
+        signed: true,
+        decimal: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
+      ],
+      decoration: InputDecoration(
+        hintText: '角度',
+        isDense: true,
+        suffixIcon: PopupMenuButton<String>(
+          tooltip: '选择预设',
+          padding: EdgeInsets.zero,
+          icon: const Icon(Icons.arrow_drop_down),
+          enabled: !_busy,
+          onSelected: (v) => setState(() => controller.text = v),
+          itemBuilder: (context) => [
+            for (final p in items)
+              PopupMenuItem<String>(
+                value: p,
+                child: Text(p),
+              ),
+          ],
+        ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 36,
+        ),
       ),
     );
   }

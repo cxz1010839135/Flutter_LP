@@ -18,7 +18,8 @@ class ControlCenterPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (section.showsJogPanel) {
-      // 共用同一 State：切换 X/Y/Z/关节时保留连续/长/中/短选中，避免回到「连续」。
+      // 共用同一 State：切换 X/Y/Z/关节时保留连续/长/中/短；
+      // 切出门型/直线/IO 后再回来由 ControlJogUiState 恢复。
       return ControlAxisJogPanel(
         key: const ValueKey('control-jog'),
         section: section,
@@ -28,8 +29,9 @@ class ControlCenterPanel extends StatelessWidget {
     }
 
     if (section.showsMovePanel) {
+      // 门型 ↔ 直线共用 State，保留目标点 / 避障高度 / 速度等选择。
       return ControlMovePanel(
-        key: ValueKey(section.controlIndex),
+        key: const ValueKey('control-move'),
         section: section,
       );
     }
