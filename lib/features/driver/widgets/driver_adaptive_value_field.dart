@@ -1,9 +1,16 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../driver_ui_style.dart';
+import 'driver_numeric_input_dialog.dart';
 
-/// 数值框：失焦后按框宽自动缩放字号（同监测区「校验计数」效果）；聚焦时可正常编辑。
+/// 数值框：失焦后按框宽自动缩放字号（同监测区「校验计数」效果）。
+///
+/// Android：弹窗数字键盘，不唤起系统 IME（老平板 adjustPan 会把整页顶上去）。
+/// Windows/其它：点击后行内 TextField 编辑。
 class DriverAdaptiveValueField extends StatefulWidget {
   const DriverAdaptiveValueField({
     super.key,
@@ -16,6 +23,7 @@ class DriverAdaptiveValueField extends StatefulWidget {
     this.style,
     this.decoration,
     this.minFontSize = 11,
+    this.dialogTitle,
   });
 
   final String value;
@@ -27,6 +35,10 @@ class DriverAdaptiveValueField extends StatefulWidget {
   final TextStyle? style;
   final InputDecoration? decoration;
   final double minFontSize;
+  final String? dialogTitle;
+
+  static bool get _useAndroidNumericDialog =>
+      !kIsWeb && Platform.isAndroid;
 
   @override
   State<DriverAdaptiveValueField> createState() =>
@@ -45,7 +57,11 @@ class _DriverAdaptiveValueFieldState extends State<DriverAdaptiveValueField> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.value);
-    _focusNode = FocusNode()..addListener(_onFocusChanged);
+    if (!DriverAdaptiveValueField._useAndroidNumericDialog) {
+      _focusNode = FocusNode()..addListener(_onFocusChanged);
+    } else {
+      _focusNode = FocusNode();
+    }
   }
 
   void _onFocusChanged() {
@@ -57,20 +73,48 @@ class _DriverAdaptiveValueFieldState extends State<DriverAdaptiveValueField> {
   @override
   void didUpdateWidget(covariant DriverAdaptiveValueField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_focused &&
-        oldWidget.value != widget.value &&
-        _controller.text != widget.value) {
-      _controller.text = widget.value;
+    if (oldWidget.value == widget.value) return;
+    if (_controller.text == widget.value) return;
+    _controller.value = TextEditingValue(
+      text: widget.value,
+      selection: TextSelection.collapsed(offset: widget.value.length),
+    );
+    if (_focused) {
+      _focusNode.unfocus();
+      setState(() => _focused = false);
     }
   }
 
   @override
   void dispose() {
-    _focusNode
-      ..removeListener(_onFocusChanged)
-      ..dispose();
+    if (!DriverAdaptiveValueField._useAndroidNumericDialog) {
+      _focusNode.removeListener(_onFocusChanged);
+    }
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _openAndroidDialog() async {
+    if (!widget.enabled) return;
+    final result = await showDriverNumericInputDialog(
+      context: context,
+      initialValue: _controller.text,
+      title: widget.dialogTitle ?? '输入数值',
+      signed: widget.signed,
+      decimal: widget.decimal,
+    );
+    if (result == null || !mounted) return;
+    _controller.text = result;
+    widget.onChanged(result);
+    setState(() {});
+  }
+
+  void _startInlineEdit() {
+    setState(() => _focused = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   List<TextInputFormatter> get _formatters {
@@ -87,6 +131,50 @@ class _DriverAdaptiveValueFieldState extends State<DriverAdaptiveValueField> {
     return [FilteringTextInputFormatter.digitsOnly];
   }
 
+  Widget _buildDisplayBox({
+    required InputDecoration decoration,
+    required VoidCallback? onTap,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: decoration.fillColor ?? Colors.white,
+        borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
+        border: Border.all(
+          color: widget.enabled
+              ? DriverUiStyle.boxBorderStrong
+              : const Color(0xFFD0C4B8),
+          width: DriverUiStyle.boxBorderWidth,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _controller.text.isEmpty ? ' ' : _controller.text,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: widget.textAlign,
+                  style: _baseStyle.copyWith(
+                    color: widget.enabled
+                        ? _baseStyle.color
+                        : _baseStyle.color?.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final decoration = (widget.decoration ??
@@ -98,56 +186,21 @@ class _DriverAdaptiveValueFieldState extends State<DriverAdaptiveValueField> {
           const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
     );
 
-    // 失焦：FittedBox 自适应显示（与校验计数一致）
-    if (!_focused) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: decoration.fillColor ?? Colors.white,
-          borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
-          border: Border.all(
-            color: widget.enabled
-                ? DriverUiStyle.boxBorderStrong
-                : const Color(0xFFD0C4B8),
-            width: DriverUiStyle.boxBorderWidth,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: widget.enabled
-                ? () {
-                    setState(() => _focused = true);
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) _focusNode.requestFocus();
-                    });
-                  }
-                : null,
-            borderRadius: BorderRadius.circular(DriverUiStyle.boxRadius),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    _controller.text.isEmpty ? ' ' : _controller.text,
-                    maxLines: 1,
-                    softWrap: false,
-                    textAlign: widget.textAlign,
-                    style: _baseStyle.copyWith(
-                      color: widget.enabled
-                          ? _baseStyle.color
-                          : _baseStyle.color?.withValues(alpha: 0.45),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+    // Android：始终显示为可点数值框，弹窗输入，不弹系统键盘。
+    if (DriverAdaptiveValueField._useAndroidNumericDialog) {
+      return _buildDisplayBox(
+        decoration: decoration,
+        onTap: widget.enabled ? _openAndroidDialog : null,
       );
     }
 
-    // 聚焦：可编辑；仍按宽度缩放字号，避免大数字顶出
+    if (!_focused) {
+      return _buildDisplayBox(
+        decoration: decoration,
+        onTap: widget.enabled ? _startInlineEdit : null,
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth.isFinite

@@ -213,6 +213,7 @@ class DriverParamColumn extends StatelessWidget {
       children: [
         for (final def in defs)
           DriverParamField(
+            key: ValueKey(def.key),
             def: def,
             value: model.get(def.key),
             onChanged: (v) => onFieldChanged(def.key, v),
@@ -280,6 +281,7 @@ class DriverGainColumn extends StatelessWidget {
       children: [
         for (final def in defs)
           DriverParamField(
+            key: ValueKey(def.key),
             def: def,
             value: model.get(def.key),
             onChanged: (v) => onFieldChanged(def.key, v),

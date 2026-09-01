@@ -46,8 +46,13 @@ class LpUniformAppViewport extends StatelessWidget {
                 width: designWidth,
                 height: designHeight,
                 child: MediaQuery(
+                  // 设计稿坐标系下清空 viewInsets：
+                  // 外层物理键盘高度若原样传入，会在 1280×720 里被当成设计像素垫高，
+                  // 与 FittedBox + Android adjustPan 叠加重算，底部输入更易被挡。
+                  // 键盘避让交给系统 adjustPan + 输入框 ensureVisible。
                   data: MediaQuery.of(context).copyWith(
                     size: Size(designWidth, designHeight),
+                    viewInsets: EdgeInsets.zero,
                   ),
                   child: child,
                 ),

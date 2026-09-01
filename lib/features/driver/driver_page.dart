@@ -213,6 +213,28 @@ class _DriverPageState extends State<DriverPage>
     _readDriverParams();
   }
 
+  /// 电机/增益/安全页签切换：按设计丢弃当前页未写入的修改，直接重读驱动参数。
+  void _onMotorTabChanged(int tab) {
+    if (tab == _motorTab) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _motorTab = tab);
+    _readDriverParams();
+  }
+
+  void _onGainTabChanged(int tab) {
+    if (tab == _gainTab) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _gainTab = tab);
+    _readDriverParams();
+  }
+
+  void _onSafeTabChanged(int tab) {
+    if (tab == _safeTab) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _safeTab = tab);
+    _readDriverParams();
+  }
+
   Future<void> _readDriver() => _readDriverParams(showSuccess: true);
 
   String _modelField(String key, {String fallback = '0'}) {
@@ -601,12 +623,17 @@ class _DriverPageState extends State<DriverPage>
       },
       child: Scaffold(
         backgroundColor: DriverUiStyle.pageBackground,
+        // 安卓原版 DriverActivity 默认 adjustPan；避让由系统上推 + 输入框 ensureVisible。
+        resizeToAvoidBottomInset: false,
         // 缩放由 MaterialApp 全局 LpUniformAppViewport 统一处理。
-        body: DefaultTextStyle.merge(
-          style: DriverUiStyle.pageLabelStyle,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: DefaultTextStyle.merge(
+            style: DriverUiStyle.pageLabelStyle,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               DriverTitleBar(
                 title: _tabTitles[_tabController.index],
                 onBack: _exitPage,
@@ -616,9 +643,12 @@ class _DriverPageState extends State<DriverPage>
                 currentMaxLimit: _currentMaxLimit,
                 speedMaxLimit: _speedMaxLimit,
                 posErrMaxLimit: _posErrMaxLimit,
-                onCurrentMaxLimitChanged: (v) => _currentMaxLimit = v,
-                onSpeedMaxLimitChanged: (v) => _speedMaxLimit = v,
-                onPosErrMaxLimitChanged: (v) => _posErrMaxLimit = v,
+                onCurrentMaxLimitChanged: (v) =>
+                    setState(() => _currentMaxLimit = v),
+                onSpeedMaxLimitChanged: (v) =>
+                    setState(() => _speedMaxLimit = v),
+                onPosErrMaxLimitChanged: (v) =>
+                    setState(() => _posErrMaxLimit = v),
                 onAddressDebug: _openAddressDebug,
               ),
               Expanded(
@@ -654,17 +684,17 @@ class _DriverPageState extends State<DriverPage>
                                       gainTab: _gainTab,
                                       safeTab: _safeTab,
                                       busy: _busy,
-                                      onMotorTabChanged: (v) =>
-                                          setState(() => _motorTab = v),
-                                      onGainTabChanged: (v) =>
-                                          setState(() => _gainTab = v),
-                                      onSafeTabChanged: (v) =>
-                                          setState(() => _safeTab = v),
+                                      onMotorTabChanged: _onMotorTabChanged,
+                                      onGainTabChanged: _onGainTabChanged,
+                                      onSafeTabChanged: _onSafeTabChanged,
                                       onFieldChanged: _onParamFieldChanged,
                                     ),
                                     DriverWaveformPanel(
                                       series: _waveSeries,
                                       loading: _waveLoading,
+                                      currentMaxLimit: _currentMaxLimit,
+                                      speedMaxLimit: _speedMaxLimit,
+                                      posErrMaxLimit: _posErrMaxLimit,
                                     ),
                                   ],
                                 ),
@@ -676,6 +706,7 @@ class _DriverPageState extends State<DriverPage>
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -730,17 +761,17 @@ class _DriverPageState extends State<DriverPage>
                       gainTab: _gainTab,
                       safeTab: _safeTab,
                       busy: _busy,
-                      onMotorTabChanged: (v) =>
-                          setState(() => _motorTab = v),
-                      onGainTabChanged: (v) =>
-                          setState(() => _gainTab = v),
-                      onSafeTabChanged: (v) =>
-                          setState(() => _safeTab = v),
+                      onMotorTabChanged: _onMotorTabChanged,
+                      onGainTabChanged: _onGainTabChanged,
+                      onSafeTabChanged: _onSafeTabChanged,
                       onFieldChanged: _onParamFieldChanged,
                     ),
                     DriverWaveformPanel(
                       series: _waveSeries,
                       loading: _waveLoading,
+                      currentMaxLimit: _currentMaxLimit,
+                      speedMaxLimit: _speedMaxLimit,
+                      posErrMaxLimit: _posErrMaxLimit,
                     ),
                   ],
                 ),
@@ -796,9 +827,9 @@ class _DriverPageState extends State<DriverPage>
                 loopMove: _loopMove,
                 busy: _busy,
                 onAxisChanged: _onAxisChanged,
-                onMotorTabChanged: (v) => setState(() => _motorTab = v),
-                onGainTabChanged: (v) => setState(() => _gainTab = v),
-                onSafeTabChanged: (v) => setState(() => _safeTab = v),
+                onMotorTabChanged: _onMotorTabChanged,
+                onGainTabChanged: _onGainTabChanged,
+                onSafeTabChanged: _onSafeTabChanged,
                 onFieldChanged: _onParamFieldChanged,
                 onControlModeChanged: (v) =>
                     _onParamFieldChanged('control_mode', v),
