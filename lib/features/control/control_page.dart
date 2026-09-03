@@ -23,9 +23,8 @@ class ControlPage extends StatefulWidget {
 }
 
 class _ControlPageState extends State<ControlPage> {
-  /// 默认进入：左侧保留 X，右侧选中「关节」（两侧同时高亮），点动模式默认中距离。
+  /// 左右导航互斥单选；默认右侧「关节」。
   ControlSection _section = ControlSection.joint;
-  ControlSection _lastLeftSection = ControlSection.cartesianX;
 
   @override
   void initState() {
@@ -35,10 +34,7 @@ class _ControlPageState extends State<ControlPage> {
 
   void _selectSection(ControlSection section) {
     if (_section == section) return;
-    setState(() {
-      _section = section;
-      if (section.isLeftNav) _lastLeftSection = section;
-    });
+    setState(() => _section = section);
   }
 
   void _onPointEdit() {
@@ -74,9 +70,7 @@ class _ControlPageState extends State<ControlPage> {
                     Expanded(
                       flex: 6,
                       child: ControlNavRail(
-                        selected: _section.isLeftNav
-                            ? _section
-                            : _lastLeftSection,
+                        selected: _section.isLeftNav ? _section : null,
                         onSelected: _selectSection,
                       ),
                     ),

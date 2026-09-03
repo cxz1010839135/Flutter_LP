@@ -11,6 +11,7 @@ class ControlModeTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.distanceController,
+    this.distanceFocus,
     this.bracketScale = 1.0,
   });
 
@@ -18,6 +19,7 @@ class ControlModeTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final TextEditingController? distanceController;
+  final FocusNode? distanceFocus;
   final double bracketScale;
 
   /// 对齐图1 暖米色（避免偏灰冷色）。
@@ -41,6 +43,7 @@ class ControlModeTile extends StatelessWidget {
           width: constraints.maxWidth,
           height: constraints.maxHeight,
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: onTap,
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -124,38 +127,44 @@ class ControlModeTile extends StatelessWidget {
   }
 
   Widget _distanceField(Color textColor, {required double fontSize}) {
+    // 未选中时拦截输入框点击，整格只走 onTap，保证四个模式互斥。
     // 全局 Theme 的 OutlineInputBorder 会盖过来，必须逐项关掉。
-    return TextField(
-      controller: distanceController,
-      textAlign: TextAlign.center,
-      keyboardType: const TextInputType.numberWithOptions(
-        decimal: true,
-        signed: true,
+    return IgnorePointer(
+      ignoring: !selected,
+      child: TextField(
+        controller: distanceController,
+        focusNode: distanceFocus,
+        readOnly: !selected,
+        enableInteractiveSelection: selected,
+        textAlign: TextAlign.center,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+          signed: true,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
+        ],
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+          height: 1.15,
+        ),
+        cursorColor: textColor,
+        decoration: const InputDecoration(
+          isDense: true,
+          isCollapsed: true,
+          contentPadding: EdgeInsets.zero,
+          filled: false,
+          fillColor: Colors.transparent,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+        ),
       ),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
-      ],
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w800,
-        color: textColor,
-        height: 1.15,
-      ),
-      cursorColor: textColor,
-      decoration: const InputDecoration(
-        isDense: true,
-        isCollapsed: true,
-        contentPadding: EdgeInsets.zero,
-        filled: false,
-        fillColor: Colors.transparent,
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        disabledBorder: InputBorder.none,
-        errorBorder: InputBorder.none,
-        focusedErrorBorder: InputBorder.none,
-      ),
-      onTap: onTap,
     );
   }
 }

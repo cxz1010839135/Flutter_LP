@@ -76,6 +76,12 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   late final TextEditingController _longDistance;
   late final TextEditingController _midDistance;
   late final TextEditingController _shortDistance;
+  late final FocusNode _longFocus;
+  late final FocusNode _midFocus;
+  late final FocusNode _shortFocus;
+
+  /// 连续点动：按下为 true，松开为 false；用于 start/stop 竞态与 dispose 补停。
+  bool _continuousJogHeld = false;
 
   int get _activeAxisIndex =>
       widget.isJointMode ? _jointAxisIndex : widget.axisIndex;
@@ -93,10 +99,21 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     _midDistance = TextEditingController(text: ControlJogUiState.midDistance);
     _shortDistance =
         TextEditingController(text: ControlJogUiState.shortDistance);
+    _longFocus = FocusNode();
+    _midFocus = FocusNode();
+    _shortFocus = FocusNode();
   }
 
   @override
   void dispose() {
+    if (_continuousJogHeld && RobotState.instance.isConnected) {
+      unawaited(
+        ControlJogMotion.stopContinuousJog(
+          isJoint: widget.isJointMode,
+          axisIndex: _activeAxisIndex,
+        ),
+      );
+    }
     ControlJogUiState.mode = _jogMode;
     ControlJogUiState.jointAxisIndex = _jointAxisIndex;
     ControlJogUiState.longDistance = _longDistance.text;
@@ -105,6 +122,9 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     _longDistance.dispose();
     _midDistance.dispose();
     _shortDistance.dispose();
+    _longFocus.dispose();
+    _midFocus.dispose();
+    _shortFocus.dispose();
     super.dispose();
   }
 
@@ -128,26 +148,15 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     }
     if (_jogMode != ControlJogMode.continuous) return;
 
-    unawaited(_runJog(
-      () => ControlJogMotion.startContinuousJog(
-        isJoint: widget.isJointMode,
-        axisIndex: _activeAxisIndex,
-        direction: direction,
-      ),
-      '$_activeAxisLabel 连续点动 ${direction > 0 ? '+' : '-'}',
-    ));
+    _continuousJogHeld = true;
+    unawaited(_startContinuousJog(direction));
   }
 
   void _onJogPressEnd(int direction) {
     if (!RobotState.instance.isConnected) return;
     if (_jogMode == ControlJogMode.continuous) {
-      unawaited(_runJog(
-        () => ControlJogMotion.stopContinuousJog(
-          isJoint: widget.isJointMode,
-          axisIndex: _activeAxisIndex,
-        ),
-        null,
-      ));
+      _continuousJogHeld = false;
+      unawaited(_stopContinuousJog());
       return;
     }
 
@@ -173,6 +182,46 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
     ));
   }
 
+  Future<void> _startContinuousJog(int direction) async {
+    if (!_continuousJogHeld) return;
+    try {
+      await ControlJogMotion.startContinuousJog(
+        isJoint: widget.isJointMode,
+        axisIndex: _activeAxisIndex,
+        direction: direction,
+      );
+      // 快速点按：start 返回前已松开，需补发 stop。
+      if (!_continuousJogHeld) {
+        await ControlJogMotion.stopContinuousJog(
+          isJoint: widget.isJointMode,
+          axisIndex: _activeAxisIndex,
+        );
+        return;
+      }
+      LpStatusLog.instance.info(
+        '$_activeAxisLabel 连续点动 ${direction > 0 ? '+' : '-'}',
+      );
+    } catch (e) {
+      _continuousJogHeld = false;
+      if (mounted) {
+        LpStatusLog.instance.warning('点动失败：$e');
+      }
+    }
+  }
+
+  Future<void> _stopContinuousJog() async {
+    try {
+      await ControlJogMotion.stopContinuousJog(
+        isJoint: widget.isJointMode,
+        axisIndex: _activeAxisIndex,
+      );
+    } catch (e) {
+      if (mounted) {
+        LpStatusLog.instance.warning('停止点动失败：$e');
+      }
+    }
+  }
+
   Future<void> _runJog(
     Future<void> Function() action,
     String? successLog,
@@ -190,11 +239,25 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   }
 
   void _selectMode(ControlJogMode mode) {
-    if (_jogMode == mode) return;
-    setState(() {
-      _jogMode = mode;
-      ControlJogUiState.mode = mode;
-    });
+    if (_jogMode != mode) {
+      setState(() {
+        _jogMode = mode;
+        ControlJogUiState.mode = mode;
+      });
+    }
+    _unfocusOtherDistanceFields(mode);
+  }
+
+  void _unfocusOtherDistanceFields(ControlJogMode mode) {
+    if (mode != ControlJogMode.longDistance && _longFocus.hasFocus) {
+      _longFocus.unfocus();
+    }
+    if (mode != ControlJogMode.mediumDistance && _midFocus.hasFocus) {
+      _midFocus.unfocus();
+    }
+    if (mode != ControlJogMode.shortDistance && _shortFocus.hasFocus) {
+      _shortFocus.unfocus();
+    }
   }
 
   void _onJointAxisChanged(int index) {
@@ -483,6 +546,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                         child: _modeTile(
                           ControlJogMode.longDistance,
                           controller: _longDistance,
+                          focusNode: _longFocus,
                           bracketScale: 1.0,
                         ),
                       ),
@@ -491,6 +555,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                         child: _modeTile(
                           ControlJogMode.mediumDistance,
                           controller: _midDistance,
+                          focusNode: _midFocus,
                           bracketScale: 0.72,
                         ),
                       ),
@@ -499,6 +564,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
                         child: _modeTile(
                           ControlJogMode.shortDistance,
                           controller: _shortDistance,
+                          focusNode: _shortFocus,
                           bracketScale: 0.42,
                         ),
                       ),
@@ -516,6 +582,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
   Widget _modeTile(
     ControlJogMode mode, {
     TextEditingController? controller,
+    FocusNode? focusNode,
     double bracketScale = 1.0,
   }) {
     final selected = _jogMode == mode;
@@ -530,6 +597,7 @@ class _ControlAxisJogPanelState extends State<ControlAxisJogPanel> {
       label: label,
       selected: selected,
       distanceController: controller,
+      distanceFocus: focusNode,
       bracketScale: bracketScale,
       onTap: () => _selectMode(mode),
     );

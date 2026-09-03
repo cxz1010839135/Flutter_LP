@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
+import android.os.Build
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,16 +25,64 @@ object RobotWifiHttp {
     @Volatile
     private var wifiClient: OkHttpClient? = null
 
+    fun isWifiConnected(context: Context): Boolean {
+        return try {
+            val cm =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            findWifiNetwork(cm) != null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun currentWifiSsid(context: Context): String {
         return try {
+            val fromTransport = ssidFromTransport(context)
+            if (fromTransport.isNotEmpty()) return fromTransport
             @Suppress("DEPRECATION")
             val wm =
                 context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val raw = wm.connectionInfo?.ssid ?: ""
-            raw.trim('"')
+            val fromManager = sanitizeSsid(wm.connectionInfo?.ssid)
+            if (fromManager.isNotEmpty()) return fromManager
+            ssidFromNetworkInfo(context)
         } catch (_: Exception) {
             ""
         }
+    }
+
+    private fun ssidFromTransport(context: Context): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return ""
+        val cm =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        for (network in cm.allNetworks) {
+            val caps = cm.getNetworkCapabilities(network) ?: continue
+            if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) continue
+            val info = caps.transportInfo as? WifiInfo ?: continue
+            val ssid = sanitizeSsid(info.ssid)
+            if (ssid.isNotEmpty()) return ssid
+        }
+        return ""
+    }
+
+    @Suppress("DEPRECATION")
+    private fun ssidFromNetworkInfo(context: Context): String {
+        val cm =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val info = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI)
+        return sanitizeSsid(info?.extraInfo)
+    }
+
+    private fun sanitizeSsid(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        val s = raw.trim().trim('"')
+        if (s.isEmpty() ||
+            s.equals("<unknown ssid>", ignoreCase = true) ||
+            s.equals("<none>", ignoreCase = true) ||
+            s == "0x"
+        ) {
+            return ""
+        }
+        return s
     }
 
     fun ensureWifiBound(context: Context): Boolean {

@@ -40,6 +40,27 @@ class AndroidWifiNetworkBinder {
     }
   }
 
+  /// 当前是否有已连接的 Wi‑Fi（不依赖 SSID 权限）。
+  static Future<bool> isWifiConnected() async {
+    if (!isAndroid) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isWifiConnected') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 申请读取 SSID 所需权限（Android 13+ 附近设备 / 更低版本定位）。
+  static Future<bool> ensureSsidPermission() async {
+    if (!isAndroid) return true;
+    try {
+      return await _channel.invokeMethod<bool>('ensureWifiSsidPermission') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 原生 OkHttp POST，强制走已绑定的 Wi‑Fi（与老版 HttpManager.postJson 一致）。
   static Future<String> httpPost({
     required String url,

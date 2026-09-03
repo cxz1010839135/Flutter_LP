@@ -124,7 +124,9 @@ class LpRobotApp extends StatelessWidget {
           valueListenable: lpBlocklyRouteActive,
           builder: (context, isBlockly, _) {
             final viewport = isBlockly
-                ? child
+                ? (Platform.isAndroid
+                    ? SafeArea(child: child)
+                    : child)
                 : LpUniformAppViewport(
                     designWidth: LpUiScale.designWidth,
                     designHeight: LpUiScale.designHeight,

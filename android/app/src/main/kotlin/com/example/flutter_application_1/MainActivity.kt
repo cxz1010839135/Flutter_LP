@@ -15,6 +15,9 @@ import android.view.View
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -30,11 +33,13 @@ class MainActivity : FlutterActivity() {
         private const val STORAGE_CHANNEL = "com.lstech.lprobot/storage"
         private const val REQ_MANAGE_STORAGE = 4101
         private const val REQ_LEGACY_STORAGE = 4102
+        private const val REQ_WIFI_SSID = 4103
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ioExecutor = Executors.newCachedThreadPool()
     private var pendingStorageResult: MethodChannel.Result? = null
+    private var pendingWifiSsidResult: MethodChannel.Result? = null
     private var awaitingStorageSettings = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +75,12 @@ class MainActivity : FlutterActivity() {
                     }
                     "getWifiSsid" -> {
                         result.success(RobotWifiHttp.currentWifiSsid(applicationContext))
+                    }
+                    "isWifiConnected" -> {
+                        result.success(RobotWifiHttp.isWifiConnected(applicationContext))
+                    }
+                    "ensureWifiSsidPermission" -> {
+                        ensureWifiSsidPermission(result)
                     }
                     "httpPost" -> {
                         val url = call.argument<String>("url")
@@ -182,6 +193,44 @@ class MainActivity : FlutterActivity() {
         pendingStorageResult = null
     }
 
+    private fun ssidPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.NEARBY_WIFI_DEVICES,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
+        }
+    }
+
+    private fun hasSsidPermission(): Boolean {
+        return ssidPermissions().any {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun ensureWifiSsidPermission(result: MethodChannel.Result) {
+        if (hasSsidPermission()) {
+            result.success(true)
+            return
+        }
+        if (pendingWifiSsidResult != null) {
+            pendingWifiSsidResult?.success(hasSsidPermission())
+            pendingWifiSsidResult = null
+        }
+        pendingWifiSsidResult = result
+        ActivityCompat.requestPermissions(this, ssidPermissions(), REQ_WIFI_SSID)
+    }
+
+    private fun finishPendingWifiSsid(granted: Boolean) {
+        pendingWifiSsidResult?.success(granted)
+        pendingWifiSsidResult = null
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
@@ -199,6 +248,8 @@ class MainActivity : FlutterActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_LEGACY_STORAGE) {
             finishPendingStorage(hasAllFilesAccess())
+        } else if (requestCode == REQ_WIFI_SSID) {
+            finishPendingWifiSsid(hasSsidPermission())
         }
     }
 
@@ -222,18 +273,29 @@ class MainActivity : FlutterActivity() {
         RobotWifiHttp.unbind(applicationContext)
         awaitingStorageSettings = false
         pendingStorageResult = null
+        pendingWifiSsidResult = null
         super.onDestroy()
     }
 
-    @Suppress("DEPRECATION")
+    /**
+     * 沉浸隐藏系统栏，但不在导航栏区域做 layout（去掉 LAYOUT_HIDE_NAVIGATION）。
+     * 部分平板虚拟键无法常隐时，Flutter 仍能收到正确 viewPadding，底部不被遮挡。
+     */
     private fun hideSystemUi() {
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            )
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller?.let {
+            it.hide(WindowInsetsCompat.Type.systemBars())
+            it.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                )
+        }
     }
 }

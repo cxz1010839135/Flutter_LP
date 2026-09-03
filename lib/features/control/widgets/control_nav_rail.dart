@@ -13,7 +13,7 @@ class ControlNavRail extends StatelessWidget {
     required this.onSelected,
   });
 
-  final ControlSection selected;
+  final ControlSection? selected;
   final ValueChanged<ControlSection> onSelected;
 
   static const _gapFactor = 0.03;

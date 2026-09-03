@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Android 13+：读取当前 Wi‑Fi SSID（连接页标签） -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <!-- 现场联机时保持屏幕常亮（与 Android 原版工控平板习惯一致） -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 

@@ -96,23 +96,33 @@ class _ControlJogImageButtonState extends State<ControlJogImageButton> {
     setState(() => _pressed = value);
   }
 
+  void _onPointerDown(PointerDownEvent event) {
+    _setPressed(true);
+    widget.onPressStart?.call();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (!_pressed) return;
+    _setPressed(false);
+    widget.onPressEnd?.call();
+    widget.onTap?.call();
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (!_pressed) return;
+    _setPressed(false);
+    widget.onPressEnd?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // Listener 比 GestureDetector 更适合 Windows 鼠标：抬起事件会回到按下时的目标，
+    // 即使指针移出按钮区域也能触发 onPressEnd（连续点动松开即停）。
+    return Listener(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) {
-        _setPressed(true);
-        widget.onPressStart?.call();
-      },
-      onTapUp: (_) {
-        _setPressed(false);
-        widget.onPressEnd?.call();
-        widget.onTap?.call();
-      },
-      onTapCancel: () {
-        _setPressed(false);
-        widget.onPressEnd?.call();
-      },
+      onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
       child: SizedBox(
         width: widget.size,
         height: widget.size,

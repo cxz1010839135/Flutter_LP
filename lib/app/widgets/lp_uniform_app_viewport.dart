@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../lp_robot_colors.dart';
@@ -27,39 +29,52 @@ class LpUniformAppViewport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? LpRobotColors.shellBackground;
+    final media = MediaQuery.of(context);
+    // viewPadding：系统栏/虚拟导航键占用（不含键盘）；与 viewInsets 分开处理。
+    final inset = media.viewPadding;
+    final gesture = media.systemGestureInsets;
+    final safePad = EdgeInsets.fromLTRB(
+      math.max(inset.left, gesture.left),
+      math.max(inset.top, gesture.top),
+      math.max(inset.right, gesture.right),
+      math.max(inset.bottom, gesture.bottom),
+    );
 
     return ColoredBox(
       color: bg,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final maxW = constraints.maxWidth;
-          final maxH = constraints.maxHeight;
+      child: Padding(
+        padding: safePad,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxW = constraints.maxWidth;
+            final maxH = constraints.maxHeight;
 
-          return SizedBox(
-            width: maxW,
-            height: maxH,
-            child: FittedBox(
-              fit: fit,
-              alignment: Alignment.center,
-              clipBehavior: Clip.hardEdge,
-              child: SizedBox(
-                width: designWidth,
-                height: designHeight,
-                child: MediaQuery(
-                  // 设计稿坐标系下清空 viewInsets：
-                  // 外层物理键盘高度若原样传入，会在 1280×720 里被当成设计像素垫高，
-                  // 与 FittedBox + Android adjustPan 叠加重算，底部输入更易被挡。
-                  // 键盘避让交给系统 adjustPan + 输入框 ensureVisible。
-                  data: MediaQuery.of(context).copyWith(
-                    size: Size(designWidth, designHeight),
-                    viewInsets: EdgeInsets.zero,
+            return SizedBox(
+              width: maxW,
+              height: maxH,
+              child: FittedBox(
+                fit: fit,
+                alignment: Alignment.center,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: designWidth,
+                  height: designHeight,
+                  child: MediaQuery(
+                    // 设计稿坐标系下清空 viewInsets：
+                    // 外层物理键盘高度若原样传入，会在 1280×720 里被当成设计像素垫高，
+                    // 与 FittedBox + Android adjustPan 叠加重算，底部输入更易被挡。
+                    // 键盘避让交给系统 adjustPan + 输入框 ensureVisible。
+                    data: MediaQuery.of(context).copyWith(
+                      size: Size(designWidth, designHeight),
+                      viewInsets: EdgeInsets.zero,
+                    ),
+                    child: child,
                   ),
-                  child: child,
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

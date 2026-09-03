@@ -13,6 +13,7 @@ import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../network/http_manager.dart';
 import '../../platform/android_wifi_network_binder.dart';
+import '../../platform/local_network_info.dart';
 import '../home/main_home_page.dart';
 
 /// 连接页（切图1 login1，对齐设计稿橙色卡片）
@@ -23,7 +24,7 @@ class ConnectPage extends StatefulWidget {
   State<ConnectPage> createState() => _ConnectPageState();
 }
 
-class _ConnectPageState extends State<ConnectPage> {
+class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
   static const _defaultIp = LocalAppSettings.defaultIp;
 
   /// 设计稿卡片相对 1280×720 视口占比（约 36%×43%），纯色 #FB6401。
@@ -59,19 +60,37 @@ class _ConnectPageState extends State<ConnectPage> {
   final _ipFocus = FocusNode();
   bool _connecting = false;
   String? _connectStatus;
+  String _ipLabel = LocalNetworkInfo.ethernetLabel;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ipFocus.addListener(_onIpFocusChanged);
     if (defaultTargetPlatform == TargetPlatform.android) {
       _ipFocus.onKeyEvent = _onAndroidHardwareKey;
     }
     _loadSavedIp();
+    _refreshNetworkLabel(requestPermission: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showPendingMessage();
       if (mounted) _ipFocus.requestFocus();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNetworkLabel();
+    }
+  }
+
+  Future<void> _refreshNetworkLabel({bool requestPermission = false}) async {
+    final label = await LocalNetworkInfo.connectIpLabel(
+      requestPermission: requestPermission,
+    );
+    if (!mounted || _ipLabel == label) return;
+    setState(() => _ipLabel = label);
   }
 
   /// Android：隐藏软键盘，保留输入连接；逍遥/MEmu 等模拟器走 [onKeyEvent] 接收 PC 键盘。
@@ -184,6 +203,7 @@ class _ConnectPageState extends State<ConnectPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ipFocus.removeListener(_onIpFocusChanged);
     _ipFocus.dispose();
     _ipController.dispose();
@@ -421,7 +441,9 @@ class _ConnectPageState extends State<ConnectPage> {
               left: padH,
               width: contentW,
               child: Text(
-                '控制器IP',
+                _ipLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: LpAppFonts.style(
                   fontSize: labelSize,
                   fontWeight: FontWeight.w600,
