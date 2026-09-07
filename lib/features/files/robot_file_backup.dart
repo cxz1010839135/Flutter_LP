@@ -105,6 +105,8 @@ class RobotFileBackup {
 
   static const legacyBackupFolderName = 'Backup_';
   static const zipSuffix = '.zip';
+  static const _smallFileBytes = 1024 * 1024;
+  static const _chmodExecTimeout = Duration(seconds: 5);
 
   static String defaultBackupName() {
     final now = DateTime.now();
@@ -752,6 +754,8 @@ class RobotFileBackup {
 
       var done = 0;
       final http = HttpManager.instance;
+      final chmodPaths = <String>[];
+
       for (final item in files) {
         final remotePath = item.remoteFullPath;
         onProgress?.call(FileBackupProgress(
@@ -760,20 +764,35 @@ class RobotFileBackup {
           total: files.length,
         ));
         try {
-          try {
-            await http.robotDeleteFileDir(remotePath);
-          } catch (_) {}
+          final size = await item.localFile.length();
+          // 小文件直接覆盖；大固件才短超时预删，避免每条卡 45s 删除。
+          if (size >= _smallFileBytes) {
+            await http.robotDeleteFileDirQuick(remotePath);
+          }
           await http.postFileWithTagForRestore(
             item.localFile,
             item.serverTagPath,
           );
+          if (_needsExecuteBit(remotePath)) {
+            chmodPaths.add(remotePath);
+          }
         } catch (_) {
           // 对齐 Android：失败仍继续
         }
         done += 1;
       }
 
-      await _fixPermissionsAfterRestore(files, onProgress);
+      for (var i = 0; i < chmodPaths.length; i++) {
+        final path = chmodPaths[i];
+        onProgress?.call(FileBackupProgress(
+          message: '修复权限 $path',
+          done: i,
+          total: chmodPaths.length,
+        ));
+        try {
+          await http.robotChmodFile(path, ioTimeout: _chmodExecTimeout);
+        } catch (_) {}
+      }
 
       onProgress?.call(FileBackupProgress(
         message: '恢复完成',
@@ -792,52 +811,10 @@ class RobotFileBackup {
     }
   }
 
-  /// 上传后文件默认权限不足，需 chmod 0777。
-  static Future<void> _fixPermissionsAfterRestore(
-    List<LocalBackupEntry> files,
-    void Function(FileBackupProgress progress)? onProgress,
-  ) async {
-    var needsLlmachine = false;
-    final extraFiles = <String>[];
-
-    for (final item in files) {
-      final full = item.remoteFullPath;
-      if (full.startsWith('/home/llmachine/')) {
-        needsLlmachine = true;
-      } else {
-        extraFiles.add(full);
-      }
-    }
-
-    final steps = (needsLlmachine ? 1 : 0) + extraFiles.length;
-    if (steps == 0) return;
-
-    var step = 0;
-    final http = HttpManager.instance;
-
-    if (needsLlmachine) {
-      onProgress?.call(FileBackupProgress(
-        message: '修复权限 /home/llmachine/（递归）',
-        done: step,
-        total: steps,
-      ));
-      try {
-        await http.robotChmodDir('/home/llmachine/', recursive: true);
-      } catch (_) {}
-      step += 1;
-    }
-
-    for (final path in extraFiles) {
-      onProgress?.call(FileBackupProgress(
-        message: '修复权限 $path',
-        done: step,
-        total: steps,
-      ));
-      try {
-        await http.robotChmodFile(path);
-      } catch (_) {}
-      step += 1;
-    }
+  /// 仅动态库 / 主程序需要 +x；xml/txt/dps 等小文件不必 chmod。
+  static bool _needsExecuteBit(String remotePath) {
+    final name = p.basename(remotePath).toLowerCase();
+    return name.contains('.so') || name == 'll_libot';
   }
 }
 

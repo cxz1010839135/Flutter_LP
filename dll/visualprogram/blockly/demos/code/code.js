@@ -340,6 +340,11 @@ Code.invalidatePreview = function () {
  */
 Code._layoutResizeHandler_ = null;
 
+/** 功能区 / 代码区相对 WebView 边缘的留白（标题在 Flutter 层，这里不动）。 */
+Code.LP_BLOCKLY_INSET_ = 10;
+/** 左侧功能区与右侧代码区之间的间隙。 */
+Code.LP_BLOCKLY_GAP_ = 12;
+
 Code.scheduleLayoutRefresh_ = function () {
   var run = function () {
     try {
@@ -730,17 +735,20 @@ Code.init = function () {
   //跟随浏览器自适应调整大小  begin
   var onresize = function (e) {
     var bBox = Code.getBBox_(container);//获取浏览器的长宽高
+    var inset = Code.LP_BLOCKLY_INSET_ || 0;
+    var innerH = Math.max(0, bBox.height - 2 * inset);
+    var innerW = Math.max(0, bBox.width - 2 * inset);
     for (var i = 0; i < Code.TABS_.length; i++) {
       //设置div content_block 位置以及宽度和高度
       var el = document.getElementById('content_' + Code.TABS_[i]);
-      el.style.top = bBox.y + 'px';//
-      el.style.left = bBox.x + 'px';
+      el.style.top = (bBox.y + inset) + 'px';
+      el.style.left = (bBox.x + inset) + 'px';
       // Height and width need to be set, read back, then set again to
       // compensate for scrollbars.
-      el.style.height = bBox.height + 'px';
-      el.style.height = (2 * bBox.height - el.offsetHeight) + 'px';
-      el.style.width = bBox.width + 'px';
-      el.style.width = (2 * bBox.width - el.offsetWidth) + 'px';
+      el.style.height = innerH + 'px';
+      el.style.height = (2 * innerH - el.offsetHeight) + 'px';
+      el.style.width = innerW + 'px';
+      el.style.width = (2 * innerW - el.offsetWidth) + 'px';
     }
     // Make the 'Blocks' tab line up with the toolbox.
     if (Code.workspace && Code.workspace.toolbox_.width) {
@@ -1028,8 +1036,31 @@ Code.init = function () {
    *  整个toolbox 比例按照 高:宽等于 1:1.5设置
    *  屏幕视野内将toolbox分成8个等份
    */
+  Code.ensureWorkspaceChrome_ = function () {
+    var host = document.querySelector('#content_blocks .injectionDiv') ||
+      document.getElementById('content_blocks');
+    if (!host) {
+      return null;
+    }
+    var chrome = null;
+    var kids = host.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].classList && kids[i].classList.contains('lp-workspace-chrome')) {
+        chrome = kids[i];
+        break;
+      }
+    }
+    if (!chrome) {
+      chrome = document.createElement('div');
+      chrome.className = 'lp-workspace-chrome';
+      host.insertBefore(chrome, host.firstChild);
+    }
+    return chrome;
+  };
+
   Code.relayoutToolboxUi_ = function () {
-    var treerow = document.getElementById('content_area');
+    var treerow = document.getElementById('content_blocks') ||
+      document.getElementById('content_area');
     if (!treerow || !Blockly.CustomConfig) {
       return;
     }
@@ -1037,25 +1068,34 @@ Code.init = function () {
     var iconAspect = 143 / 157;
     var n = Blockly.CustomConfig.BlocklyTreeDivNum;
     var totalH = treerow.offsetHeight;
+    var gap = Code.LP_BLOCKLY_GAP_ || 12;
     var slotH = totalH / n;
     // 槽内图标约占槽高 80%，保持切图宽高比
     var iconH = Math.max(48, Math.round(slotH * 0.8));
     var iconW = Math.round(iconH * iconAspect);
+    var toolboxOuterW = iconW + gap;
+    var toolboxDiv = null;
     var divblocklyToolboxDivs = document.getElementsByClassName('blocklyToolboxDiv');
     if (divblocklyToolboxDivs.length > 0) {
-      divblocklyToolboxDivs[0].style.width = iconW + 'px';
-      divblocklyToolboxDivs[0].style.height = totalH + 'px';
-      divblocklyToolboxDivs[0].style.background = 'transparent';
+      toolboxDiv = divblocklyToolboxDivs[0];
+      toolboxDiv.style.boxSizing = 'border-box';
+      toolboxDiv.style.width = toolboxOuterW + 'px';
+      toolboxDiv.style.height = totalH + 'px';
+      toolboxDiv.style.padding = '0 ' + gap + 'px 0 0';
+      toolboxDiv.style.background = 'transparent';
+      toolboxDiv.style.border = 'none';
+      toolboxDiv.style.boxShadow = 'none';
     }
     var treeRoot = document.querySelector('.blocklyTreeRoot');
     if (treeRoot) {
-      treeRoot.style.background = 'transparent';
-      treeRoot.style.height = totalH + 'px';
+      treeRoot.style.height = '100%';
+      treeRoot.style.width = '100%';
       treeRoot.style.paddingTop = '0';
+      treeRoot.style.boxSizing = 'border-box';
     }
     var catWrap = document.querySelector('.blocklyTreeRoot > div:nth-child(2)');
     if (catWrap) {
-      catWrap.style.height = totalH + 'px';
+      catWrap.style.height = '100%';
       catWrap.style.background = 'transparent';
       catWrap.style.display = 'flex';
       catWrap.style.flexDirection = 'column';
@@ -1074,6 +1114,8 @@ Code.init = function () {
       row.style.flex = '0 0 auto';
       row.style.background = 'transparent';
       row.style.padding = '0';
+      row.style.overflow = 'hidden';
+      row.style.maxWidth = iconW + 'px';
       var treeRow = row.querySelector('.blocklyTreeRow');
       if (treeRow) {
         treeRow.style.width = iconW + 'px';
@@ -1081,6 +1123,10 @@ Code.init = function () {
         treeRow.style.margin = '0';
         treeRow.style.padding = '0';
         treeRow.style.backgroundColor = 'transparent';
+        treeRow.style.float = 'none';
+        treeRow.style.display = 'block';
+        treeRow.style.overflow = 'hidden';
+        treeRow.style.maxWidth = iconW + 'px';
       }
       if (row.firstChild && row.firstChild.childNodes[1]) {
         var spans = row.firstChild.childNodes[1];
@@ -1091,6 +1137,38 @@ Code.init = function () {
       var spanlabel = document.getElementById(':' + (j + 1).toString() + '.label');
       if (spanlabel) {
         spanlabel.style.display = 'none';
+      }
+    }
+
+    var bg = document.querySelector('#content_blocks .blocklyMainBackground');
+    if (bg) {
+      bg.style.setProperty('fill', 'none', 'important');
+      bg.style.setProperty('stroke', 'none', 'important');
+    }
+    var svg = document.querySelector('#content_blocks .blocklySvg');
+    if (svg) {
+      svg.style.backgroundColor = 'transparent';
+    }
+
+    var chrome = Code.ensureWorkspaceChrome_();
+    if (chrome) {
+      var chromeLeft = toolboxDiv ? toolboxDiv.offsetWidth : toolboxOuterW;
+      chrome.style.left = chromeLeft + 'px';
+      chrome.style.top = '0';
+      chrome.style.right = '0';
+      chrome.style.bottom = '0';
+    }
+
+    if (Code.workspace && Code.workspace.toolbox_ && toolboxDiv) {
+      Code.workspace.toolbox_.width = toolboxDiv.offsetWidth;
+    }
+    if (Code.workspace && typeof Code.workspace.resize === 'function' &&
+        !Code._relayoutingWorkspace_) {
+      Code._relayoutingWorkspace_ = true;
+      try {
+        Code.workspace.resize();
+      } finally {
+        Code._relayoutingWorkspace_ = false;
       }
     }
   };
@@ -1152,6 +1230,9 @@ Code.init = function () {
   }
   onresize();
   Blockly.svgResize(Code.workspace);//??????????????????????????????????
+  if (typeof Code.relayoutToolboxUi_ === 'function') {
+    Code.relayoutToolboxUi_();
+  }
   Code.workspace.clear();
   //Code.loadXML("main");
   // Lazy-load the syntax-highlighting.

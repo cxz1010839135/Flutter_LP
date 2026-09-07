@@ -192,18 +192,31 @@ class RobotHttpClient {
   }
 
   /// POST 整包 multipart（仅 [RobotTaggedFileUpload]，禁止 octet-stream）。
-  Future<String> postRawBody(Uri uri, List<int> body, String contentType) {
+  ///
+  /// 小文件：字节发完后最多等 [smallUploadAckWait] 等回包，没回包也立刻下一文件。
+  /// 大文件仍等完整 HTTP 应答（固件写 flash 后再回）。
+  static const smallUploadAckWait = Duration(milliseconds: 500);
+
+  Future<String> postRawBody(
+    Uri uri,
+    List<int> body,
+    String contentType, {
+    Duration? ioTimeoutOverride,
+  }) {
     final lower = contentType.toLowerCase();
     if (!lower.startsWith('multipart/form-data')) {
       throw Exception(
         'postRawBody 仅允许 multipart/form-data，禁止 $contentType（会覆盖主程序）',
       );
     }
+    final small = body.length < 1024 * 1024;
     return _postViaSocket(
       uri,
       body,
       contentType,
-      ioTimeoutOverride: const Duration(seconds: 180),
+      ioTimeoutOverride: ioTimeoutOverride ??
+          (small ? smallUploadAckWait : const Duration(seconds: 180)),
+      ackOptional: small,
     );
   }
 
@@ -239,6 +252,7 @@ class RobotHttpClient {
     String contentType, {
     Duration? connectTimeoutOverride,
     Duration? ioTimeoutOverride,
+    bool ackOptional = false,
   }) async {
     final connectLimit = connectTimeoutOverride ?? connectTimeout;
     final ioLimit = ioTimeoutOverride ?? ioTimeout;
@@ -256,13 +270,15 @@ class RobotHttpClient {
         );
       } catch (e) {
         final msg = e.toString();
-        if (msg.contains('网络不可达') ||
+        final unreachable = msg.contains('网络不可达') ||
             msg.contains('Failed to connect') ||
             msg.contains('ECONNREFUSED') ||
-            msg.contains('ENETUNREACH') ||
-            msg.contains('SocketTimeout') ||
-            msg.contains('timeout') ||
-            msg.contains('Timeout')) {
+            msg.contains('ENETUNREACH');
+        if (ackOptional && !unreachable && _isTimeoutMessage(msg)) {
+          // 字节已发出，驱控不回包也视为本文件传完。
+          return '';
+        }
+        if (unreachable || _isTimeoutMessage(msg)) {
           throw Exception('网络不可达（$msg），请确认已连机器人 Wi‑Fi 且 IP 正确');
         }
         rethrow;
@@ -290,19 +306,84 @@ class RobotHttpClient {
       socket.add(body);
       await socket.flush();
 
-      final raw = await socket
-          .cast<List<int>>()
-          .transform(utf8.decoder)
-          .join()
-          .timeout(ioLimit);
-      return _parseRawHttpResponse(raw, uri);
+      try {
+        final rawBytes = await _readHttpUntilComplete(
+          socket,
+          ioLimit,
+          headerOnlyOk: ackOptional,
+        );
+        if (rawBytes.isEmpty) return '';
+        return _parseRawHttpResponseBytes(rawBytes, uri);
+      } on TimeoutException {
+        if (ackOptional) return '';
+        rethrow;
+      } on HttpException {
+        if (ackOptional) return '';
+        rethrow;
+      }
     } finally {
-      await socket.close();
+      socket.destroy();
     }
   }
 
-  String _parseRawHttpResponse(String raw, Uri uri) {
-    return _parseRawHttpResponseBytes(utf8.encode(raw), uri);
+  static bool _isTimeoutMessage(String msg) {
+    final lower = msg.toLowerCase();
+    return lower.contains('timeout') ||
+        lower.contains('sockettimeout') ||
+        msg.contains('超时');
+  }
+
+  /// 收到完整 HTTP 应答立即返回，不等连接关闭（驱控常不关 socket）。
+  Future<List<int>> _readHttpUntilComplete(
+    Socket socket,
+    Duration limit, {
+    required bool headerOnlyOk,
+  }) {
+    final chunks = <int>[];
+    final done = Completer<List<int>>();
+    late final StreamSubscription<List<int>> sub;
+    final timer = Timer(limit, () {
+      if (!done.isCompleted) {
+        done.completeError(TimeoutException('upload ack'));
+      }
+    });
+
+    sub = socket.listen(
+      (data) {
+        chunks.addAll(data);
+        if (_isCompleteHttpResponse(chunks, headerOnlyOk: headerOnlyOk) &&
+            !done.isCompleted) {
+          done.complete(List<int>.from(chunks));
+        }
+      },
+      onDone: () {
+        if (!done.isCompleted) done.complete(List<int>.from(chunks));
+      },
+      onError: (Object e, StackTrace st) {
+        if (!done.isCompleted) done.completeError(e, st);
+      },
+      cancelOnError: true,
+    );
+
+    return done.future.whenComplete(() {
+      timer.cancel();
+      unawaited(sub.cancel());
+    });
+  }
+
+  bool _isCompleteHttpResponse(List<int> bytes, {required bool headerOnlyOk}) {
+    final sep = _indexOfCrlfCrlf(bytes);
+    if (sep < 0) return false;
+    final headerBlock =
+        utf8.decode(bytes.sublist(0, sep), allowMalformed: true);
+    if (!headerBlock.startsWith('HTTP/')) return false;
+    final body = bytes.sublist(sep + 4);
+    final cl = RegExp(r'content-length:\s*(\d+)', caseSensitive: false)
+        .firstMatch(headerBlock);
+    if (cl != null) {
+      return body.length >= int.parse(cl.group(1)!);
+    }
+    return headerOnlyOk;
   }
 
   String _parseRawHttpResponseBytes(List<int> rawBytes, Uri uri) {

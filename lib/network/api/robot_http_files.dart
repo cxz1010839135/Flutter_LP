@@ -99,17 +99,35 @@ mixin RobotHttpFilesMixin on RobotHttpApiMixin {
     );
   }
 
+  /// 恢复用短超时删除：失败即忽略，避免小文件卡在默认 45s。
+  Future<void> robotDeleteFileDirQuick(String path) async {
+    try {
+      await apiClient.postCommand(
+        apiBaseUrl,
+        RobotCommands.robotDeleteFileDir,
+        data: {RobotApiConstants.dir: path},
+        connectTimeoutOverride: const Duration(seconds: 3),
+        ioTimeoutOverride: const Duration(seconds: 4),
+      );
+    } catch (_) {}
+  }
+
   /// 八进制 0777 的十进制表示（固件 [robotChmod] 使用此值）。
   static const chmodMode777 = 511;
 
-  static const _chmodIoTimeout = Duration(seconds: 90);
+  static const _chmodFileTimeout = Duration(seconds: 20);
+  static const _chmodDirTimeout = Duration(seconds: 90);
 
   /// 单文件 chmod（对齐手动 `chmod 777 <file>`）。
   Future<void> robotChmodFile(
     String filename, {
     int mode = chmodMode777,
+    Duration? ioTimeout,
   }) async {
-    await _robotChmod(data: {RobotApiConstants.filename: filename, 'mode': mode});
+    await _robotChmod(
+      data: {RobotApiConstants.filename: filename, 'mode': mode},
+      ioTimeout: ioTimeout ?? _chmodFileTimeout,
+    );
   }
 
   /// 目录 chmod；[recursive] 为 true 时递归子项（对齐 `chmod -R 777 <dir>`）。
@@ -122,15 +140,18 @@ mixin RobotHttpFilesMixin on RobotHttpApiMixin {
     if (recursive) {
       data['recursive'] = 1;
     }
-    await _robotChmod(data: data);
+    await _robotChmod(data: data, ioTimeout: _chmodDirTimeout);
   }
 
-  Future<void> _robotChmod({required Map<String, dynamic> data}) async {
+  Future<void> _robotChmod({
+    required Map<String, dynamic> data,
+    required Duration ioTimeout,
+  }) async {
     final body = await apiClient.postCommand(
       apiBaseUrl,
       RobotCommands.robotChmod,
       data: data,
-      ioTimeoutOverride: _chmodIoTimeout,
+      ioTimeoutOverride: ioTimeout,
     );
     final trimmed = body.trim();
     if (trimmed.isEmpty) return;

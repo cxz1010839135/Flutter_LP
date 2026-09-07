@@ -2,10 +2,10 @@
 
 领鹏机器人上位机 Flutter 版（自 Android `LPRobot-qrcode_http_1.4.7` 迁移）。
 
-**当前发布**：[领鹏智能 v2.1.2](https://github.com/cxz1010839135/Flutter_LP/releases/tag/v2.1.2)（2026-09-03）
+**当前发布**：[领鹏智能 v2.1.3](https://github.com/cxz1010839135/Flutter_LP/releases/tag/v2.1.3)（2026-09-07）
 
-- 连接页：Wi‑Fi 显示「当前连接WIFI：SSID」，网线显示「控制器IP」
-- 操控页：左右导航与点动模式均为单选
+- 编程页：功能区与代码区分开，顶栏不变
+- 备份恢复：小文件覆盖上传，不再每条卡住删除/权限
 - 安装包见 GitHub Releases：Windows Setup.exe / MSI、Android APK
 
 # 1. 在 flutter run 终端按 q 退出

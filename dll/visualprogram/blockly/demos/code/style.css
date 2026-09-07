@@ -3,7 +3,8 @@ html, body {
 }
 
 body {
-  background-color: #fff;
+  /* 与 Flutter 编程页底色一致，露出功能区 / 代码区之间的间隙 */
+  background-color: #F8F4ED;
   font-family: sans-serif;
   margin: 0;
   overflow: hidden;
@@ -109,10 +110,12 @@ table {
   margin: 0;
   padding: 0;
   border: none;
+  background: transparent;
 }
 td {
   padding: 0;
   vertical-align: top;
+  background: transparent;
 }
 .content {
   visibility: hidden;
@@ -127,6 +130,10 @@ pre.content {
 }
 #content_blocks {
   padding: 0;
+  background: transparent;
+}
+.injectionDiv {
+  background: transparent;
 }
 .blocklySvg {
   border-top: none !important;
@@ -186,6 +193,9 @@ button {
   --CameraLabel-fontcolor:#5d54b5;/*相机 字体颜色*/
   --ProceduresLabel-fontcolor:#944238;/*函数 字体颜色*/
   --toolbox-backgroundpercent:95%;/*toolbox 背景图片所占比例*/
+  --lp-blockly-inset: 10px; /* 功能区 / 代码区相对页面的留白 */
+  --lp-blockly-gap: 12px; /* 功能区与代码区之间的间隙 */
+  --lp-blockly-card-radius: 16px;
 }
 
 .SaveDocDiv{
@@ -515,7 +525,25 @@ button {
 
 
 .blocklySvg{
-  background-color: var(--workspace-backgroundcolor);
+  background-color: transparent !important;
+}
+
+/* 代码区独立底板，与左侧功能区脱开 */
+.lp-workspace-chrome {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: var(--lp-blockly-card-radius);
+  border: 1px solid rgba(255, 126, 26, 0.16);
+  /* 阴影只往右下，避免白边渗进左侧功能区 */
+  box-shadow: 2px 2px 8px rgba(255, 126, 26, 0.08);
+}
+
+.blocklyMainBackground {
+  fill: none !important;
+  stroke: none !important;
 }
 
 .blocklyScrollbarHandle{
@@ -541,27 +569,34 @@ button {
   border-radius: 25px;
 }
 
+/* 功能区不铺整列白底，只显示切图按钮，避免白框从按钮缝里伸进代码区 */
 .blocklyToolboxDiv{
   width: 3%;/*120px*/
-  /*border-right:1px solid var(--toolbox-bordercolor);*/
   border-radius: 0;
-  padding:0;
-  margin:0;
+  padding: 0;
+  margin: 0;
   background: transparent !important;
   background-color: transparent !important;
+  border: none;
+  box-shadow: none;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .blocklyTreeRoot{
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
   padding: 0;
   margin: 0;
   border-radius: 0;
   box-sizing: border-box;
+  overflow: hidden;
   background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
+  border: none;
+  box-shadow: none;
 }
 
 /*.blocklyTreeRow.blocklyHidden{
@@ -632,16 +667,17 @@ button {
   /*margin: 0;*/
 /*}*/
 
-/* 左侧分类：切图 143×157，contain 等比例，不拉伸 */
+/* 左侧分类：切图 143×157，铺满槽位并裁掉两侧多出来的白边 */
 #\:1>.blocklyTreeRow,
 #\:2>.blocklyTreeRow,
 #\:3>.blocklyTreeRow,
 #\:4>.blocklyTreeRow{
   background-repeat: no-repeat;
   background-position: center center;
-  background-size: contain;
-  display: inline-block;
-  float: left;
+  background-size: 100% 100%;
+  display: block;
+  float: none;
+  overflow: hidden;
   height: 100%;
   margin: 0;
 }
@@ -672,22 +708,26 @@ button {
   display: none !important;
 }
 
+.blocklyToolboxDiv .blocklyTreeSeparator{
+  display: none !important;
+}
+
 /* 选中态：-2 橙色底 */
 #\:1>.blocklyTreeSelected{
   background-image:url('media/bian-lefticontxt1-2.png');
-  background-size: contain;
+  background-size: 100% 100%;
 }
 #\:2>.blocklyTreeSelected{
   background-image:url('media/bian-lefticontxt2-2.png');
-  background-size: contain;
+  background-size: 100% 100%;
 }
 #\:3>.blocklyTreeSelected{
   background-image:url('media/bian-lefticontxt3-2.png');
-  background-size: contain;
+  background-size: 100% 100%;
 }
 #\:4>.blocklyTreeSelected{
   background-image:url('media/bian-lefticontxt4-2.png');
-  background-size: contain;
+  background-size: 100% 100%;
 }
 
 
