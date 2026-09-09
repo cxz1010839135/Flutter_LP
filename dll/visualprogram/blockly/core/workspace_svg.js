@@ -697,6 +697,7 @@ Blockly.WorkspaceSvg.prototype.resetDragSurface = function() {
   }
 
   this.isDragSurfaceActive_ = false;
+  this.cachedBlocksBoxDuringDrag_ = null;
 
   var trans = this.workspaceDragSurface_.getSurfaceTranslation();
   this.workspaceDragSurface_.clearAndHide(this.svgGroup_);
@@ -1580,9 +1581,17 @@ Blockly.WorkspaceSvg.getTopLevelWorkspaceMetrics_ = function() {
   var viewWidth = svgSize.width - MARGIN;
   var viewHeight = svgSize.height - MARGIN;
 
-  var blockBox = this.getBlocksBoundingBox();
-
   // Fix scale.
+  var blockBox;
+  if (this.cachedBlocksBoxDuringDrag_) {
+    blockBox = this.cachedBlocksBoxDuringDrag_;
+  } else {
+    blockBox = this.getBlocksBoundingBox();
+    // Workspace pan: freeze content bounds for the drag (avoids O(n) each frame).
+    if (this.isDragSurfaceActive_) {
+      this.cachedBlocksBoxDuringDrag_ = blockBox;
+    }
+  }
   var contentWidth = blockBox.width * this.scale;
   var contentHeight = blockBox.height * this.scale;
   var contentX = blockBox.x * this.scale;

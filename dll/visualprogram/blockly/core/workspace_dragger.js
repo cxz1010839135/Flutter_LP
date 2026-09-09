@@ -122,11 +122,38 @@ Blockly.WorkspaceDragger.prototype.drag = function(currentDragDeltaXY) {
 
 /**
  * Move the scrollbars to drag the workspace.
- * x and y are in pixels.
+ * x and y are in pixels (content scroll offsets for ScrollbarPair.set).
  * @param {number} x The new x position to move the scrollbar to.
  * @param {number} y The new y position to move the scrollbar to.
  * @private
  */
 Blockly.WorkspaceDragger.prototype.updateScroll_ = function(x, y) {
-  this.workspace_.scrollbar.set(x, y);
+  var workspace = this.workspace_;
+  var pair = workspace.scrollbar;
+  if (!pair) {
+    return;
+  }
+
+  // Fast path: reuse metrics from drag start. Avoid getMetrics()/getBlocksBoundingBox()
+  // on every mousemove (O(n) over all top blocks — freezes 10k+ workspaces).
+  var metrics = this.startDragMetrics_;
+  var hScroll = pair.hScroll;
+  var vScroll = pair.vScroll;
+  var hHandlePosition = x * hScroll.ratio_;
+  var vHandlePosition = y * vScroll.ratio_;
+  var xyRatioX = pair.getRatio_(hHandlePosition, hScroll.scrollViewSize_);
+  var xyRatioY = pair.getRatio_(vHandlePosition, vScroll.scrollViewSize_);
+
+  workspace.scrollX = -metrics.contentWidth * xyRatioX - metrics.contentLeft;
+  workspace.scrollY = -metrics.contentHeight * xyRatioY - metrics.contentTop;
+
+  var tx = workspace.scrollX + metrics.absoluteLeft;
+  var ty = workspace.scrollY + metrics.absoluteTop;
+  workspace.translate(tx, ty);
+  if (workspace.grid_) {
+    workspace.grid_.moveTo(tx, ty);
+  }
+
+  hScroll.setHandlePosition(hHandlePosition);
+  vScroll.setHandlePosition(vHandlePosition);
 };

@@ -528,7 +528,7 @@ button {
   background-color: transparent !important;
 }
 
-/* 代码区独立底板，与左侧功能区脱开 */
+/* 代码区独立底板，与左侧功能区脱开（left 由 JS 对齐 toolbox 宽度） */
 .lp-workspace-chrome {
   position: absolute;
   z-index: 0;
@@ -541,9 +541,11 @@ button {
   box-shadow: 2px 2px 8px rgba(255, 126, 26, 0.08);
 }
 
+/* 视觉透明，但必须可命中，否则空白处拖不动工作区（fill:none 不接收鼠标） */
 .blocklyMainBackground {
-  fill: none !important;
+  fill: transparent !important;
   stroke: none !important;
+  pointer-events: all !important;
 }
 
 .blocklyScrollbarHandle{
@@ -569,18 +571,19 @@ button {
   border-radius: 25px;
 }
 
-/* 功能区不铺整列白底，只显示切图按钮，避免白框从按钮缝里伸进代码区 */
+/* 功能区：铺页面底色挡住积木，切图按钮仍透明浮在上面 */
 .blocklyToolboxDiv{
   width: 3%;/*120px*/
   border-radius: 0;
   padding: 0;
   margin: 0;
-  background: transparent !important;
-  background-color: transparent !important;
+  background: #F8F4ED !important;
+  background-color: #F8F4ED !important;
   border: none;
   box-shadow: none;
   box-sizing: border-box;
   overflow: hidden;
+  z-index: 70;
 }
 
 .blocklyTreeRoot{

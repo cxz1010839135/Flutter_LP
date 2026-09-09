@@ -519,6 +519,88 @@ Code.installDragRelayoutFix_ = function () {
 };
 
 /**
+ * 清理 Blockly 拖拽/触摸捕获状态（WebView 隐藏、弹窗打断、触屏笔记本混用时易残留）。
+ * Flutter 侧 WebView 重新显示时也会调用。
+ */
+Code.resetBlocklyDragState_ = function () {
+  try {
+    if (typeof Blockly !== 'undefined' && Blockly.longStop_) {
+      Blockly.longStop_();
+    }
+    if (typeof Blockly !== 'undefined' && Blockly.Touch &&
+        Blockly.Touch.clearTouchIdentifier) {
+      Blockly.Touch.clearTouchIdentifier();
+    }
+    var ws = Code.workspace ||
+        (typeof Blockly !== 'undefined' && Blockly.getMainWorkspace ?
+            Blockly.getMainWorkspace() : null);
+    if (ws && typeof ws.cancelCurrentGesture === 'function') {
+      ws.cancelCurrentGesture();
+    }
+  } catch (err) {
+    console.warn('resetBlocklyDragState_', err);
+  }
+};
+
+/**
+ * 监听页面失焦/可见性变化等，避免 touchIdentifier 或 gesture 残留导致「拖不动」。
+ */
+Code._dragStateRecoveryInstalled_ = false;
+
+Code.installDragStateRecoveryFix_ = function () {
+  if (Code._dragStateRecoveryInstalled_) {
+    return;
+  }
+  Code._dragStateRecoveryInstalled_ = true;
+
+  var reset = Code.resetBlocklyDragState_;
+
+  document.addEventListener('visibilitychange', function () {
+    reset();
+    if (document.visibilityState === 'visible') {
+      window.setTimeout(reset, 0);
+    }
+  }, true);
+
+  window.addEventListener('blur', reset, true);
+  document.addEventListener('pointercancel', reset, true);
+  document.addEventListener('lostpointercapture', reset, true);
+  document.addEventListener('touchcancel', reset, true);
+
+  // 触屏笔记本：残留 touch 流会挡住后续鼠标拖拽。
+  document.addEventListener('mousedown', function (e) {
+    if (!Blockly.Touch || Blockly.Touch.touchIdentifier_ == null) {
+      return;
+    }
+    var id = Blockly.Touch.getTouchIdentifierFromEvent(e);
+    if (id === 'mouse' && Blockly.Touch.touchIdentifier_ !== 'mouse' &&
+        (!Code.workspace || !Code.workspace.isDragging())) {
+      reset();
+    }
+  }, true);
+
+  // mouseup/touchend 未落到 Blockly 时兜底清理。
+  document.addEventListener('mouseup', function () {
+    if (!Code.workspace || !Code.workspace.isDragging()) {
+      if (Blockly.Touch && Blockly.Touch.touchIdentifier_ != null) {
+        Blockly.Touch.clearTouchIdentifier();
+      }
+      if (Code.workspace && Code.workspace.currentGesture_ &&
+          Code.workspace.currentGesture_.hasStarted_ &&
+          !Code.workspace.currentGesture_.isEnding_) {
+        Code.workspace.cancelCurrentGesture();
+      }
+    }
+  }, true);
+
+  document.addEventListener('touchend', function () {
+    if (!Code.workspace || !Code.workspace.isDragging()) {
+      reset();
+    }
+  }, true);
+};
+
+/**
  * 加载 XML 后分阶段刷新布局与块渲染（Windows WebView2 需多次重绘）。
  * 末次再强制折叠/展开顶层栈，避免导入后首次拖拽时嵌套块「散架」。
  */
@@ -809,6 +891,7 @@ Code.init = function () {
 
   Code.workspace.addChangeListener(Code.onWorkspaceChange_);
   Code.installDragRelayoutFix_();
+  Code.installDragStateRecoveryFix_();
 
   // Add to reserved word list: Local variables in execution environment (runJS)
   // and the infinite loop detection function.
@@ -1058,6 +1141,24 @@ Code.init = function () {
     return chrome;
   };
 
+  /**
+   * 清除工作区裁切。拖拽面加 clip-path 会在按住拖动时把积木拦腰截断。
+   * 功能区用页面底色遮挡即可，无需再裁 SVG。
+   * @private
+   */
+  Code.clearWorkspaceClip_ = function () {
+    var nodes = document.querySelectorAll(
+      '#content_blocks .blocklySvg, #content_blocks .blocklyBlockDragSurface, #content_blocks .blocklyWsDragSurface'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!el) continue;
+      el.classList.remove('lp-workspace-clipped');
+      el.style.clipPath = '';
+      el.style.webkitClipPath = '';
+    }
+  };
+
   Code.relayoutToolboxUi_ = function () {
     var treerow = document.getElementById('content_blocks') ||
       document.getElementById('content_area');
@@ -1082,9 +1183,11 @@ Code.init = function () {
       toolboxDiv.style.width = toolboxOuterW + 'px';
       toolboxDiv.style.height = totalH + 'px';
       toolboxDiv.style.padding = '0 ' + gap + 'px 0 0';
-      toolboxDiv.style.background = 'transparent';
+      toolboxDiv.style.background = '#F8F4ED';
+      toolboxDiv.style.backgroundColor = '#F8F4ED';
       toolboxDiv.style.border = 'none';
       toolboxDiv.style.boxShadow = 'none';
+      toolboxDiv.style.zIndex = '70';
     }
     var treeRoot = document.querySelector('.blocklyTreeRoot');
     if (treeRoot) {
@@ -1142,21 +1245,32 @@ Code.init = function () {
 
     var bg = document.querySelector('#content_blocks .blocklyMainBackground');
     if (bg) {
-      bg.style.setProperty('fill', 'none', 'important');
+      // 不可用 fill:none：空白区收不到 mousedown，工作区无法拖动平移
+      bg.style.setProperty('fill', 'transparent', 'important');
       bg.style.setProperty('stroke', 'none', 'important');
+      bg.style.setProperty('pointer-events', 'all', 'important');
     }
     var svg = document.querySelector('#content_blocks .blocklySvg');
     if (svg) {
       svg.style.backgroundColor = 'transparent';
     }
 
+    var chromeLeft = toolboxDiv ? toolboxDiv.offsetWidth : toolboxOuterW;
     var chrome = Code.ensureWorkspaceChrome_();
     if (chrome) {
-      var chromeLeft = toolboxDiv ? toolboxDiv.offsetWidth : toolboxOuterW;
       chrome.style.left = chromeLeft + 'px';
       chrome.style.top = '0';
       chrome.style.right = '0';
       chrome.style.bottom = '0';
+    }
+
+    // 拖动时不能用 clip-path，否则按住拖会拦腰截断；功能区底色已挡住左侧
+    Code.clearWorkspaceClip_();
+
+    if (toolboxDiv) {
+      toolboxDiv.style.background = '#F8F4ED';
+      toolboxDiv.style.backgroundColor = '#F8F4ED';
+      toolboxDiv.style.zIndex = '70';
     }
 
     if (Code.workspace && Code.workspace.toolbox_ && toolboxDiv) {

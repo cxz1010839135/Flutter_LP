@@ -63,6 +63,9 @@ Future<void> notifyBlocklyWebViewResized(WebViewController controller) async {
       meta.setAttribute('content',
         'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
     }
+    if (window.Code && typeof Code.resetBlocklyDragState_ === 'function') {
+      Code.resetBlocklyDragState_();
+    }
     if (window.Code && typeof Code.scheduleWorkspaceRerenderAfterLoad_ === 'function') {
       Code.scheduleWorkspaceRerenderAfterLoad_();
     } else if (window.Code && typeof Code.scheduleLayoutRefresh_ === 'function') {
