@@ -305,7 +305,7 @@ Blockly.Css.CONTENT = [
 
   '.blocklyFlyout {',
     'position: absolute;',
-    'z-index: 20;',
+    'z-index: 80;',
   '}',
   '.blocklyFlyoutButton {',
     'fill: #888;',

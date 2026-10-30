@@ -124,8 +124,9 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'AxisRatio.pa'),
       format: ConfigFileFormat.csvPerLine,
       columnHeaders: const [''],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴轴速比')],
+      buildRowLabels: () => [
+        for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴轴速比'),
+      ],
       editableColumnCount: 1,
       allowAdd: true,
       allowRemove: true,
@@ -137,8 +138,9 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'necePara.txt'),
       format: ConfigFileFormat.colonPair,
       columnHeaders: const ['', ''],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴')],
+      buildRowLabels: () => [
+        for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴'),
+      ],
       editableColumnCount: 2,
       allowAdd: true,
       allowRemove: true,
@@ -150,8 +152,9 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'AxisAccJerk.pa'),
       format: ConfigFileFormat.csv3,
       columnHeaders: const ['最大速度', '加速度', '加加速度'],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴')],
+      buildRowLabels: () => [
+        for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴'),
+      ],
       editableColumnCount: 3,
       allowAdd: true,
       allowRemove: true,
@@ -176,8 +179,9 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'EtherCAT.txt'),
       format: ConfigFileFormat.csvPerLine,
       columnHeaders: const ['类型'],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴')],
+      buildRowLabels: () => [
+        for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴'),
+      ],
       editableColumnCount: 1,
       allowAdd: true,
       allowRemove: true,
@@ -192,8 +196,8 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       format: ConfigFileFormat.csv7,
       columnHeaders: const [
         '轴号',
-        '负限位IO',
         '正限位IO',
+        '负限位IO',
         '原点IO',
         '极性',
         '原点极性',
@@ -211,8 +215,10 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'LineMotor.txt'),
       format: ConfigFileFormat.csvCommaLine,
       columnHeaders: const [''],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴')],
+      // buildRowLabels: () => [
+      //   for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴'),
+      // ],
+      buildRowLabels: () => ['轴号'],
       editableColumnCount: 1,
       allowAdd: true,
       allowRemove: true,
@@ -223,7 +229,7 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       tips: _tipsStepMotor,
       remotePath: configRobotTypePath(robotModel, 'StepMotor.txt'),
       format: ConfigFileFormat.csv5,
-      columnHeaders: const ['轴号', '电流(mA)', '每转脉冲数', '最大速度', '加速度'],
+      columnHeaders: const ['轴号', '极性', '电流(mA)', '每转脉冲数', '加速度'],
       buildRowLabels: () => ['步进电机轴'],
       editableColumnCount: 5,
       allowAdd: true,
@@ -248,8 +254,10 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       remotePath: configRobotTypePath(robotModel, 'SafetyPos.txt'),
       format: ConfigFileFormat.csv2,
       columnHeaders: const ['干涉轴', '安全位置'],
-      buildRowLabels: () =>
-          [for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴')],
+      // buildRowLabels: () => [
+      //   for (var i = 0; i < configFileAxisCount; i++) axisLabel(i, '号轴'),
+      // ],
+      buildRowLabels: () => ['轴号'],
       editableColumnCount: 2,
       allowAdd: true,
       allowRemove: true,
@@ -280,13 +288,7 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
         '6号轴',
         '7号轴',
       ],
-      buildRowLabels: () => const [
-        '脉冲细分数',
-        '静音模式',
-        '编码器分辨率',
-        '闭环控制',
-        '控制模式',
-      ],
+      buildRowLabels: () => const ['脉冲细分数', '静音模式', '编码器分辨率', '闭环控制', '控制模式'],
       editableColumnCount: 8,
       allowAdd: true,
       allowRemove: true,
@@ -294,7 +296,7 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
     ConfigFileStepDef(
       index: 15,
       title: 'ethernet_select-ecat开关参数(保存后请重启驱控)',
-      tips: '',
+      tips: _tipsEthernetSelect,
       remotePath: '/home/llmachine/ethernet_select',
       format: ConfigFileFormat.singleValue,
       columnHeaders: const ['控制开关'],
@@ -327,7 +329,23 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
 
 /// 导航顺序（跳过 index 15）。
 const configFileNavOrder = <int>[
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  16,
+  17,
 ];
 
 int? nextConfigNavIndex(int current) {
@@ -390,7 +408,22 @@ const _tipsEtherCat = '''
 const _tipsHomeIo = '''
 1、该文件配置需要回零的轴
 2、如果没有需要回零的轴，请跳过此步骤；或者设定此文件为空文件
-3、轴号：哪条轴需要回零，轴号就填几，第一个轴从轴号0开始''';
+3、轴号：哪条轴需要回零，轴号就填几，第一个轴从轴号0开始
+4、极性：如果是配置本体轴，此为左右限位的极性，常闭写0，常开写1；如果是配置雷赛步进扩展轴，此为原点（第2位），正限（第3位）和负限（第4位）按位或的结果；如原点设为常开，正负限位设为常闭，极性等于14；
+5、步进电机接雷赛总线步进驱动器IO接到固定位置，IO号都设定为0
+6、原点极性:是本体轴的参数，常闭写0，常开写1
+7、Z相选择：回零停止时是否需要判断Z相信号，需要写1，不需要写0
+注释：G代码回零模式
+大胜：
+0-正方向原点回零
+1-负方向原点回零
+2-正限位回零
+3-负限位回零
+得胜：
+0-负方向原点回零
+1-正方向原点回零
+2-负限位回零
+3-正限位回零''';
 
 const _tipsLineMotor = '''
 1、该文件配置每次上电需要寻相的轴
@@ -399,17 +432,36 @@ const _tipsLineMotor = '''
 
 const _tipsStepMotor = '''
 1、该文件配置步进电机轴
-2、如果没有步进电机轴，请跳过此步骤''';
+2、如果没有步进电机，请跳过此步骤；或者设定此文件为空文件
+3、轴号：哪个轴有步进电机，轴号就填几，第一个轴从轴号0开始
+4、极性：为原点（第2位），正限（第3位）和负限（第4位）按位或的结果；如原点设为常开，正负限位设为常闭，极性等于12
+5、电流大小：单位是mA
+6、每转脉冲数：默认50000 pulse/r
+7、加速度：单位是脉冲数''';
 
 const _tipsRobotAccJerk = '''
-1、该文件配置机器人速度参数
-2、单位全是脉冲单位''';
+1、该文件配置机器人速度参数''';
 
 const _tipsSafetyPos = '''
-1、该文件配置干涉轴安全位置，即当某条轴上电寻相和其他轴有干涉的情况下，需要先移动干涉轴到安全位置才可以使能寻相''';
+1、该文件配置干涉轴安全位置，即当某条轴上电寻相和其他轴有干涉的情况下，需要先移动干涉轴到安全位置才可以使能寻相
+2、如果没有干涉轴或者寻相电机的轴，请跳过此步骤；或者设定此文件为空文件
+3、轴号：哪个轴需要配置安全位置，轴号就填几，第一个轴从轴号0开始
+4、安全位置：''';
 
 const _tipsDriverAxisNum = '''
-1、该文件配置驱控本体轴数量''';
+1、该文件配置驱控本体轴数量
+2、当使用6轴驱控一体时，写6
+3、当使用4轴驱控一体时，写4
+4、当使用得胜步进驱控一体时，写0
+5、如果此文件设定为空或者不存在时，默认使用4轴驱控一体''';
 
 const _tipsDesheng = '''
-1、该文件配置得胜步进驱控电机参数''';
+1、该文件配置得胜步进驱控电机参数
+2、电流大小：单位为mA
+3、脉冲细分数：只可设定为4、8、16、32、64、128等，相应步进电机单圈脉冲数=200×脉冲细分数
+4、静音模式无效 ，不再使用
+5、编码器分辨率
+6、闭环控制：是写1，不是写0''';
+
+const _tipsEthernetSelect = '''
+1、打开ecat开关写1，关闭ecat开关写0''';

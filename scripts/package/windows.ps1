@@ -276,11 +276,6 @@ if (-not $SkipFlutterBuild) {
     Invoke-ExternalCommand dart "${ProjectRoot}/tool/sync_app_version.dart"
     if ($LASTEXITCODE -ne 0) { throw 'sync_app_version.dart failed' }
     Ensure-PubHostedUrl
-    Write-Host ">>> sync Blockly zip + LPK pack"
-    Invoke-ExternalCommand dart run tool/sync_blockly_assets.dart
-    if ($LASTEXITCODE -ne 0) { throw 'sync_blockly_assets.dart failed' }
-    Invoke-ExternalCommand dart run tool/package_blockly_lpk.dart
-    if ($LASTEXITCODE -ne 0) { throw 'package_blockly_lpk.dart failed' }
     Write-Host ">>> flutter pub get"
     Invoke-ExternalCommand flutter pub get --offline
     if ($LASTEXITCODE -ne 0) {
@@ -344,20 +339,32 @@ if (Test-Path $configSrc) {
     Write-Warning "Missing config/: $configSrc"
 }
 
-$blocklyLpkSrc = Join-Path $ProjectRoot "dll\visualprogram.lpk"
+$blocklySrc = Join-Path $ProjectRoot "dll\visualprogram"
 $dllDstRoot = Join-Path $releaseDir "dll"
-if (-not (Test-Path $blocklyLpkSrc)) {
-    throw "Missing Blockly pack: $blocklyLpkSrc`nRun: dart run tool/sync_blockly_assets.dart && dart run tool/package_blockly_lpk.dart"
+if (-not (Test-Path (Join-Path $blocklySrc "blockly\blockly_uncompressed.js"))) {
+    throw "Missing or invalid Blockly source directory: $blocklySrc"
 }
 if (Test-Path $dllDstRoot) {
     Write-Host ">>> refresh dll/ in Release (remove stale Blockly tree)"
     Remove-Item -LiteralPath $dllDstRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $dllDstRoot | Out-Null
-Write-Host ">>> copy dll/visualprogram.lpk -> Release (encrypted pack only)"
-Copy-Item -LiteralPath $blocklyLpkSrc -Destination (Join-Path $dllDstRoot "visualprogram.lpk") -Force
-$lpk = Get-Item (Join-Path $dllDstRoot "visualprogram.lpk")
-Write-Host ">>> staged Blockly LPK ($([math]::Round($lpk.Length / 1MB, 2)) MB)"
+$blocklyDst = Join-Path $dllDstRoot "visualprogram"
+Write-Host ">>> copy dll/visualprogram/ -> Release (use source files directly)"
+Copy-Item -LiteralPath $blocklySrc -Destination $blocklyDst -Recurse -Force
+foreach ($relative in @(
+        "blockly\blockly_uncompressed.js",
+        "blockly\demos\code\index.html",
+        "blockly\core\blockly.js",
+        "blockly\blocks\customconfig.js",
+        "blockly\demos\code\flutter_bound.js",
+        "blockly\demos\code\code.js",
+        "closure-library\closure\goog\base.js"
+    )) {
+    if (-not (Test-Path -LiteralPath (Join-Path $blocklyDst $relative))) {
+        throw "Staged Blockly source is incomplete (missing $relative)"
+    }
+}
 
 $distDir = Join-Path $ProjectRoot "dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null

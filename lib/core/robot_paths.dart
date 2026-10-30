@@ -124,10 +124,9 @@ class RobotPaths {
   static Future<String> imgsDir() => platform.imgsDir();
 
   /// 按优先级查找存在的品牌 Logo 文件
-  static Future<File?> findBrandLogoFile({
-    List<String>? candidates,
-  }) async {
-    final names = candidates ??
+  static Future<File?> findBrandLogoFile({List<String>? candidates}) async {
+    final names =
+        candidates ??
         const [
           RobotPathLayout.brandLogoColorFile,
           RobotPathLayout.brandAppIconFile,
@@ -188,6 +187,8 @@ class RobotPaths {
   static String sanitizeBaseName(String filename) =>
       platform.sanitizeBaseName(filename);
 
+  static Future<String> logsDir() => platform.logsDir();
+
   static Future<String> dllVisualProgramRoot() async {
     return p.normalize(
       p.join(await installRoot(), LpBlocklyConfig.dllRelativePath),
@@ -199,9 +200,6 @@ class RobotPaths {
     final plain = await LpBlocklyAssetBootstrap.findPlainDevRoot();
     if (plain != null) return plain;
 
-    if (Platform.isWindows && platform is RobotPathsWindows) {
-      return (platform as RobotPathsWindows).blocklyCacheRoot();
-    }
     return dllVisualProgramRoot();
   }
 

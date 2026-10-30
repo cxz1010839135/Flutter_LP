@@ -25,6 +25,9 @@ abstract class RobotPathsPlatform {
   /// Blockly 加密包目录：`dll/`（含 `visualprogram.lpk`）
   Future<String> dllDir();
 
+  /// 日志目录：`logs/`
+  Future<String> logsDir();
+
   @Deprecated('Use xmlLibraryDir')
   Future<String> xmlConfigDir();
 

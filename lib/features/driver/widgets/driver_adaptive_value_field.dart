@@ -102,7 +102,6 @@ class _DriverAdaptiveValueFieldState extends State<DriverAdaptiveValueField> {
       initialValue: _controller.text,
       title: widget.dialogTitle ?? '输入数值',
       signed: widget.signed,
-      decimal: widget.decimal,
     );
     if (result == null || !mounted) return;
     _controller.text = result;

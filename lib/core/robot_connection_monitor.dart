@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../features/driver/driver_tech_mode_gate.dart';
+import '../features/monitor/monitor_watch_status.dart';
 import '../network/http_manager.dart';
 import 'app_info.dart';
-import 'robot_api_constants.dart';
+import 'lp_status_log.dart';
 import 'robot_clr_zero_state.dart';
 import 'robot_point_library.dart';
 import 'robot_state.dart';
@@ -12,11 +14,7 @@ import 'robot_state_poller.dart';
 import 'robot_telemetry.dart';
 
 /// 控制器链路状态（轮询失败触发中断提示与自动重连）。
-enum RobotLinkPhase {
-  online,
-  interrupted,
-  reconnecting,
-}
+enum RobotLinkPhase { online, interrupted, reconnecting }
 
 /// 连接中断监测与自动重连（全局单例）。
 class RobotConnectionMonitor extends ChangeNotifier {
@@ -91,8 +89,9 @@ class RobotConnectionMonitor extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final res =
-          await HttpManager.instance.robotGetCurState(fastTimeout: true);
+      final res = await HttpManager.instance.robotGetCurState(
+        fastTimeout: true,
+      );
       if (res.isOk) {
         final data = res.dataMap;
         if (data != null) {
@@ -122,11 +121,24 @@ class RobotConnectionMonitor extends ChangeNotifier {
   /// 用户取消：停止重连并清理状态（由 [RobotConnectionGuard] 导航回连接页）。
   void cancelWaiting() {
     _stopReconnectTimer();
-    reset();
+    resetAllRuntimeState();
+  }
+
+  /// 清空全部运行时缓存（断开连接 / 返回登录页时调用）。
+  ///
+  /// 包含：轮询、遥测、清零状态、点库、链路监控、驱动器技术模式、监控监视、
+  /// 状态日志、HttpManager 程序同步结果，并断开 [RobotState]。本地设置（IP 等）保留。
+  void resetAllRuntimeState() {
     RobotStatePoller.instance.stop();
     RobotTelemetry.instance.reset();
     RobotClrZeroState.instance.reset();
     RobotPointLibrary.instance.reset();
+    RobotConnectionMonitor.instance.reset();
+    DriverTechModeGate.instance.resetOnDisconnect();
+    MonitorWatchStatus.instance.reset();
+    LpStatusLog.instance.clear();
+    HttpManager.instance.lastProgramSync = null;
+    HttpManager.instance.lastProgramSyncError = null;
     RobotState.instance.disconnect();
   }
 }

@@ -166,7 +166,10 @@ class _DriverPageState extends State<DriverPage>
     _pollTimer?.cancel();
     setState(() => _busy = true);
     try {
-      await DriverTechModeGate.instance.exit();
+      // 离线预览（未连接）没有调试会话，直接返回即可，不走退出 HTTP。
+      if (RobotState.instance.isConnected) {
+        await DriverTechModeGate.instance.exit();
+      }
     } catch (e) {
       LpStatusLog.instance.warning('退出调试模式失败：$e');
       if (mounted) {
@@ -717,7 +720,8 @@ class _DriverPageState extends State<DriverPage>
     // 命中区略高，视觉条仍细，跟手用按下时的全局坐标绝对换算。
     const handleH = 14.0;
     const minFrac = 0.28;
-    const maxFrac = 0.72;
+    // 允许把分隔条拉到更下方，让中间三列参数区显示更多内容；底部至少保留约 8% 放工具栏。
+    const maxFrac = 0.92;
 
     return LayoutBuilder(
       builder: (context, constraints) {

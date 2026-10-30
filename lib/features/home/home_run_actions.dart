@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_logger.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/robot_alarm_info.dart';
 import '../../core/robot_state.dart';
@@ -31,8 +32,10 @@ class HomeRunActions {
         speedPercent: t.speedPercent,
       );
       LpStatusLog.instance.info('已启动自动运行', openPanel: false);
+      AppLogger.instance.logOperation('启动自动运行，速度 ${t.speedPercentValue}%');
     } catch (e) {
       if (context.mounted) _tip(context, '启动失败：$e');
+      AppLogger.instance.logOperation('启动自动运行失败: $e');
     }
   }
 
@@ -44,8 +47,10 @@ class HomeRunActions {
     try {
       await HttpManager.instance.robotAutoRunStop();
       LpStatusLog.instance.info('已发送停止', openPanel: false);
+      AppLogger.instance.logOperation('发送自动运行停止');
     } catch (e) {
       if (context.mounted) _tip(context, '停止失败：$e');
+      AppLogger.instance.logOperation('自动运行停止失败: $e');
     }
   }
 
@@ -72,22 +77,27 @@ class HomeRunActions {
       ),
     );
     if (confirmed != true || !context.mounted) return;
+    AppLogger.instance.logOperation('发送控制器复位指令');
     try {
       await HttpManager.instance.robotReset();
       LpStatusLog.instance.success('复位指令已发送', openPanel: false);
+      AppLogger.instance.logOperation('复位指令发送成功');
     } catch (e) {
       if (context.mounted) _tip(context, '复位失败：$e');
+      AppLogger.instance.logOperation('复位指令发送失败: $e');
     }
   }
 
   static Future<void> applySpeedPercent(int percent) async {
     final clamped = percent.clamp(1, 100);
     RobotTelemetry.instance.setSpeedPercentValue(clamped);
+    AppLogger.instance.logOperation('调整自动运行速度为 $clamped%');
     if (!_online) return;
     try {
       await HttpManager.instance.setSpeedPercent(clamped / 100.0);
     } catch (e) {
       LpStatusLog.instance.warning('速度设置失败：$e', openPanel: false);
+      AppLogger.instance.logOperation('速度设置失败: $e');
     }
   }
 

@@ -30,8 +30,22 @@ mixin RobotHttpApiMixin {
   }
 
   /// 原始响应文本（可能是 JSON、XML、G 代码等）。
-  Future<String> robotCmdRaw(String command, {dynamic data}) {
-    return apiClient.postCommand(apiBaseUrl, command, data: data);
+  ///
+  /// [ioTimeoutOverride] / [connectTimeoutOverride] 用于需要短超时的命令
+  /// （如导入点库后的刷新，文件已写入且有本地兜底，不必等满默认 45s）。
+  Future<String> robotCmdRaw(
+    String command, {
+    dynamic data,
+    Duration? ioTimeoutOverride,
+    Duration? connectTimeoutOverride,
+  }) {
+    return apiClient.postCommand(
+      apiBaseUrl,
+      command,
+      data: data,
+      ioTimeoutOverride: ioTimeoutOverride,
+      connectTimeoutOverride: connectTimeoutOverride,
+    );
   }
 
   /// 解析并校验 result == 1。

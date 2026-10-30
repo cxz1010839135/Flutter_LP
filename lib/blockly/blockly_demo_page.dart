@@ -439,6 +439,9 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       controller.setJavaScriptMode(JavaScriptMode.unrestricted),
       'WebView 配置',
     );
+    if (Platform.isAndroid) {
+      await guard(controller.enableZoom(false), 'WebView 缩放');
+    }
     await guard(
       controller.setBackgroundColor(const Color(0xFFF5F5F5)),
       'WebView 配置',
@@ -519,6 +522,10 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
         if (result.toString().contains('LP_BLOCKLY_READY')) {
           _loadTracker?.markJsLoadComplete();
           _loadTracker?.complete();
+          // 安卓：就绪后再强制一次视口复位，清掉模拟器错误缩放/纹理。
+          if (Platform.isAndroid) {
+            unawaited(_resetAndroidBlocklyViewport(controller));
+          }
           return;
         }
       } catch (e) {
@@ -532,6 +539,38 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
       '请检查资源包是否完整，或安装/修复 WebView2 Runtime。'
       '${lastJsError == null ? '' : '\n最后错误：$lastJsError'}',
     );
+  }
+
+  /// 逍等模拟器偶发把页面缩成一颗顶栏图标；就绪后强制复位视口与 Blockly 布局。
+  Future<void> _resetAndroidBlocklyViewport(WebViewController controller) async {
+    try {
+      await controller.enableZoom(false);
+      await controller.runJavaScript('''
+(function () {
+  try {
+    var meta = document.querySelector('meta[name=viewport]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'viewport';
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content',
+      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    document.documentElement.style.zoom = '1';
+    document.body && (document.body.style.zoom = '1');
+    if (window.Blockly && Blockly.svgResize && Blockly.getMainWorkspace) {
+      var ws = Blockly.getMainWorkspace();
+      if (ws) Blockly.svgResize(ws);
+    }
+  } catch (e) {
+    console.warn('resetAndroidBlocklyViewport', e);
+  }
+})();
+''');
+      await notifyBlocklyWebViewResized(controller);
+    } catch (e, st) {
+      debugPrint('resetAndroidBlocklyViewport failed: $e\n$st');
+    }
   }
 
   void _onExitStarted() {
@@ -780,7 +819,7 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
                   titleBarOnly: true,
                   onBack:
                       _showProgressOverlay ? null : _triggerBlocklyReturn,
-                  trailing: _controller == null
+                  trailing: (_controller == null || _showProgressOverlay)
                       ? null
                       : Row(
                           mainAxisSize: MainAxisSize.min,
@@ -844,6 +883,12 @@ class _BlocklyDemoPageState extends State<BlocklyDemoPage> {
             children: [
               Expanded(
                 child: LpBlocklyWebViewHost(
+                  // 安卓：遮罩结束时换 key，强制重建 PlatformView 表面，清掉错误纹理。
+                  key: ValueKey<String>(
+                    Platform.isAndroid
+                        ? 'blockly_wv_${_showProgressOverlay ? 'boot' : 'ready'}'
+                        : 'blockly_wv',
+                  ),
                   controller: _controller!,
                   visible: !_showProgressOverlay,
                 ),
@@ -1037,16 +1082,26 @@ class _BlocklyTopCutIconButtonState extends State<_BlocklyTopCutIconButton> {
                 final image = file != null
                     ? Image.file(
                         file,
+                        width: 28,
+                        height: 28,
+                        cacheWidth: 84,
                         fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
                         gaplessPlayback: true,
                         errorBuilder: (_, error, stackTrace) => Image.asset(
                           widget.assetName,
+                          width: 28,
+                          height: 28,
+                          cacheWidth: 84,
                           fit: BoxFit.contain,
                           gaplessPlayback: true,
                         ),
                       )
                     : Image.asset(
                         widget.assetName,
+                        width: 28,
+                        height: 28,
+                        cacheWidth: 84,
                         fit: BoxFit.contain,
                         gaplessPlayback: true,
                       );
@@ -1055,7 +1110,7 @@ class _BlocklyTopCutIconButtonState extends State<_BlocklyTopCutIconButton> {
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 120),
                     opacity: highlight ? 1 : 0.92,
-                    child: image,
+                    child: ClipRect(child: image),
                   ),
                 );
               },

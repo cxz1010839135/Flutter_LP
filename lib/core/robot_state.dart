@@ -87,6 +87,8 @@ class RobotState extends ChangeNotifier {
     robotSerialNumber = '';
     robotType = 0;
     linkKind = RobotLinkKind.unknown;
+    lastConnectError = null;
+    _pendingUiMessage = null;
     // Android：解除 Wi‑Fi 进程绑定，恢复系统默认路由
     // ignore: unawaited_futures
     AndroidWifiNetworkBinder.unbind();

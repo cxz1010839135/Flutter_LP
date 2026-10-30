@@ -19,21 +19,37 @@ $utf8 = New-Object System.Text.UTF8Encoding $false
 
 $files = Get-ChildItem -Path (Join-Path $root "lib") -Recurse -Filter *.dart |
     Where-Object { $_.FullName -notmatch '[\\/]blockly[\\/]ai[\\/]' } |
-    Sort-Object FullName
+    Sort-Object @{
+        Expression = {
+            $n = $_.FullName.Replace("\", "/").ToLowerInvariant()
+            if ($n.EndsWith("/lib/main.dart")) { 0 }
+            elseif ($n.Contains("/lib/app/")) { 1 }
+            elseif ($n.Contains("/lib/core/")) { 2 }
+            elseif ($n.Contains("/lib/features/connect/")) { 3 }
+            elseif ($n.Contains("/lib/features/")) { 4 }
+            elseif ($n.Contains("/lib/services/")) { 5 }
+            elseif ($n.Contains("/lib/shared/")) { 6 }
+            else { 7 }
+        }
+    }, FullName
 $allLines = New-Object System.Collections.Generic.List[string]
 
 foreach ($f in $files) {
     $rel = $f.FullName.Substring($root.Path.Length + 1).Replace("\", "/")
-    [void]$allLines.Add("")
     [void]$allLines.Add("// ===== File: $rel =====")
     foreach ($line in [System.IO.File]::ReadAllLines($f.FullName, $utf8)) {
-        [void]$allLines.Add($line)
+        if (-not [string]::IsNullOrWhiteSpace($line)) {
+            [void]$allLines.Add($line)
+        }
     }
 }
 
 $total = $allLines.Count
 $need = $LinesPerPage * $Pages
-Write-Host "Total source lines: $total"
+if ($total -lt ($need * 2)) {
+    throw "有效源码不足：去除空行后只有 $total 行，至少需要 $($need * 2) 行。"
+}
+Write-Host "Total non-empty source lines: $total"
 
 function Format-Pages {
     param(
@@ -61,9 +77,9 @@ function Format-Pages {
     return $sb.ToString()
 }
 
-$front = $allLines.GetRange(0, [Math]::Min($need, $total))
-$backStart = [Math]::Max(0, $total - $need)
-$back = $allLines.GetRange($backStart, $total - $backStart)
+$front = $allLines.GetRange(0, $need)
+$backStart = $total - $need
+$back = $allLines.GetRange($backStart, $need)
 
 $frontPath = Join-Path $outDir "源程序-前30页.txt"
 $backPath = Join-Path $outDir "源程序-后30页.txt"

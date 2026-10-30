@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,51 +13,82 @@ import 'app/widgets/lp_app_navigator.dart';
 import 'app/widgets/lp_uniform_app_viewport.dart';
 import 'app/widgets/robot_connection_guard.dart';
 import 'core/app_info.dart';
+import 'core/app_logger.dart';
 import 'core/robot_paths.dart';
 import 'features/connect/connect_page.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  if (Platform.isAndroid) {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    // 工控平板：隐藏系统状态栏/导航栏，避免顶栏被挤出
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.transparent,
-      ),
-    );
-  }
-  Object? startupError;
-  StackTrace? startupStack;
-  try {
-    await AppInfo.load();
-    await RobotPaths.ensureLayout();
-  } catch (e, st) {
-    startupError = e;
-    startupStack = st;
-  }
-  if (Platform.isWindows || Platform.isLinux) {
-    try {
-      WindowsWebViewPlatform.registerWith();
-    } catch (e, st) {
-      startupError ??= e;
-      startupStack ??= st;
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    if (Platform.isAndroid) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      // 工控平板：隐藏系统状态栏/导航栏，避免顶栏被挤出
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+        ),
+      );
     }
-  }
-  if (startupError != null) {
-    runApp(_LpStartupErrorApp(
-      error: startupError,
-      stackTrace: startupStack,
-    ));
-    return;
-  }
-  runApp(const LpRobotApp());
+    Object? startupError;
+    StackTrace? startupStack;
+    try {
+      await AppInfo.load();
+      await RobotPaths.ensureLayout();
+      await AppLogger.instance.initialize();
+    } catch (e, st) {
+      startupError = e;
+      startupStack = st;
+    }
+    if (Platform.isWindows || Platform.isLinux) {
+      try {
+        WindowsWebViewPlatform.registerWith();
+      } catch (e, st) {
+        startupError ??= e;
+        startupStack ??= st;
+      }
+    }
+    if (startupError != null) {
+      runApp(_LpStartupErrorApp(
+        error: startupError,
+        stackTrace: startupStack,
+      ));
+      return;
+    }
+
+    // 捕获 Flutter 框架异常与同步 PlatformDispatcher 异常。
+    final originalFlutterError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      AppLogger.instance.logCrash(
+        details.exception,
+        stackTrace: details.stack,
+        context: 'FlutterError: ${details.library}',
+      );
+      originalFlutterError?.call(details);
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      AppLogger.instance.logCrash(
+        error,
+        stackTrace: stack,
+        context: 'PlatformDispatcher.onError',
+      );
+      return true;
+    };
+
+    runApp(const LpRobotApp());
+  }, (error, stack) {
+    // Zone 级未捕获异常。
+    AppLogger.instance.logCrash(
+      error,
+      stackTrace: stack,
+      context: 'runZonedGuarded',
+    );
+  });
 }
 
 /// 启动阶段路径/配置初始化失败时展示，避免白屏。
@@ -125,7 +158,11 @@ class LpRobotApp extends StatelessWidget {
           builder: (context, isBlockly, _) {
             final viewport = isBlockly
                 ? (Platform.isAndroid
-                    ? SafeArea(child: child)
+                    ? SafeArea(
+                        // 横屏模拟器 viewPadding.top 常为 0，顶栏奶油返回槽易贴顶裁切。
+                        minimum: const EdgeInsets.only(top: 6),
+                        child: child,
+                      )
                     : child)
                 : LpUniformAppViewport(
                     designWidth: LpUiScale.designWidth,

@@ -5,6 +5,7 @@ import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
+import '../../core/app_logger.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/maintenance_edit_gate.dart';
 import '../../core/robot_alarm_info.dart';
@@ -105,9 +106,9 @@ class _ToolPageState extends State<ToolPage> {
   }
 
   void _openFiles() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const FilesPage()),
-    );
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => const FilesPage()));
   }
 
   bool get _inDebugMode =>
@@ -115,29 +116,50 @@ class _ToolPageState extends State<ToolPage> {
 
   Future<void> _openDriverDebug() async {
     if (_busy) return;
-    if (!_online) {
-      LpStatusLog.instance.warning('请先连接控制器');
-      return;
-    }
-    if (!_inDebugMode) {
-      LpStatusLog.instance.warning('请先在上方打开调试模式');
-      await _showResultDialog('请先点击「打开调试模式」，待控制器进入调试状态后再进入驱动器参数页。');
-      return;
-    }
     final gate = DriverTechModeGate.instance;
-    if (!gate.canEnterDriverPage) {
-      if (gate.transitionBusy || DriverTechModeGate.isControllerInitializing) {
-        await _showResultDialog('调试模式切换中，请等待控制器就绪后再进入驱动器参数页。');
-      }
+    final connected = _online;
+    // 离线预览：未连接时直接浏览驱动器参数页，不进入调试会话。
+    if (!connected) {
+      AppLogger.instance.logOperation('维护页：离线预览打开驱动器参数页');
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const DriverPage()),
+      );
+      return;
+    }
+    // 诊断：逐项打印失败原因。
+    final canEdit = MaintenanceEditGate.canEdit();
+    final inDebug = _inDebugMode;
+    final busy = gate.transitionBusy;
+    final active = gate.sessionActive;
+    final initing = DriverTechModeGate.isControllerInitializing;
+    final alarmCode = RobotTelemetry.instance.motorAlarmCode;
+    if (!connected || !canEdit || !inDebug || !gate.canEnterDriverPage) {
+      final reason = !connected
+          ? '未连接'
+          : !canEdit
+          ? '机器人运动中(isRobotMoving=true)'
+          : !inDebug
+          ? '控制器未在调试模式(alarmCode=$alarmCode, 需=201)'
+          : busy
+          ? '切换中'
+          : active
+          ? '会话未关闭(sessionActive=true)'
+          : initing
+          ? '控制器初始化中(alarmCode=-1000)'
+          : '未知';
+      LpStatusLog.instance.warning(
+        '无法进入驱动器参数：$reason（connected=$connected canEdit=$canEdit inDebug=$inDebug alarmCode=$alarmCode busy=$busy active=$active initing=$initing）',
+      );
       return;
     }
     setState(() => _busy = true);
     try {
       await gate.enter();
       if (!mounted) return;
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const DriverPage()),
-      );
+      await Navigator.of(
+        context,
+      ).push<void>(MaterialPageRoute(builder: (_) => const DriverPage()));
     } catch (e) {
       LpStatusLog.instance.warning('进入驱动器调试失败：$e');
       if (mounted) {
@@ -148,25 +170,19 @@ class _ToolPageState extends State<ToolPage> {
     }
   }
 
-  bool get _canOpenDriver {
-    return _online &&
-        !_busy &&
-        MaintenanceEditGate.canEdit() &&
-        _inDebugMode &&
-        DriverTechModeGate.instance.canEnterDriverPage;
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
+        RobotState.instance,
         RobotTelemetry.instance,
         DriverTechModeGate.instance,
       ]),
       builder: (context, _) {
         final stopped = MaintenanceEditGate.canEdit();
         final actionsEnabled = _online && !_busy && stopped;
-        final gateBusy = DriverTechModeGate.instance.transitionBusy ||
+        final gateBusy =
+            DriverTechModeGate.instance.transitionBusy ||
             DriverTechModeGate.isControllerInitializing;
 
         return Scaffold(
@@ -247,11 +263,10 @@ class _ToolPageState extends State<ToolPage> {
                                   const SizedBox(height: 14),
                                   Expanded(
                                     child: _DaimaActionButton(
-                                      label: gateBusy
-                                          ? '驱动器参数设置…'
-                                          : '驱动器参数设置',
+                                      label: gateBusy ? '驱动器参数设置…' : '驱动器参数设置',
                                       primary: false,
-                                      enabled: _canOpenDriver,
+                                      // 始终可点，由 _openDriverDebug 内部判断并提示具体原因。
+                                      enabled: !_busy,
                                       onPressed: _openDriverDebug,
                                     ),
                                   ),

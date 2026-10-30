@@ -91,6 +91,14 @@ class RobotPointLibrary extends ChangeNotifier {
     }
   }
 
+  /// 直接以已解析点位更新（导入 `.rpt4` 后，固件不回数据时的本地刷新）。
+  void applyImported(List<RobotPoint> imported) {
+    final next = List<RobotPoint>.of(imported)
+      ..sort((a, b) => a.index.compareTo(b.index));
+    points = List.unmodifiable(next);
+    notifyListeners();
+  }
+
   void _applyList(dynamic raw) {
     if (raw is! List) return;
     final next = <RobotPoint>[];

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
@@ -46,7 +47,12 @@ Future<WebViewController> createBlocklyWebViewController() async {
   final controller = WebViewController.fromPlatformCreationParams(params);
 
   if (controller.platform is AndroidWebViewController) {
+    final android = controller.platform as AndroidWebViewController;
     AndroidWebViewController.enableDebugging(kDebugMode);
+    // 模拟器/系统字体缩放会把页面放大成「只剩一颗顶栏图标」。
+    await android.enableZoom(false);
+    await android.setUseWideViewPort(true);
+    await android.setTextZoom(100);
   }
 
   return controller;
@@ -251,8 +257,14 @@ class _LpBlocklyWebViewHostState extends State<LpBlocklyWebViewHost> {
         return WebViewWidget.fromPlatformCreationParams(
           params: AndroidWebViewWidgetCreationParams(
             controller: platform,
-            // Hybrid Composition 在 Stack/遮罩切换后易缩到左上角并露出红底。
-            displayWithHybridComposition: false,
+            // 逍遥等模拟器 Virtual Display 会把 Flutter 切图纹理撑满 WebView；
+            // Hybrid Composition 虽曾有缩角风险，但配合不透明遮罩 + 显隐重建更稳。
+            displayWithHybridComposition: true,
+            gestureRecognizers: {
+              Factory<OneSequenceGestureRecognizer>(
+                EagerGestureRecognizer.new,
+              ),
+            },
           ),
         );
       }
@@ -267,13 +279,15 @@ class _LpBlocklyWebViewHostState extends State<LpBlocklyWebViewHost> {
     );
 
     if (Platform.isAndroid) {
-      // 保持全屏布局尺寸，加载阶段仅透明隐藏（不用 SizedBox.shrink）。
-      return IgnorePointer(
-        ignoring: !widget.visible,
-        child: Opacity(
-          opacity: widget.visible ? 1 : 0,
-          child: webView,
-        ),
+      // Hybrid Composition + 不透明遮罩（不用 Opacity）：
+      // 逍遥模拟器 Virtual Display 会把顶栏刷新切图纹理撑满画布。
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          webView,
+          if (!widget.visible)
+            const ColoredBox(color: Color(0xFFF5F5F5)),
+        ],
       );
     }
 

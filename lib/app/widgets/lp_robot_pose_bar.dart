@@ -270,84 +270,101 @@ class _PageTitleBar extends StatelessWidget {
       );
     }
 
+    // 安卓：顶栏底图奶油返回槽易贴顶被裁；略加上下内边距并把底图略下移。
+    final barPad = Platform.isAndroid
+        ? const EdgeInsets.only(top: 4, bottom: 2)
+        : EdgeInsets.zero;
     return SizedBox(
       height: height,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(LpAppAssets.neiyeTopBg),
-            fit: BoxFit.fill,
+      child: Padding(
+        padding: barPad,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: const AssetImage(LpAppAssets.neiyeTopBg),
+              fit: BoxFit.fill,
+              alignment: Platform.isAndroid
+                  ? const Alignment(0, 0.35)
+                  : Alignment.center,
+            ),
           ),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final trailingW =
-                (constraints.maxWidth * LpRobotPoseBar._trailingWidthFactor)
-                    .clamp(120.0, 168.0);
-            // 居中：左右同宽（编程页）；靠左：左橙很窄，标题贴中褐左缘。
-            final leadingW = centerTitle
-                ? trailingW
-                : constraints.maxWidth * 0.045;
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final trailingW =
+                  (constraints.maxWidth * LpRobotPoseBar._trailingWidthFactor)
+                      .clamp(120.0, 168.0);
+              // 居中：左右同宽（编程页）；靠左：左橙很窄，标题贴中褐左缘。
+              final leadingW = centerTitle
+                  ? trailingW
+                  : constraints.maxWidth * 0.045;
 
-            Widget? titleChild;
-            if (title.isNotEmpty) {
-              final text = Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: centerTitle ? TextAlign.center : TextAlign.left,
-                style: LpAppFonts.style(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: LpRobotColors.textDark,
+              Widget? titleChild;
+              if (title.isNotEmpty) {
+                final text = Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: centerTitle ? TextAlign.center : TextAlign.left,
+                  style: LpAppFonts.style(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: LpRobotColors.textDark,
+                    height: 1.0,
+                  ),
+                );
+                titleChild = centerTitle
+                    ? Center(child: text)
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4, right: 8),
+                          child: text,
+                        ),
+                      );
+              }
+
+              // 安卓横屏：返回勿贴死右缘（模拟器/平板边栏旁更易误触与裁切）。
+              // Windows：落在奶油平行四边形上半视觉中心，勿贴窗口右缘。
+              final backRightPad = Platform.isAndroid
+                  ? 16.0
+                  : (Platform.isWindows ? 16.0 : 0.0);
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.noScaling,
                 ),
-              );
-              titleChild = centerTitle
-                  ? Center(child: text)
-                  : Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 4, right: 8),
-                        child: text,
-                      ),
-                    );
-            }
-
-            // 安卓横屏：返回勿贴死右缘（模拟器/平板边栏旁更易误触与裁切）。
-            final backRightPad = Platform.isAndroid ? 16.0 : 0.0;
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
                   children: [
-                    SizedBox(width: leadingW),
-                    Expanded(child: titleChild ?? const SizedBox.shrink()),
-                    SizedBox(
-                      width: trailingW,
-                      child: onBack == null
-                          ? const SizedBox.shrink()
-                          : Align(
-                              alignment: Alignment.centerRight,
-                              child: Padding(
-                                padding: EdgeInsets.only(right: backRightPad),
-                                child: _NeiyePageBackButton(onTap: onBack!),
-                              ),
-                            ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(width: leadingW),
+                        Expanded(child: titleChild ?? const SizedBox.shrink()),
+                        SizedBox(
+                          width: trailingW,
+                          child: onBack == null
+                              ? const SizedBox.shrink()
+                              : Padding(
+                                  padding: EdgeInsets.only(right: backRightPad),
+                                  child: _NeiyePageBackButton(onTap: onBack!),
+                                ),
+                        ),
+                      ],
                     ),
+                    // AI/刷新等：紧挨「返回」左侧，不挤进返回槽、不换主页返回样式。
+                    if (trailing != null)
+                      Positioned(
+                        right: trailingW + 4 + backRightPad,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(child: trailing),
+                      ),
                   ],
                 ),
-                // AI/刷新等：紧挨「返回」左侧，不挤进返回槽、不换主页返回样式。
-                if (trailing != null)
-                  Positioned(
-                    right: trailingW + 4 + backRightPad,
-                    top: 0,
-                    bottom: 0,
-                    child: Center(child: trailing),
-                  ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1094,10 +1111,17 @@ class _NeiyePageBackButtonState extends State<_NeiyePageBackButton> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight;
+        final w = constraints.maxWidth;
         if (!h.isFinite || h <= 0) return const SizedBox.shrink();
 
-        final iconSize = (h * 0.44).clamp(16.0, 22.0);
-        final fontSize = (h * 0.36).clamp(13.0, 17.0);
+        final iconSize = (h * 0.42).clamp(16.0, 20.0);
+        final fontSize = (h * 0.34).clamp(13.0, 16.0);
+        // 安卓：字体度量偏上，用顶 padding 后再居中。
+        final contentTop = Platform.isAndroid ? h * 0.12 : 0.0;
+        // Windows：奶油槽上宽下窄，视觉中心在上半；勿再整体下移。
+        final labelAlign = Platform.isWindows
+            ? const Alignment(0.45, -0.32)
+            : Alignment.centerRight;
 
         return Semantics(
           button: true,
@@ -1110,32 +1134,43 @@ class _NeiyePageBackButtonState extends State<_NeiyePageBackButton> {
               widget.onTap();
             },
             onTapCancel: () => setState(() => _pressed = false),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    _pressed
-                        ? LpAppAssets.homeTopBackPressed
-                        : LpAppAssets.homeTopBack,
-                    width: iconSize,
-                    height: iconSize,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.medium,
-                    gaplessPlayback: true,
+            child: SizedBox(
+              width: w.isFinite && w > 0 ? w : null,
+              height: h,
+              child: Padding(
+                padding: EdgeInsets.only(top: contentTop),
+                child: Align(
+                  alignment: labelAlign,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        _pressed
+                            ? LpAppAssets.homeTopBackPressed
+                            : LpAppAssets.homeTopBack,
+                        width: iconSize,
+                        height: iconSize,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
+                        gaplessPlayback: true,
+                        alignment: Alignment.center,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '返回',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w700,
+                          color: LpRobotColors.textDark,
+                          height: 1.0,
+                          leadingDistribution: TextLeadingDistribution.even,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '返回',
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w700,
-                      color: LpRobotColors.textDark,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

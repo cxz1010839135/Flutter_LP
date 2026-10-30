@@ -6,6 +6,7 @@ import '../../app/widgets/lp_robot_foot_bar.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_robot_io_panel.dart';
 import '../../app/widgets/lp_status_panel.dart';
+import '../../core/app_logger.dart';
 import '../../core/robot_state_poller.dart';
 import 'control_section.dart';
 import 'widgets/control_action_rail.dart';
@@ -29,21 +30,25 @@ class _ControlPageState extends State<ControlPage> {
   @override
   void initState() {
     super.initState();
+    AppLogger.instance.logOperation('操控页：进入');
     RobotStatePoller.instance.start();
   }
 
   void _selectSection(ControlSection section) {
     if (_section == section) return;
+    AppLogger.instance.logOperation('操控页：切换功能为 ${section.label}');
     setState(() => _section = section);
   }
 
   void _onPointEdit() {
+    AppLogger.instance.logOperation('操控页：打开点库');
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const PointLibraryPage()),
     );
   }
 
   void _onClearUi() {
+    AppLogger.instance.logOperation('操控页：打开清零页');
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const ClrZeroPage()),
     );

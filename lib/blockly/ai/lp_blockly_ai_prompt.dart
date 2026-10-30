@@ -176,14 +176,17 @@ abstract final class LpBlocklyAiPrompt {
     bool includeToolboxCatalog = false,
     String persistentContext = '',
     String referenceHabits = '',
+    bool toolLoop = false,
   }) {
     final isStructured = generationMode == LpBlocklyAiGenerationMode.structured;
     final buffer = StringBuffer()
       ..writeln('你是领鹏机器人 Blockly 可视化编程助手。')
       ..writeln(
-        isStructured
-            ? '你的任务是根据用户自然语言，输出结构化 JSON 块计划（blocks 数组）。'
-            : '你的任务是根据用户自然语言，生成可直接载入的 Blockly XML。',
+        toolLoop
+            ? '你必须通过工具完成任务：get_workspace_overview / get_toolbox_catalog / apply_plan / verify_gcode。'
+            : (isStructured
+                ? '你的任务是根据用户自然语言，输出结构化 JSON 块计划（blocks 数组）。'
+                : '你的任务是根据用户自然语言，生成可直接载入的 Blockly XML。'),
       )
       ..writeln(
         '生成步进/门型/自动流程时：只使用「项目流程变量约定」中已确认的符号；'
@@ -193,7 +196,17 @@ abstract final class LpBlocklyAiPrompt {
       ..writeln()
       ..writeln('## 输出要求（必须遵守）');
 
-    if (isStructured) {
+    if (toolLoop) {
+      buffer
+        ..writeln('1. 用 apply_plan 提交 JSON 计划，根字段为 blocks（数组）；不要把 JSON 当最终纯文本答案')
+        ..writeln('2. apply_plan 成功后必须 verify_gcode')
+        ..writeln('3. 校验失败必须根据 error 再次 apply_plan，直到通过或无法修复')
+        ..writeln('4. 每个块必须有 type、id；顶层块建议带 x/y')
+        ..writeln('5. 不要使用块目录未列出的 type')
+        ..writeln('6. 复合条件用 logic_operation_m_vertical；禁止 T==1，定时器用 ↑T（TUP）')
+        ..writeln('7. 门型未说明时避障高度=10、最大速度=2500')
+        ..writeln('8. 不要删除 IO 映射 / 手动 IO 等基础设施块');
+    } else if (isStructured) {
       buffer
         ..writeln('1. 只输出 JSON 对象，根字段为 blocks（数组）')
         ..writeln('2. 不要输出 markdown、解释文字或代码围栏')
@@ -356,6 +369,10 @@ abstract final class LpBlocklyAiPrompt {
     }
 
     return buffer.toString();
+  }
+
+  static String buildToolLoopUserMessage(String userPrompt) {
+    return '请用工具完成以下 Blockly 编程需求：\n$userPrompt';
   }
 
   static String buildUserMessage(

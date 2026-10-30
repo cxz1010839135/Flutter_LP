@@ -6,6 +6,7 @@ import '../../app/lp_app_assets.dart';
 import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../core/app_info.dart';
+import '../../core/app_logger.dart';
 import '../../core/local_app_settings.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/robot_connection_monitor.dart';
@@ -273,15 +274,19 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
         tab: LpStatusPanelTab.connection,
         openPanel: false,
       );
+      AppLogger.instance.logOperation('连接控制器成功: $syncMessage');
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const MainHomePage()),
       );
       if (syncWarning != null) {
         LpStatusLog.instance.warning('程序同步失败：$syncWarning');
+        AppLogger.instance.logOperation('程序同步警告: $syncWarning');
       }
     } catch (e) {
+      final errorText = _formatConnectError(e, ip);
       RobotState.instance.setConnectFailed(e.toString());
-      _showError(_formatConnectError(e, ip));
+      _showError(errorText);
+      AppLogger.instance.logOperation('连接控制器失败: $errorText');
     } finally {
       if (mounted) {
         setState(() {
@@ -336,6 +341,7 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
   }
 
   void _openOfflineHome() {
+    AppLogger.instance.logOperation('离线预览：未连接进入主页，可浏览所有界面');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const MainHomePage()),
     );
@@ -583,7 +589,7 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '跳过连接',
+                                '离线预览',
                                 style: LpAppFonts.style(
                                   fontSize: (btnH * 0.28).clamp(13.0, 18.0),
                                   fontWeight: FontWeight.w700,
@@ -593,7 +599,7 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
                               ),
                               SizedBox(height: btnH * 0.04),
                               Text(
-                                '(仅本地 Blockly)',
+                                '(不连接机器人)',
                                 style: LpAppFonts.style(
                                   fontSize: (btnH * 0.20).clamp(10.0, 13.0),
                                   fontWeight: FontWeight.w500,

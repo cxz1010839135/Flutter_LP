@@ -132,25 +132,20 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
 
-# 仅安装 Blockly 加密包 dll/visualprogram.lpk（明文目录仅开发/工程内维护）
-set(BLOCKLY_LPK "${CMAKE_CURRENT_SOURCE_DIR}/../dll/visualprogram.lpk")
+# Windows 发布：安装明文 Blockly 目录到 exe 同级 dll/visualprogram/，运行时直接读取。
+# AGENTS.md 核心约束：Windows 不使用 LPK 解压缓存（LPK 仅用于 Android assets 与工程内维护）。
+# 说明：若沿用「有 LPK 就只装 LPK」的旧分支，明文目录会被删除，
+# 而 LpBlocklyAssetBootstrap 在 Windows 找不到完整明文目录会抛异常 → 编程页直接打不开。
 set(BLOCKLY_DLL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../dll/visualprogram")
-if(EXISTS "${BLOCKLY_LPK}")
-  install(CODE "
-    file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/dll/visualprogram\")
-    " COMPONENT Runtime)
-  install(FILES "${BLOCKLY_LPK}"
-    DESTINATION "${CMAKE_INSTALL_PREFIX}/dll"
-    RENAME "visualprogram.lpk"
-    COMPONENT Runtime)
-elseif(EXISTS "${BLOCKLY_DLL_DIR}")
-  message(STATUS "Blockly LPK not found; installing plain dll/visualprogram for dev")
+if(EXISTS "${BLOCKLY_DLL_DIR}")
   install(CODE "
     file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/dll\")
     " COMPONENT Runtime)
   install(DIRECTORY "${BLOCKLY_DLL_DIR}/"
     DESTINATION "${CMAKE_INSTALL_PREFIX}/dll/visualprogram"
     COMPONENT Runtime)
+else()
+  message(WARNING "Blockly plain dir not found: ${BLOCKLY_DLL_DIR}")
 endif()
 
 # 默认配置（server、imgs、app_settings.json 等）与 exe 同级

@@ -1,0 +1,3069 @@
+<xml xmlns="http://www.w3.org/1999/xhtml">
+  <block type="procedures_defnoreturn" id="ai_io_proc_0" x="80" y="80">
+    <field name="NAME">本体输入IO</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1000_p0">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1000</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x0_p0">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">0</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1001_p0">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1001</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x1_p0">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1002_p0">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1002</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x2_p0">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">2</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1003_p0">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1003</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x3_p0">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">3</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1004_p0">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1004</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x4_p0">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">4</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1005_p0">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1005</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x5_p0">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">5</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1006_p0">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1006</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x6_p0">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">6</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1007_p0">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1007</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x7_p0">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">7</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1008_p0">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1008</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x8_p0">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">8</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1009_p0">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1009</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x9_p0">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">9</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1010_p0">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1010</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x10_p0">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">10</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1011_p0">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1011</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x11_p0">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">11</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1012_p0">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1012</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x12_p0">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">12</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1013_p0">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1013</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x13_p0">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">13</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1014_p0">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1014</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x14_p0">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">14</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1015_p0">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1015</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x15_p0">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">15</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                          <next>
+                                          <block type="math_variable" id="ai_io_m1016_p0">
+                                            <field name="Variable_Name">M</field>
+                                            <value name="Variable_Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">1016</field>
+                                              </shadow>
+                                            </value>
+                                            <value name="Variable_Value">
+                                              <block type="thread_get_bitX" id="ai_io_x16_p0">
+                                                <field name="ACTIVE_Data">X</field>
+                                                <value name="Idx">
+                                                  <shadow type="math_number">
+                                                    <field name="NUM">16</field>
+                                                  </shadow>
+                                                </value>
+                                              </block>
+                                            </value>
+                                            <next>
+                                            <block type="math_variable" id="ai_io_m1017_p0">
+                                              <field name="Variable_Name">M</field>
+                                              <value name="Variable_Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">1017</field>
+                                                </shadow>
+                                              </value>
+                                              <value name="Variable_Value">
+                                                <block type="thread_get_bitX" id="ai_io_x17_p0">
+                                                  <field name="ACTIVE_Data">X</field>
+                                                  <value name="Idx">
+                                                    <shadow type="math_number">
+                                                      <field name="NUM">17</field>
+                                                    </shadow>
+                                                  </value>
+                                                </block>
+                                              </value>
+                                              <next>
+                                              <block type="math_variable" id="ai_io_m1018_p0">
+                                                <field name="Variable_Name">M</field>
+                                                <value name="Variable_Idx">
+                                                  <shadow type="math_number">
+                                                    <field name="NUM">1018</field>
+                                                  </shadow>
+                                                </value>
+                                                <value name="Variable_Value">
+                                                  <block type="thread_get_bitX" id="ai_io_x18_p0">
+                                                    <field name="ACTIVE_Data">X</field>
+                                                    <value name="Idx">
+                                                      <shadow type="math_number">
+                                                        <field name="NUM">18</field>
+                                                      </shadow>
+                                                    </value>
+                                                  </block>
+                                                </value>
+                                                <next>
+                                                <block type="math_variable" id="ai_io_m1019_p0">
+                                                  <field name="Variable_Name">M</field>
+                                                  <value name="Variable_Idx">
+                                                    <shadow type="math_number">
+                                                      <field name="NUM">1019</field>
+                                                    </shadow>
+                                                  </value>
+                                                  <value name="Variable_Value">
+                                                    <block type="thread_get_bitX" id="ai_io_x19_p0">
+                                                      <field name="ACTIVE_Data">X</field>
+                                                      <value name="Idx">
+                                                        <shadow type="math_number">
+                                                          <field name="NUM">19</field>
+                                                        </shadow>
+                                                      </value>
+                                                    </block>
+                                                  </value>
+                                                  <next>
+                                                  <block type="math_variable" id="ai_io_m1020_p0">
+                                                    <field name="Variable_Name">M</field>
+                                                    <value name="Variable_Idx">
+                                                      <shadow type="math_number">
+                                                        <field name="NUM">1020</field>
+                                                      </shadow>
+                                                    </value>
+                                                    <value name="Variable_Value">
+                                                      <block type="thread_get_bitX" id="ai_io_x20_p0">
+                                                        <field name="ACTIVE_Data">X</field>
+                                                        <value name="Idx">
+                                                          <shadow type="math_number">
+                                                            <field name="NUM">20</field>
+                                                          </shadow>
+                                                        </value>
+                                                      </block>
+                                                    </value>
+                                                    <next>
+                                                    <block type="math_variable" id="ai_io_m1021_p0">
+                                                      <field name="Variable_Name">M</field>
+                                                      <value name="Variable_Idx">
+                                                        <shadow type="math_number">
+                                                          <field name="NUM">1021</field>
+                                                        </shadow>
+                                                      </value>
+                                                      <value name="Variable_Value">
+                                                        <block type="thread_get_bitX" id="ai_io_x21_p0">
+                                                          <field name="ACTIVE_Data">X</field>
+                                                          <value name="Idx">
+                                                            <shadow type="math_number">
+                                                              <field name="NUM">21</field>
+                                                            </shadow>
+                                                          </value>
+                                                        </block>
+                                                      </value>
+                                                      <next>
+                                                      <block type="math_variable" id="ai_io_m1022_p0">
+                                                        <field name="Variable_Name">M</field>
+                                                        <value name="Variable_Idx">
+                                                          <shadow type="math_number">
+                                                            <field name="NUM">1022</field>
+                                                          </shadow>
+                                                        </value>
+                                                        <value name="Variable_Value">
+                                                          <block type="thread_get_bitX" id="ai_io_x22_p0">
+                                                            <field name="ACTIVE_Data">X</field>
+                                                            <value name="Idx">
+                                                              <shadow type="math_number">
+                                                                <field name="NUM">22</field>
+                                                              </shadow>
+                                                            </value>
+                                                          </block>
+                                                        </value>
+                                                        <next>
+                                                        <block type="math_variable" id="ai_io_m1023_p0">
+                                                          <field name="Variable_Name">M</field>
+                                                          <value name="Variable_Idx">
+                                                            <shadow type="math_number">
+                                                              <field name="NUM">1023</field>
+                                                            </shadow>
+                                                          </value>
+                                                          <value name="Variable_Value">
+                                                            <block type="thread_get_bitX" id="ai_io_x23_p0">
+                                                              <field name="ACTIVE_Data">X</field>
+                                                              <value name="Idx">
+                                                                <shadow type="math_number">
+                                                                  <field name="NUM">23</field>
+                                                                </shadow>
+                                                              </value>
+                                                            </block>
+                                                          </value>
+                                                        </block>
+                                                        </next>
+                                                      </block>
+                                                      </next>
+                                                    </block>
+                                                    </next>
+                                                  </block>
+                                                  </next>
+                                                </block>
+                                                </next>
+                                              </block>
+                                              </next>
+                                            </block>
+                                            </next>
+                                          </block>
+                                          </next>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_1" x="80" y="120">
+    <field name="NAME">扩展输入IO-1</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1100_p1">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1100</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x100_p1">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">100</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1101_p1">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1101</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x101_p1">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">101</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1102_p1">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1102</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x102_p1">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">102</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1103_p1">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1103</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x103_p1">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">103</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1104_p1">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1104</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x104_p1">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">104</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1105_p1">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1105</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x105_p1">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">105</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1106_p1">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1106</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x106_p1">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">106</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1107_p1">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1107</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x107_p1">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">107</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1108_p1">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1108</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x108_p1">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">108</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1109_p1">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1109</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x109_p1">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">109</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1110_p1">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1110</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x110_p1">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">110</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1111_p1">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1111</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x111_p1">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">111</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1112_p1">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1112</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x112_p1">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">112</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1113_p1">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1113</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x113_p1">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">113</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1114_p1">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1114</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x114_p1">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">114</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1115_p1">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1115</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x115_p1">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">115</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_2" x="80" y="160">
+    <field name="NAME">扩展输入IO-2</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1200_p2">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1200</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x200_p2">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">200</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1201_p2">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1201</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x201_p2">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">201</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1202_p2">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1202</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x202_p2">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">202</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1203_p2">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1203</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x203_p2">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">203</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1204_p2">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1204</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x204_p2">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">204</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1205_p2">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1205</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x205_p2">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">205</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1206_p2">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1206</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x206_p2">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">206</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1207_p2">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1207</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x207_p2">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">207</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1208_p2">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1208</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x208_p2">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">208</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1209_p2">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1209</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x209_p2">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">209</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1210_p2">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1210</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x210_p2">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">210</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1211_p2">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1211</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x211_p2">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">211</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1212_p2">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1212</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x212_p2">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">212</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1213_p2">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1213</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x213_p2">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">213</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1214_p2">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1214</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x214_p2">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">214</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1215_p2">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1215</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x215_p2">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">215</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_3" x="80" y="200">
+    <field name="NAME">扩展输入IO-3</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1300_p3">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1300</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x300_p3">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">300</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1301_p3">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1301</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x301_p3">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">301</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1302_p3">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1302</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x302_p3">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">302</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1303_p3">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1303</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x303_p3">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">303</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1304_p3">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1304</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x304_p3">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">304</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1305_p3">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1305</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x305_p3">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">305</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1306_p3">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1306</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x306_p3">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">306</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1307_p3">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1307</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x307_p3">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">307</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1308_p3">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1308</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x308_p3">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">308</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1309_p3">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1309</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x309_p3">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">309</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1310_p3">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1310</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x310_p3">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">310</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1311_p3">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1311</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x311_p3">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">311</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1312_p3">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1312</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x312_p3">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">312</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1313_p3">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1313</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x313_p3">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">313</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1314_p3">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1314</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x314_p3">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">314</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1315_p3">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1315</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x315_p3">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">315</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_4" x="80" y="240">
+    <field name="NAME">扩展输入IO-4</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1400_p4">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1400</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x400_p4">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">400</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1401_p4">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1401</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x401_p4">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">401</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1402_p4">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1402</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x402_p4">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">402</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1403_p4">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1403</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x403_p4">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">403</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1404_p4">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1404</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x404_p4">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">404</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1405_p4">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1405</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x405_p4">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">405</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1406_p4">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1406</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x406_p4">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">406</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1407_p4">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1407</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x407_p4">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">407</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1408_p4">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1408</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x408_p4">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">408</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1409_p4">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1409</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x409_p4">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">409</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1410_p4">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1410</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x410_p4">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">410</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1411_p4">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1411</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x411_p4">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">411</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1412_p4">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1412</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x412_p4">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">412</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1413_p4">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1413</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x413_p4">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">413</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1414_p4">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1414</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x414_p4">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">414</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1415_p4">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1415</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x415_p4">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">415</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_5" x="80" y="280">
+    <field name="NAME">扩展输入IO-5</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1500_p5">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1500</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x500_p5">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">500</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1501_p5">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1501</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x501_p5">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">501</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1502_p5">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1502</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x502_p5">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">502</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1503_p5">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1503</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x503_p5">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">503</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1504_p5">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1504</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x504_p5">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">504</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1505_p5">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1505</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x505_p5">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">505</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1506_p5">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1506</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x506_p5">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">506</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1507_p5">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1507</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x507_p5">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">507</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1508_p5">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1508</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x508_p5">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">508</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1509_p5">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1509</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x509_p5">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">509</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1510_p5">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1510</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x510_p5">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">510</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1511_p5">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1511</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x511_p5">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">511</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1512_p5">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1512</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x512_p5">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">512</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1513_p5">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1513</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x513_p5">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">513</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1514_p5">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1514</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x514_p5">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">514</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1515_p5">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1515</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x515_p5">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">515</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_6" x="80" y="320">
+    <field name="NAME">扩展输入IO-6</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1600_p6">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1600</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x600_p6">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">600</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1601_p6">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1601</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x601_p6">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">601</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1602_p6">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1602</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x602_p6">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">602</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1603_p6">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1603</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x603_p6">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">603</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1604_p6">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1604</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x604_p6">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">604</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1605_p6">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1605</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x605_p6">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">605</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1606_p6">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1606</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x606_p6">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">606</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1607_p6">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1607</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x607_p6">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">607</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1608_p6">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1608</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x608_p6">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">608</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1609_p6">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1609</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x609_p6">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">609</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1610_p6">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1610</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x610_p6">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">610</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1611_p6">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1611</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x611_p6">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">611</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1612_p6">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1612</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x612_p6">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">612</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1613_p6">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1613</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x613_p6">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">613</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1614_p6">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1614</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x614_p6">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">614</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1615_p6">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1615</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x615_p6">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">615</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_7" x="80" y="360">
+    <field name="NAME">扩展输入IO-7</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1700_p7">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1700</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x700_p7">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">700</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1701_p7">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1701</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x701_p7">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">701</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1702_p7">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1702</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x702_p7">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">702</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1703_p7">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1703</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x703_p7">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">703</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1704_p7">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1704</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x704_p7">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">704</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1705_p7">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1705</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x705_p7">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">705</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1706_p7">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1706</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x706_p7">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">706</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1707_p7">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1707</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x707_p7">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">707</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1708_p7">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1708</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x708_p7">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">708</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1709_p7">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1709</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x709_p7">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">709</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1710_p7">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1710</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x710_p7">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">710</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1711_p7">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1711</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x711_p7">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">711</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1712_p7">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1712</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x712_p7">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">712</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1713_p7">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1713</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x713_p7">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">713</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1714_p7">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1714</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x714_p7">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">714</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1715_p7">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1715</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x715_p7">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">715</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="ai_io_proc_8" x="80" y="400">
+    <field name="NAME">扩展输入IO-8</field>
+    <statement name="STACK">
+          <block type="math_variable" id="ai_io_m1800_p8">
+            <field name="Variable_Name">M</field>
+            <value name="Variable_Idx">
+              <shadow type="math_number">
+                <field name="NUM">1800</field>
+              </shadow>
+            </value>
+            <value name="Variable_Value">
+              <block type="thread_get_bitX" id="ai_io_x800_p8">
+                <field name="ACTIVE_Data">X</field>
+                <value name="Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">800</field>
+                  </shadow>
+                </value>
+              </block>
+            </value>
+            <next>
+            <block type="math_variable" id="ai_io_m1801_p8">
+              <field name="Variable_Name">M</field>
+              <value name="Variable_Idx">
+                <shadow type="math_number">
+                  <field name="NUM">1801</field>
+                </shadow>
+              </value>
+              <value name="Variable_Value">
+                <block type="thread_get_bitX" id="ai_io_x801_p8">
+                  <field name="ACTIVE_Data">X</field>
+                  <value name="Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">801</field>
+                    </shadow>
+                  </value>
+                </block>
+              </value>
+              <next>
+              <block type="math_variable" id="ai_io_m1802_p8">
+                <field name="Variable_Name">M</field>
+                <value name="Variable_Idx">
+                  <shadow type="math_number">
+                    <field name="NUM">1802</field>
+                  </shadow>
+                </value>
+                <value name="Variable_Value">
+                  <block type="thread_get_bitX" id="ai_io_x802_p8">
+                    <field name="ACTIVE_Data">X</field>
+                    <value name="Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">802</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </value>
+                <next>
+                <block type="math_variable" id="ai_io_m1803_p8">
+                  <field name="Variable_Name">M</field>
+                  <value name="Variable_Idx">
+                    <shadow type="math_number">
+                      <field name="NUM">1803</field>
+                    </shadow>
+                  </value>
+                  <value name="Variable_Value">
+                    <block type="thread_get_bitX" id="ai_io_x803_p8">
+                      <field name="ACTIVE_Data">X</field>
+                      <value name="Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">803</field>
+                        </shadow>
+                      </value>
+                    </block>
+                  </value>
+                  <next>
+                  <block type="math_variable" id="ai_io_m1804_p8">
+                    <field name="Variable_Name">M</field>
+                    <value name="Variable_Idx">
+                      <shadow type="math_number">
+                        <field name="NUM">1804</field>
+                      </shadow>
+                    </value>
+                    <value name="Variable_Value">
+                      <block type="thread_get_bitX" id="ai_io_x804_p8">
+                        <field name="ACTIVE_Data">X</field>
+                        <value name="Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">804</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+                    <block type="math_variable" id="ai_io_m1805_p8">
+                      <field name="Variable_Name">M</field>
+                      <value name="Variable_Idx">
+                        <shadow type="math_number">
+                          <field name="NUM">1805</field>
+                        </shadow>
+                      </value>
+                      <value name="Variable_Value">
+                        <block type="thread_get_bitX" id="ai_io_x805_p8">
+                          <field name="ACTIVE_Data">X</field>
+                          <value name="Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">805</field>
+                            </shadow>
+                          </value>
+                        </block>
+                      </value>
+                      <next>
+                      <block type="math_variable" id="ai_io_m1806_p8">
+                        <field name="Variable_Name">M</field>
+                        <value name="Variable_Idx">
+                          <shadow type="math_number">
+                            <field name="NUM">1806</field>
+                          </shadow>
+                        </value>
+                        <value name="Variable_Value">
+                          <block type="thread_get_bitX" id="ai_io_x806_p8">
+                            <field name="ACTIVE_Data">X</field>
+                            <value name="Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">806</field>
+                              </shadow>
+                            </value>
+                          </block>
+                        </value>
+                        <next>
+                        <block type="math_variable" id="ai_io_m1807_p8">
+                          <field name="Variable_Name">M</field>
+                          <value name="Variable_Idx">
+                            <shadow type="math_number">
+                              <field name="NUM">1807</field>
+                            </shadow>
+                          </value>
+                          <value name="Variable_Value">
+                            <block type="thread_get_bitX" id="ai_io_x807_p8">
+                              <field name="ACTIVE_Data">X</field>
+                              <value name="Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">807</field>
+                                </shadow>
+                              </value>
+                            </block>
+                          </value>
+                          <next>
+                          <block type="math_variable" id="ai_io_m1808_p8">
+                            <field name="Variable_Name">M</field>
+                            <value name="Variable_Idx">
+                              <shadow type="math_number">
+                                <field name="NUM">1808</field>
+                              </shadow>
+                            </value>
+                            <value name="Variable_Value">
+                              <block type="thread_get_bitX" id="ai_io_x808_p8">
+                                <field name="ACTIVE_Data">X</field>
+                                <value name="Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">808</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </value>
+                            <next>
+                            <block type="math_variable" id="ai_io_m1809_p8">
+                              <field name="Variable_Name">M</field>
+                              <value name="Variable_Idx">
+                                <shadow type="math_number">
+                                  <field name="NUM">1809</field>
+                                </shadow>
+                              </value>
+                              <value name="Variable_Value">
+                                <block type="thread_get_bitX" id="ai_io_x809_p8">
+                                  <field name="ACTIVE_Data">X</field>
+                                  <value name="Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">809</field>
+                                    </shadow>
+                                  </value>
+                                </block>
+                              </value>
+                              <next>
+                              <block type="math_variable" id="ai_io_m1810_p8">
+                                <field name="Variable_Name">M</field>
+                                <value name="Variable_Idx">
+                                  <shadow type="math_number">
+                                    <field name="NUM">1810</field>
+                                  </shadow>
+                                </value>
+                                <value name="Variable_Value">
+                                  <block type="thread_get_bitX" id="ai_io_x810_p8">
+                                    <field name="ACTIVE_Data">X</field>
+                                    <value name="Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">810</field>
+                                      </shadow>
+                                    </value>
+                                  </block>
+                                </value>
+                                <next>
+                                <block type="math_variable" id="ai_io_m1811_p8">
+                                  <field name="Variable_Name">M</field>
+                                  <value name="Variable_Idx">
+                                    <shadow type="math_number">
+                                      <field name="NUM">1811</field>
+                                    </shadow>
+                                  </value>
+                                  <value name="Variable_Value">
+                                    <block type="thread_get_bitX" id="ai_io_x811_p8">
+                                      <field name="ACTIVE_Data">X</field>
+                                      <value name="Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">811</field>
+                                        </shadow>
+                                      </value>
+                                    </block>
+                                  </value>
+                                  <next>
+                                  <block type="math_variable" id="ai_io_m1812_p8">
+                                    <field name="Variable_Name">M</field>
+                                    <value name="Variable_Idx">
+                                      <shadow type="math_number">
+                                        <field name="NUM">1812</field>
+                                      </shadow>
+                                    </value>
+                                    <value name="Variable_Value">
+                                      <block type="thread_get_bitX" id="ai_io_x812_p8">
+                                        <field name="ACTIVE_Data">X</field>
+                                        <value name="Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">812</field>
+                                          </shadow>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <next>
+                                    <block type="math_variable" id="ai_io_m1813_p8">
+                                      <field name="Variable_Name">M</field>
+                                      <value name="Variable_Idx">
+                                        <shadow type="math_number">
+                                          <field name="NUM">1813</field>
+                                        </shadow>
+                                      </value>
+                                      <value name="Variable_Value">
+                                        <block type="thread_get_bitX" id="ai_io_x813_p8">
+                                          <field name="ACTIVE_Data">X</field>
+                                          <value name="Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">813</field>
+                                            </shadow>
+                                          </value>
+                                        </block>
+                                      </value>
+                                      <next>
+                                      <block type="math_variable" id="ai_io_m1814_p8">
+                                        <field name="Variable_Name">M</field>
+                                        <value name="Variable_Idx">
+                                          <shadow type="math_number">
+                                            <field name="NUM">1814</field>
+                                          </shadow>
+                                        </value>
+                                        <value name="Variable_Value">
+                                          <block type="thread_get_bitX" id="ai_io_x814_p8">
+                                            <field name="ACTIVE_Data">X</field>
+                                            <value name="Idx">
+                                              <shadow type="math_number">
+                                                <field name="NUM">814</field>
+                                              </shadow>
+                                            </value>
+                                          </block>
+                                        </value>
+                                        <next>
+                                        <block type="math_variable" id="ai_io_m1815_p8">
+                                          <field name="Variable_Name">M</field>
+                                          <value name="Variable_Idx">
+                                            <shadow type="math_number">
+                                              <field name="NUM">1815</field>
+                                            </shadow>
+                                          </value>
+                                          <value name="Variable_Value">
+                                            <block type="thread_get_bitX" id="ai_io_x815_p8">
+                                              <field name="ACTIVE_Data">X</field>
+                                              <value name="Idx">
+                                                <shadow type="math_number">
+                                                  <field name="NUM">815</field>
+                                                </shadow>
+                                              </value>
+                                            </block>
+                                          </value>
+                                        </block>
+                                        </next>
+                                      </block>
+                                      </next>
+                                    </block>
+                                    </next>
+                                  </block>
+                                  </next>
+                                </block>
+                                </next>
+                              </block>
+                              </next>
+                            </block>
+                            </next>
+                          </block>
+                          </next>
+                        </block>
+                        </next>
+                      </block>
+                      </next>
+                    </block>
+                    </next>
+                  </block>
+                  </next>
+                </block>
+                </next>
+              </block>
+              </next>
+            </block>
+            </next>
+          </block>
+    </statement>
+  </block>
+</xml>

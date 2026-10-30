@@ -12,12 +12,11 @@ import 'lp_blockly_pack.dart';
 
 typedef BlocklyBootstrapProgress = void Function(int percent, String message);
 
-/// 从加密包（`.lpk`）或开发态明文目录准备 Blockly 运行资源。
+/// 准备 Blockly 运行资源。
 ///
 /// | 平台 | 策略 |
 /// |------|------|
-/// | **开发** | 工程内 `dll/visualprogram/` 存在则直接使用 |
-/// | **Windows 发布** | 安装目录 `dll/visualprogram.lpk` → 解压到用户缓存 |
+/// | **开发 / Windows 发布** | 工程或安装目录 `dll/visualprogram/` 存在则直接使用 |
 /// | **Android 发布** | APK 内嵌 `assets/blockly/visualprogram.lpk` → 首次进编程页解压到 `installRoot/dll/visualprogram/`，并落盘 `.lpk` 副本 |
 class LpBlocklyAssetBootstrap {
   LpBlocklyAssetBootstrap._();
@@ -41,6 +40,12 @@ class LpBlocklyAssetBootstrap {
 
     final plainRoot = await findPlainDevRoot();
     if (plainRoot != null) return;
+    if (Platform.isWindows) {
+      throw StateError(
+        'Windows Blockly 源文件目录缺失或不完整：'
+        '${LpBlocklyConfig.dllRelativePath}。请重新打包并安装。',
+      );
+    }
 
     final targetRoot = await RobotPaths.blocklyRuntimeRoot();
     final expectedStamp = await _appRuntimeStamp();
@@ -96,9 +101,7 @@ class LpBlocklyAssetBootstrap {
     }
 
     if (!await isRuntimeComplete(targetRoot)) {
-      throw StateError(
-        'Blockly 解压后关键文件仍不完整，请重新打包 ${LpBlocklyPack.fileName}。',
-      );
+      throw StateError('Blockly 解压后关键文件仍不完整，请重新打包 ${LpBlocklyPack.fileName}。');
     }
     await _writeRuntimeStamp(targetRoot, expectedStamp);
   }

@@ -14,7 +14,8 @@
   → XmlBridge → Blockly WebView
 ```
 
-真空快路径在 `LpBlocklyAiAgent._runCanonicalVacuumFastPath`。
+真空快路径在 `LpBlocklyAiAgent._runCanonicalVacuumFastPath`。  
+非真空的结构化生成默认走 `LpBlocklyAiToolLoop`（LLM 调 `apply_plan` / `verify_gcode`，校验失败按 `maxRetries` 再改）。
 
 ## 动作序列（禁止死板模板）
 

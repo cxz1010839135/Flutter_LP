@@ -526,9 +526,16 @@ button {
 
 .blocklySvg{
   background-color: transparent !important;
+  z-index: 1;
 }
 
-/* 代码区独立底板，与左侧功能区脱开（left 由 JS 对齐 toolbox 宽度） */
+/* 必须高于 toolbox(70)，否则弹出块会被功能区命中层盖住，拖不出 */
+.blocklyFlyout {
+  z-index: 80 !important;
+  pointer-events: auto !important;
+}
+
+/* 代码区独立底板，与左侧功能区脱开 */
 .lp-workspace-chrome {
   position: absolute;
   z-index: 0;
@@ -541,11 +548,10 @@ button {
   box-shadow: 2px 2px 8px rgba(255, 126, 26, 0.08);
 }
 
-/* 视觉透明，但必须可命中，否则空白处拖不动工作区（fill:none 不接收鼠标） */
+/* 透明填充可点空白平移。禁止 pointer-events:all：WebView2 会让整张背景抢走积木命中 */
 .blocklyMainBackground {
   fill: transparent !important;
   stroke: none !important;
-  pointer-events: all !important;
 }
 
 .blocklyScrollbarHandle{
@@ -571,19 +577,18 @@ button {
   border-radius: 25px;
 }
 
-/* 功能区：铺页面底色挡住积木，切图按钮仍透明浮在上面 */
+/* 功能区不铺整列白底，只显示切图按钮，避免白框从按钮缝里伸进代码区 */
 .blocklyToolboxDiv{
   width: 3%;/*120px*/
   border-radius: 0;
   padding: 0;
   margin: 0;
-  background: #F8F4ED !important;
-  background-color: #F8F4ED !important;
+  background: transparent !important;
+  background-color: transparent !important;
   border: none;
   box-shadow: none;
   box-sizing: border-box;
   overflow: hidden;
-  z-index: 70;
 }
 
 .blocklyTreeRoot{

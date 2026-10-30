@@ -45,9 +45,6 @@ class RobotPathsWindows extends RobotPathsBase {
     return fallback;
   }
 
-  Future<String> blocklyCacheRoot() =>
-      _ensureSubdirOn(RobotPathLayout.blocklyCacheDir, writable: true);
-
   @override
   Future<String> installRoot() async {
     if (_bundleRoot != null) return _bundleRoot!;
@@ -65,10 +62,7 @@ class RobotPathsWindows extends RobotPathsBase {
 
   @override
   Future<String> imgsDir() async {
-    final bundleImgs = p.join(
-      await installRoot(),
-      RobotPathLayout.imgsDir,
-    );
+    final bundleImgs = p.join(await installRoot(), RobotPathLayout.imgsDir);
     if (await Directory(bundleImgs).exists()) {
       return bundleImgs;
     }
@@ -100,9 +94,15 @@ class RobotPathsWindows extends RobotPathsBase {
       _ensureSubdirOn(RobotPathLayout.programDir, writable: true);
 
   @override
+  Future<String> logsDir() => _ensureSubdirOn('logs', writable: true);
+
+  @override
   Future<File> settingsFile() async {
     return File(
-      p.join(await configRootDir(), p.basename(RobotPathLayout.appSettingsFile)),
+      p.join(
+        await configRootDir(),
+        p.basename(RobotPathLayout.appSettingsFile),
+      ),
     );
   }
 
@@ -152,7 +152,9 @@ class RobotPathsWindows extends RobotPathsBase {
   Future<bool> _looksLikeInstallRoot(String root) async {
     if (await File(p.join(root, 'pubspec.yaml')).exists()) return true;
     if (await Directory(p.join(root, 'dll')).exists()) return true;
-    if (await File(p.join(root, RobotPathLayout.blocklyPackRelative)).exists()) {
+    if (await File(
+      p.join(root, RobotPathLayout.blocklyPackRelative),
+    ).exists()) {
       return true;
     }
     for (final name in RobotPathLayout.windowsExeNames) {

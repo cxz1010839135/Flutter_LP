@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'lp_blockly_ai_append_strategy.dart';
 import 'lp_blockly_ai_block_catalog.dart';
 import 'lp_blockly_ai_config.dart';
@@ -19,6 +17,7 @@ import 'lp_blockly_ai_structure_parser.dart';
 import 'lp_blockly_ai_todo_planner.dart';
 import 'lp_blockly_ai_tool_executor.dart';
 import 'lp_blockly_ai_toolbox_registry.dart';
+import 'lp_blockly_ai_tool_loop.dart';
 import 'lp_blockly_ai_workspace_context.dart';
 import 'lp_blockly_xml_bridge.dart';
 
@@ -381,26 +380,30 @@ class LpBlocklyAiAgent {
       );
     }
 
-    for (final category in LpBlocklyAiBlockCatalog.categories) {
-      final cancelledInLearn = _cancelIfRequested(shouldCancel);
-      if (cancelledInLearn != null) return cancelledInLearn;
+    final useToolLoop = config.useToolLoop &&
+        config.generationMode == LpBlocklyAiGenerationMode.structured;
+    if (!useToolLoop) {
+      for (final category in LpBlocklyAiBlockCatalog.categories) {
+        final cancelledInLearn = _cancelIfRequested(shouldCancel);
+        if (cancelledInLearn != null) return cancelledInLearn;
 
-      final actionId = _nextId('learn');
-      _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
-        id: actionId,
-        kind: LpBlocklyAiMessageKind.action,
-        content: '学习 $category 类块库…',
-        actionStatus: LpBlocklyAiActionStatus.running,
-      )));
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      final summary = LpBlocklyAiBlockCatalog.buildCategorySummary(category);
-      final blockNames =
-          LpBlocklyAiBlockCatalog.blocksByCategory()[category]?.join(', ') ?? '';
-      _patchAction(
-        actionId,
-        '已学习 $category：$blockNames\n$summary',
-        LpBlocklyAiActionStatus.done,
-      );
+        final actionId = _nextId('learn');
+        _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+          id: actionId,
+          kind: LpBlocklyAiMessageKind.action,
+          content: '学习 $category 类块库…',
+          actionStatus: LpBlocklyAiActionStatus.running,
+        )));
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        final summary = LpBlocklyAiBlockCatalog.buildCategorySummary(category);
+        final blockNames =
+            LpBlocklyAiBlockCatalog.blocksByCategory()[category]?.join(', ') ?? '';
+        _patchAction(
+          actionId,
+          '已学习 $category：$blockNames\n$summary',
+          LpBlocklyAiActionStatus.done,
+        );
+      }
     }
     _emitThink(_buildThinkPlan(prompt, config, appendIntent));
     await _finishPhase('learn');
@@ -461,17 +464,29 @@ class LpBlocklyAiAgent {
               : config.generationMode,
     );
 
+    if (useToolLoop &&
+        effectiveConfig.generationMode ==
+            LpBlocklyAiGenerationMode.structured) {
+      return _runLlmToolLoop(
+        prompt: prompt,
+        config: effectiveConfig,
+        service: service,
+        conversationHistory: conversationHistory,
+        persistentContext: effectiveContext,
+        workspaceXml: workspaceXml,
+        workspaceOverviewJson: workspaceOverviewJson,
+        replaceBlockIdsOnAppend: effectiveReplaceIds,
+        appendIntent: appendIntent,
+        shouldCancel: shouldCancel,
+      );
+    }
+
     // --- Phase: generate ---
     await _beginPhase('generate');
-    final useToolLoop = effectiveConfig.useToolLoop &&
-        effectiveConfig.generationMode ==
-            LpBlocklyAiGenerationMode.structured;
-    final genLabel = useToolLoop
-        ? 'JSON 计划 + Tool Loop'
-        : (effectiveConfig.generationMode ==
-                LpBlocklyAiGenerationMode.structured
-            ? 'JSON 计划'
-            : 'XML');
+    final genLabel = effectiveConfig.generationMode ==
+            LpBlocklyAiGenerationMode.structured
+        ? 'JSON 计划'
+        : 'XML';
     final genActionId = _nextId('gen');
     _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
       id: genActionId,
@@ -486,7 +501,7 @@ class LpBlocklyAiAgent {
       prefetchedWorkspaceXml: workspaceXml,
       workspaceOverviewJson: workspaceOverviewJson,
       conversationHistory: conversationHistory,
-      applyToWorkspace: !useToolLoop,
+      applyToWorkspace: true,
       persistentContext: effectiveContext,
       replaceBlockIdsOnAppend: effectiveReplaceIds,
       appendIntent: appendIntent,
@@ -497,87 +512,6 @@ class LpBlocklyAiAgent {
 
     final cancelledAfterGen = _cancelIfRequested(shouldCancel);
     if (cancelledAfterGen != null) return cancelledAfterGen;
-
-    if (result.success &&
-        useToolLoop &&
-        result.parsedPlan != null &&
-        !result.message.contains('修正')) {
-      var planToApply = Map<String, dynamic>.from(
-        jsonDecode(jsonEncode(result.parsedPlan)) as Map,
-      );
-      if (appendIntent == LpBlocklyAiAppendIntent.modifyPrevious) {
-        final patched = LpBlocklyAiIntentBuilder.tryResolvePatchedPlan(
-          prompt: prompt,
-          previousPlan: previousPlan,
-          history: conversationHistory,
-          workspaceXml: workspaceXml,
-        );
-        if (patched != null) {
-          planToApply = patched;
-        } else {
-          LpBlocklyAiIntentBuilder.enrichPlanFromPrompt(prompt, planToApply);
-          planToApply = LpBlocklyAiStructureParser.normalizePlan(planToApply);
-        }
-      } else if (config.applyMode == LpBlocklyAiApplyMode.append) {
-        final overview = await _xmlBridge.getWorkspaceOverview();
-        if (overview.ok) {
-          LpBlocklyAiStructureParser.prepareAppendPlacement(
-            planToApply,
-            existingTopBlocks: overview.topBlocks,
-          );
-        }
-      }
-      String? currentToolActionId;
-      final toolResult = await _toolExecutor.applyPlanWithSteps(
-        plan: planToApply,
-        applyMode: config.applyMode,
-        replaceBlockIdsOnAppend:
-            appendIntent == LpBlocklyAiAppendIntent.addNew
-                ? const []
-                : effectiveReplaceIds,
-        modifyPrevious:
-            appendIntent == LpBlocklyAiAppendIntent.modifyPrevious,
-        userPrompt: prompt,
-        onStep: (label, {bool done = false, bool failed = false}) {
-          if (!done && !failed) {
-            currentToolActionId = _nextId('tool');
-            _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
-              id: currentToolActionId!,
-              kind: LpBlocklyAiMessageKind.action,
-              content: label,
-              actionStatus: LpBlocklyAiActionStatus.running,
-            )));
-            return;
-          }
-          if (currentToolActionId != null) {
-            _patchAction(
-              currentToolActionId!,
-              label,
-              failed ? LpBlocklyAiActionStatus.failed : LpBlocklyAiActionStatus.done,
-            );
-          }
-        },
-      );
-      if (!toolResult.success) {
-        result = LpBlocklyAiPipelineResult(
-          success: false,
-          stage: LpBlocklyAiPipelineStage.apply,
-          message: toolResult.message,
-          rawResponse: result.rawResponse,
-          extractedXml: result.extractedXml,
-          parsedPlan: result.parsedPlan,
-        );
-      } else {
-        result = LpBlocklyAiPipelineResult(
-          success: true,
-          stage: LpBlocklyAiPipelineStage.apply,
-          message: toolResult.message,
-          rawResponse: result.rawResponse,
-          extractedXml: result.extractedXml,
-          parsedPlan: planToApply,
-        );
-      }
-    }
 
     if (result.success) {
       _patchAction(
@@ -633,6 +567,120 @@ class LpBlocklyAiAgent {
       );
     }
 
+    return result;
+  }
+
+  Future<LpBlocklyAiPipelineResult> _runLlmToolLoop({
+    required String prompt,
+    required LpBlocklyAiConfig config,
+    required LpBlocklyAiService service,
+    required List<LpBlocklyAiChatTurn> conversationHistory,
+    required String persistentContext,
+    required String? workspaceXml,
+    required String? workspaceOverviewJson,
+    required List<String> replaceBlockIdsOnAppend,
+    required LpBlocklyAiAppendIntent appendIntent,
+    bool Function()? shouldCancel,
+  }) async {
+    await _beginPhase('generate');
+    final genActionId = _nextId('gen_tools');
+    _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+      id: genActionId,
+      kind: LpBlocklyAiMessageKind.action,
+      content: 'LLM Tool Loop：apply_plan / verify_gcode…',
+      actionStatus: LpBlocklyAiActionStatus.running,
+    )));
+    _emitThink(
+      '进入真实工具循环：模型可反复读取画布、提交 JSON 计划、校验 GCode；'
+      '失败则把错误喂回模型再改（最多 ${config.maxRetries + 1} 次写入）。',
+    );
+
+    final habits = await LpBlocklyAiHabitsLoader.loadReferenceContext();
+    final systemPrompt = LpBlocklyAiPrompt.buildSystemPrompt(
+      workspaceXml: workspaceXml,
+      workspaceOverviewJson: workspaceOverviewJson,
+      applyMode: config.applyMode,
+      appendIntent: appendIntent,
+      includeFullXml: config.includeFullWorkspaceXml,
+      generationMode: LpBlocklyAiGenerationMode.structured,
+      includeToolboxCatalog: LpBlocklyAiToolboxRegistry.hasToolboxTypes,
+      persistentContext: persistentContext,
+      referenceHabits: habits,
+      toolLoop: true,
+    );
+
+    String? currentToolActionId;
+    final loop = LpBlocklyAiToolLoop(
+      service: service,
+      onEvent: (event) {
+        if (event.think) {
+          _emitThink(event.label);
+          return;
+        }
+        if (!event.done && !event.failed) {
+          currentToolActionId = _nextId('tool');
+          _emit(LpBlocklyAiAgentEvent.message(LpBlocklyAiChatMessage(
+            id: currentToolActionId!,
+            kind: LpBlocklyAiMessageKind.action,
+            content: event.label,
+            actionStatus: LpBlocklyAiActionStatus.running,
+          )));
+          return;
+        }
+        if (currentToolActionId != null) {
+          _patchAction(
+            currentToolActionId!,
+            event.label,
+            event.failed
+                ? LpBlocklyAiActionStatus.failed
+                : LpBlocklyAiActionStatus.done,
+          );
+        }
+      },
+    );
+
+    final result = await loop.run(
+      userPrompt: prompt,
+      config: config,
+      conversationHistory: conversationHistory,
+      systemPrompt: systemPrompt,
+      getWorkspaceOverview: () async {
+        final overview = await _xmlBridge.getWorkspaceOverview();
+        return overview.toPromptJson();
+      },
+      getToolboxCatalog: () async {
+        return LpBlocklyAiToolboxRegistry.buildToolboxSection();
+      },
+      applyPlan: (plan) {
+        return lpBlocklyAiApplyPlanForLoop(
+          executor: _toolExecutor,
+          xmlBridge: _xmlBridge,
+          plan: plan,
+          config: config,
+          appendIntent: appendIntent,
+          replaceBlockIdsOnAppend: replaceBlockIdsOnAppend,
+          userPrompt: prompt,
+        );
+      },
+      verifyGCode: () => _xmlBridge.verifyGCode(),
+      shouldCancel: shouldCancel,
+    );
+
+    if (result.success) {
+      _patchAction(genActionId, result.message, LpBlocklyAiActionStatus.done);
+      await _finishPhase('generate');
+      await _beginPhase('verify');
+      await _finishPhase('verify');
+      _emitAssistant('任务完成。程序已写入画布并通过 GCode 校验（Tool Loop）。');
+    } else {
+      _patchAction(genActionId, result.message, LpBlocklyAiActionStatus.failed);
+      await _failPhase('generate');
+      if (result.stage == LpBlocklyAiPipelineStage.validate) {
+        await _beginPhase('verify');
+        await _failPhase('verify');
+      }
+      _emitAssistant('Tool Loop 未完成：${result.message}');
+    }
     return result;
   }
 

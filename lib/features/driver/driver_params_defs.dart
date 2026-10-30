@@ -18,22 +18,26 @@ abstract final class DriverParamsDefs {
     DriverFieldDef('time_torque_press', '节距*0.1'),
   ];
 
+  /// 对齐 Android layout_motorPara2（电机参数设置-2）：
+  /// 编码器方向 / 电机方向 / 编码器类型 / 电池选项 / 是否直线电机 /
+  /// 额定电压 / 第二编码器方向 / 轴号 / 类型。
+  /// control_mode 属安卓底部运动参数区（本页已有独立输入框）、
+  /// torque_press* 属安卓增益调整-1（gainTab1Right 已有），故不在此页。
   static const motorTab2 = [
     DriverFieldDef('enc_dir', '编码器方向'),
-    DriverFieldDef('enc_type', '编码器类型'),
     DriverFieldDef('motor_dir', '电机方向'),
-    DriverFieldDef('motor_option', '电机选项'),
+    DriverFieldDef('enc_type', '编码器类型'),
     DriverFieldDef('battery_option', '电池选项'),
+    DriverFieldDef('motor_option', '电机选项'),
     DriverFieldDef('rated_vol', '额定电压'),
-    DriverFieldDef('control_mode', '控制模式'),
-    DriverFieldDef('torque_press', '保压扭矩'),
-    DriverFieldDef('torque_press_start', '保压开始'),
-  ];
-
-  static const motorTab3 = [
     DriverFieldDef('second_enc_dir', '第二编码器方向'),
     DriverFieldDef('second_enc_axis', '第二编码器轴号'),
     DriverFieldDef('second_enc_type', '第二编码器类型'),
+  ];
+
+  /// 对齐 Android layout_motorPara3：第二编码器位数、第二电机类型、寻相参数。
+  /// 安卓该页另含内部使用 49·50~55·56，Flutter 统一置于安全设置-3。
+  static const motorTab3 = [
     DriverFieldDef('second_enc_bit', '第二编码器位数'),
     DriverFieldDef('second_motor_type', '第二电机类型'),
     DriverFieldDef('findPhaseMode', '寻相模式'),
@@ -98,7 +102,6 @@ abstract final class DriverParamsDefs {
     DriverFieldDef('value_temp_overload', '热过载报警阈值%'),
     DriverFieldDef('time_temp_overload', '热过载报警时间ms'),
     DriverFieldDef('pid_saturated', '速度PID饱和时间ms'),
-    DriverFieldDef('current_forward', '最大扭矩输出限制%'),
   ];
 
   static const safeTab2 = [
@@ -151,7 +154,7 @@ abstract final class DriverParamsDefs {
     'findPhaseCurrent': '默认值0，不要修改',
     'pos_gain': '影响电机刚性和到位后的偏差波动，和单圈脉冲数相关，单圈脉冲数值越大，该值越小。\n到位后偏差波动较大，可慢慢加大看效果，值过大会引起电机震动和异响，调节时从小慢慢往上加',
     'speed_forward': '默认值10000，不要修改',
-    'current_forward': '默认值0，不要修改',
+    'current_forward': '电流环前馈增益，默认值0，非特殊调试场景不要修改',
     'speed_gain': '影响电机刚性，值越大电机刚性越强，负载比较重时，需加大该参数，值过大会引起电机震动和异响，调节时从小慢慢往上加',
     'speed_integral': '影响速度环的跟随效果，积分值越小，跟随效果越强。当速度增益加大，刚性还不足就引起电机震动，适当加大速度积分的值，减弱积分',
     'speed_damping': '默认值0，不要修改',
@@ -181,8 +184,8 @@ abstract final class DriverParamsDefs {
 
   static const Map<String, String> tabHelp = {
     'motor_0': '电机参数设置-1：电机基础参数，包括型号、额定电流、转速、编码器和极对数。',
-    'motor_1': '电机参数设置-2：方向、电压、控制模式和保压相关配置。',
-    'motor_2': '电机参数设置-3：第二编码器和电机寻相参数。',
+    'motor_1': '电机参数设置-2：编码器/电机方向、编码器类型、电池与直线电机选项、额定电压及第二编码器方向/轴号/类型。',
+    'motor_2': '电机参数设置-3：第二编码器位数、第二电机类型及寻相参数。',
     'gain_0': '增益调整-1：位置环、速度环、电流环及滤波参数。',
     'gain_1': '增益调整-2：安卓中为内部使用参数页，需与现场驱动固件保持一致。',
     'safe_0': '安全设置-1：位置、转矩、电压、电流、温度等保护阈值。',

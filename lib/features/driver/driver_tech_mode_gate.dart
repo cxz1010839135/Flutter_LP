@@ -25,8 +25,7 @@ class DriverTechModeGate extends ChangeNotifier {
 
   /// 控制器是否处于初始化中（报警码 -1000）。
   static bool get isControllerInitializing =>
-      RobotTelemetry.instance.motorAlarmCode ==
-      RobotAlarmInfo.codeInitializing;
+      RobotTelemetry.instance.motorAlarmCode == RobotAlarmInfo.codeInitializing;
 
   /// 是否可进入 [DriverPage]（已连接、无进行中切换、非初始化、无已打开会话）。
   bool get canEnterDriverPage {
@@ -39,12 +38,9 @@ class DriverTechModeGate extends ChangeNotifier {
 
   Future<void> _enqueue(Future<void> Function() action) {
     final previous = _chain ?? Future<void>.value();
-    final next = previous.then((_) => action()).catchError((Object e, StackTrace st) {
-      if (kDebugMode) {
-        debugPrint('DriverTechModeGate: $e\n$st');
-      }
-      throw e;
-    });
+    // 上一操作失败不应阻塞后续操作（失败已通过返回的 future 通知调用方）。
+    final recovered = previous.catchError((Object _) {});
+    final next = recovered.then((_) => action());
     _chain = next;
     return next;
   }
@@ -90,6 +86,9 @@ class DriverTechModeGate extends ChangeNotifier {
 
   /// 连接断开时重置本地会话状态。
   void resetOnDisconnect() {
+    // 断开可能发生在 enter/exit 进行中或失败后，必须清空串行链，
+    // 否则 failed future 会导致后续 enter() 被静默丢弃、调试模式永远进不去。
+    _chain = null;
     _sessionActive = false;
     _setBusy(false);
     notifyListeners();

@@ -39,39 +39,6 @@ goog.require('goog.asserts');
  */
 Blockly.BlockDragger.LARGE_STACK_THRESHOLD_ = 200;
 
-/**
- * Above this descendant count, throttle snap-search to one frame.
- * @const {number}
- * @private
- */
-Blockly.BlockDragger.DRAG_THROTTLE_THRESHOLD_ = 80;
-
-/**
- * Workspace connection count above which snap-search is throttled every frame.
- * (≈ thousands of blocks; each block often has several connections.)
- * @const {number}
- * @private
- */
-Blockly.BlockDragger.LARGE_WORKSPACE_CONN_THROTTLE_ = 2500;
-
-/**
- * Rough connection count for the workspace (sum of connection DBs).
- * @param {!Blockly.Workspace} workspace
- * @return {number}
- * @private
- */
-Blockly.BlockDragger.estimateWorkspaceConnCount_ = function(workspace) {
-  var list = workspace.connectionDBList;
-  if (!list) {
-    return 0;
-  }
-  var n = 0;
-  for (var i = 0; i < list.length; i++) {
-    n += list[i].length;
-  }
-  return n;
-};
-
 
 /**
  * Class for a block dragger.  It moves blocks around the workspace when they
@@ -137,14 +104,8 @@ Blockly.BlockDragger = function(block, workspace) {
   this.dragIconData_ = Blockly.BlockDragger.initIconData_(block);
 
   this.dragStackSize_ = block.getDescendants().length;
-  var wsConnCount = Blockly.BlockDragger.estimateWorkspaceConnCount_(workspace);
-  // 超大块栈：拖动中不做吸附搜索；万级工程：拖动中节流到每帧最多一次
   this.skipConnectionSearch_ =
       this.dragStackSize_ > Blockly.BlockDragger.LARGE_STACK_THRESHOLD_;
-  this.throttleConnectionSearch_ =
-      !this.skipConnectionSearch_ &&
-      (this.dragStackSize_ > Blockly.BlockDragger.DRAG_THROTTLE_THRESHOLD_ ||
-       wsConnCount > Blockly.BlockDragger.LARGE_WORKSPACE_CONN_THROTTLE_);
   this.pendingDragFrame_ = false;
   this.pendingDragDelta_ = null;
   this.pendingDragEvent_ = null;
@@ -279,21 +240,19 @@ Blockly.BlockDragger.prototype.dragBlock = function(e, currentDragDeltaXY) {
     return;
   }
 
-  if (this.throttleConnectionSearch_) {
-    this.pendingDragDelta_ = delta;
-    this.pendingDragEvent_ = e;
-    if (!this.pendingDragFrame_) {
-      this.pendingDragFrame_ = true;
-      var self = this;
-      requestAnimationFrame(function() {
-        self.pendingDragFrame_ = false;
-        self.flushDragFrame_();
-      });
-    }
-    return;
+  // 所有尺寸的拖拽统一按帧合并昂贵副作用（snap 搜索 / 图标 / 光标）：
+  // 平移仍逐事件同步跟手，但高回报率鼠标的事件风暴不再逐事件触发
+  // snap 搜索，拖动起步阶段即可保持每帧一次的开销，手感从第一刻就流畅。
+  this.pendingDragDelta_ = delta;
+  this.pendingDragEvent_ = e;
+  if (!this.pendingDragFrame_) {
+    this.pendingDragFrame_ = true;
+    var self = this;
+    requestAnimationFrame(function() {
+      self.pendingDragFrame_ = false;
+      self.flushDragFrame_();
+    });
   }
-
-  this.flushDragFrame_(delta, e);
 };
 
 /**
@@ -303,6 +262,9 @@ Blockly.BlockDragger.prototype.dragBlock = function(e, currentDragDeltaXY) {
  * @private
  */
 Blockly.BlockDragger.prototype.flushDragFrame_ = function(opt_delta, opt_e) {
+  if (!this.draggingBlock_ || !this.draggedConnectionManager_) {
+    return; // 已 dispose：排队的 rAF 直接作废
+  }
   var delta = opt_delta || this.pendingDragDelta_;
   var e = opt_e || this.pendingDragEvent_;
   if (!delta || !e) {
@@ -325,13 +287,18 @@ Blockly.BlockDragger.prototype.endBlockDrag = function(e, currentDragDeltaXY) {
   this.pendingDragFrame_ = false;
   // Make sure internal state is fresh.
   this.dragBlock(e, currentDragDeltaXY);
-  var delta = this.pixelsToWorkspaceUnits_(currentDragDeltaXY);
-  // 松手时做一次吸附（拖动中可能已节流/跳过搜索）
-  this.flushDragFrame_(delta, e);
+  if (!this.skipConnectionSearch_) {
+    var delta = this.pixelsToWorkspaceUnits_(currentDragDeltaXY);
+    this.flushDragFrame_(delta, e);
+    // 直接同步刷过一次，作废排队的 rAF，避免松手后重复执行副作用。
+    this.pendingDragDelta_ = null;
+    this.pendingDragEvent_ = null;
+  }
   this.dragIconData_ = [];
 
   Blockly.BlockSvg.disconnectUiStop_();
 
+  var delta = this.pixelsToWorkspaceUnits_(currentDragDeltaXY);
   var newLoc = goog.math.Coordinate.sum(this.startXY_, delta);
   this.draggingBlock_.moveOffDragSurface_(newLoc);
 

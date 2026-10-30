@@ -44,4 +44,13 @@ class MonitorWatchStatus extends ChangeNotifier {
     d9000Error = nextWatching && nextError;
     notifyListeners();
   }
+
+  /// 返回登录页时清空监视状态。
+  void reset() {
+    if (!watchingD9000 && d9000Value == null && !d9000Error) return;
+    watchingD9000 = false;
+    d9000Value = null;
+    d9000Error = false;
+    notifyListeners();
+  }
 }

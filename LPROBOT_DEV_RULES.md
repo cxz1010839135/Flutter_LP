@@ -3,8 +3,8 @@
 > **用途**：本文件是跨会话、跨工具（Cursor / 其它 IDE / 其它 Agent）的**唯一项目约定来源**。  
 > 在新环境开发前，请先阅读全文；修改架构或风格时，**同步更新本文件**（文末维护记录）。
 
-**当前版本**：`1.0.3`  
-**最后更新**：2026-06-03  
+**当前版本**：`1.0.4`
+**最后更新**：2026-10-08
 **参考 Android 工程**：`../LPRobot-qrcode_http_1.4.7/LPRobot-qrcode_http`（包名 `com.lstech.lprobot`，版本 `1.4.7`）
 
 ---
@@ -202,8 +202,9 @@ lib/
 - 需要 **.NET SDK**（还原 `WixToolset.*` NuGet）
 - **双击打包**：工程根目录 `打包Windows安装包.bat`（路径随 bat 位置自动识别，工程可整体迁移）
 - 命令行：`scripts/package/windows.cmd`；兼容 `scripts/build_msi.cmd`
+- Blockly 发布资源直接从工程 `dll/visualprogram/` 整目录复制到 Release 的 `dll/visualprogram/`；Windows 运行时直接读取该目录，不解压或复用用户缓存。Android 继续使用加密 LPK。
 - 修改 exe 名、安装 UI 或目录逻辑时，同步更新本章与 `README.md`
-- 打包前 `windows.ps1` / `windows.cmd` 会**整目录覆盖** Release 中的 `config/`、`dll/`；改 Blockly 资源后勿仅用 `-SkipFlutterBuild` 除非已确认 Release 已同步
+- 打包前 `windows.ps1` / `windows.cmd` 会**整目录覆盖** Release 中的 `config/`、`dll/`；每次打包都会从当前 `dll/visualprogram/` 重拷 Blockly 文件，包括 `-SkipFlutterBuild`。
 
 ### 8.2 Android 打包与运行时约定
 
@@ -235,6 +236,7 @@ lib/
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|----------|
+| 1.0.4 | 2026-10-08 | Windows 安装包直接复制并运行 `dll/visualprogram/` 源文件，不再用 Blockly 解压缓存；Android 仍使用 LPK |
 | 1.0.3 | 2026-06-03 | Windows 发布 exe `领鹏智能.exe`；MSI 中文 UI + 可选安装目录；`RobotPaths` 只读安装目录回退；`scripts/package/` 多平台打包骨架 |
 | 1.0.2 | 2026-06-02 | §7 exit 已实现；§9 进度更新为阶段 1 约 85%、整体 30% |
 | 1.0.1 | 2026-06-02 | 新增移植计划文档与 changelog 目录；§9 改为链接独立文档 |

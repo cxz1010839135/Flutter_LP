@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'app_logger.dart';
 import 'lp_status_log.dart';
 import 'robot_alarm_info.dart';
 import 'robot_api_constants.dart';
@@ -376,6 +377,11 @@ class RobotTelemetry extends ChangeNotifier {
         motorAlarmDisplay,
         openPanel: false,
       );
+      AppLogger.instance.logAlarm(motorAlarmDisplay);
+    }
+    if (prevAlarm && !motorAlarm) {
+      LpStatusLog.instance.success('报警已消除', openPanel: false);
+      AppLogger.instance.logAlarm('报警已消除');
     }
 
     if (changed) {

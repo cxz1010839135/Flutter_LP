@@ -294,7 +294,9 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
       ),
     );
     if (confirmed != true) return;
-    final path = '$_singleAxisRoot/$fileName';
+    // 使用当前所在目录构造完整路径，支持子目录下的文件加载。
+    final dir = _remoteDirKey.endsWith('/') ? _remoteDirKey : '$_remoteDirKey/';
+    final path = '$dir$fileName';
     _fileNameController.text = fileName;
     await widget.onLoadSingleAxisFile(path);
     if (!mounted) return;
@@ -403,14 +405,16 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
 
     return SizedBox(
       width: 100,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          item('运动参数', DriverBottomView.motionParams),
-          const SizedBox(height: 28),
-          item('单轴参数', DriverBottomView.singleAxisParams),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            item('运动参数', DriverBottomView.motionParams),
+            const SizedBox(height: 28),
+            item('单轴参数', DriverBottomView.singleAxisParams),
+          ],
+        ),
       ),
     );
   }
@@ -576,51 +580,65 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
       decoration: DriverUiStyle.toolbarBarDecoration(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('当前轴号:', style: DriverUiStyle.toolbarLabelStyle),
-              const SizedBox(width: 6),
-              _axisDropdown(),
-            ],
-          ),
-          _actionBtn('读驱动参数', widget.onReadDriver),
-          _actionBtn('写驱动参数', widget.onWriteDriver),
-          _actionBtn('写文件参数', widget.onWriteFile),
-          _check('刷新', widget.refreshChart, widget.onRefreshChartChanged),
-          _check('往返', widget.roundTrip, widget.onRoundTripChanged),
-          _check(
-            '循环',
-            widget.loopMove,
-            widget.onLoopChanged,
-            enabledWhenBusy: true,
-          ),
-          _miniField(
-            context,
-            '延时(ms)',
-            widget.delayMs,
-            widget.onDelayChanged,
-            helpKey: 'delay_ms',
-            valueWidth: 72,
-          ),
-          _actionBtn('软复位', widget.onSoftReset),
-          _actionBtn(
-            widget.findPhaseButtonLabel,
-            widget.onFindPhase,
-            highlighted: widget.findPhaseActive,
-            enabled: !widget.busy || widget.findPhaseActive,
-          ),
-          _actionBtn(
-            '采集波形',
-            widget.onSample,
-            enabled: widget.refreshChart,
-          ),
-          _actionBtn('点动', widget.onPosRef),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('当前轴号:', style: DriverUiStyle.toolbarLabelStyle),
+                const SizedBox(width: 6),
+                _axisDropdown(),
+              ],
+            ),
+            const SizedBox(width: 8),
+            _actionBtn('读驱动参数', widget.onReadDriver),
+            const SizedBox(width: 8),
+            _actionBtn('写驱动参数', widget.onWriteDriver),
+            const SizedBox(width: 8),
+            _actionBtn('写文件参数', widget.onWriteFile),
+            const SizedBox(width: 8),
+            _check('刷新', widget.refreshChart, widget.onRefreshChartChanged),
+            const SizedBox(width: 8),
+            _check('往返', widget.roundTrip, widget.onRoundTripChanged),
+            const SizedBox(width: 8),
+            _check(
+              '循环',
+              widget.loopMove,
+              widget.onLoopChanged,
+              enabledWhenBusy: true,
+            ),
+            const SizedBox(width: 8),
+            _miniField(
+              context,
+              '延时(ms)',
+              widget.delayMs,
+              widget.onDelayChanged,
+              helpKey: 'delay_ms',
+              valueWidth: 72,
+            ),
+            const SizedBox(width: 8),
+            _actionBtn('软复位', widget.onSoftReset),
+            const SizedBox(width: 8),
+            _actionBtn(
+              widget.findPhaseButtonLabel,
+              widget.onFindPhase,
+              highlighted: widget.findPhaseActive,
+              enabled: !widget.busy || widget.findPhaseActive,
+            ),
+            const SizedBox(width: 8),
+            _actionBtn(
+              '采集波形',
+              widget.onSample,
+              enabled: widget.refreshChart,
+            ),
+            const SizedBox(width: 8),
+            _actionBtn('点动', widget.onPosRef),
+          ],
+        ),
       ),
     );
   }
@@ -638,13 +656,40 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
             value: widget.curAxis,
             isDense: true,
             style: DriverUiStyle.fieldTextStyle,
+            icon: const Icon(
+              Icons.arrow_drop_down,
+              size: 20,
+              color: LpRobotColors.primary,
+            ),
+            // 轴号多时菜单可能超出窗口：限制最大高度，菜单内部滚动保持正常。
+            menuMaxHeight: 300,
+            // 按钮显示项：紧凑数字，避免被菜单项的 Padding 撑宽。
+            selectedItemBuilder: (context) => List.generate(
+              widget.axisCount,
+              (i) => Center(
+                child: Text(
+                  '${i + 1}',
+                  style: DriverUiStyle.fieldTextStyle,
+                ),
+              ),
+            ),
             items: List.generate(
               widget.axisCount,
               (i) => DropdownMenuItem(
                 value: i,
-                child: Text(
-                  '${i + 1}',
-                  style: DriverUiStyle.fieldTextStyle,
+                // 菜单项加宽并留出行高：isDense 压缩行高时数字会与选中勾图标
+                // 重叠（观感像乱码），加宽 + 内边距可避免。
+                child: SizedBox(
+                  width: 56,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        '${i + 1}',
+                        style: DriverUiStyle.fieldTextStyle.copyWith(height: 1.2),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -659,6 +704,7 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
 
   Widget _axisDebugRow(int index, AxisDebugRow row) {
     // J 左顶格；加速度/速度/距离输入框加宽一倍，组间拉开，右顶格。
+    // 窗口宽度不足时允许整行水平滚动，避免左下角 overflow。
     return SizedBox(
       height: 40,
       child: Align(
@@ -697,22 +743,27 @@ class _DriverParamsPanelState extends State<DriverParamsPanel> {
             }),
             const SizedBox(width: 20),
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _rowField('加速度', row.acc, (v) {
-                    row.acc = v;
-                    widget.onAxisMotionFieldChanged(index, row);
-                  }),
-                  _rowField('速度', row.vel, (v) {
-                    row.vel = v;
-                    widget.onAxisMotionFieldChanged(index, row);
-                  }),
-                  _rowField('距离', row.distance, (v) {
-                    row.distance = v;
-                    widget.onAxisMotionFieldChanged(index, row);
-                  }, signed: true),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    _rowField('加速度', row.acc, (v) {
+                      row.acc = v;
+                      widget.onAxisMotionFieldChanged(index, row);
+                    }),
+                    const SizedBox(width: 16),
+                    _rowField('速度', row.vel, (v) {
+                      row.vel = v;
+                      widget.onAxisMotionFieldChanged(index, row);
+                    }),
+                    const SizedBox(width: 16),
+                    _rowField('距离', row.distance, (v) {
+                      row.distance = v;
+                      widget.onAxisMotionFieldChanged(index, row);
+                    }, signed: true),
+                  ],
+                ),
               ),
             ),
           ],

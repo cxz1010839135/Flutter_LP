@@ -331,9 +331,32 @@ def build_registration_doc() -> Document:
     return doc
 
 
-def build_source_doc(txt_name: str, out_name: str) -> Document:
+def build_source_doc(txt_name: str, out_name: str | Path) -> Path:
     txt_path = COPYRIGHT_DIR / txt_name
     content = txt_path.read_text(encoding="utf-8").splitlines()
+    page_marker = re.compile(r"^--- 第\s+\d+\s+页 ---$")
+    pages: list[list[str]] = []
+    current_page: list[str] | None = None
+    for line in content:
+        stripped = line.strip()
+        if page_marker.match(stripped):
+            if current_page is not None:
+                pages.append(current_page)
+            current_page = []
+        elif current_page is not None and stripped:
+            current_page.append(line)
+    if current_page is not None:
+        pages.append(current_page)
+
+    if len(pages) != 30:
+        raise ValueError(f"{txt_name} 应为30页，实际解析到 {len(pages)} 页")
+    invalid_pages = [
+        str(index + 1) for index, lines in enumerate(pages) if len(lines) < 50
+    ]
+    if invalid_pages:
+        raise ValueError(
+            f"{txt_name} 以下页面不足50行非空源码：{', '.join(invalid_pages)}"
+        )
 
     doc = Document()
     add_header_footer(doc, f"{HEADER_TEXT} — 源程序")
@@ -342,15 +365,21 @@ def build_source_doc(txt_name: str, out_name: str) -> Document:
     section.left_margin = Cm(2.5)
     section.right_margin = Cm(2.5)
 
-    for line in content:
-        p = doc.add_paragraph()
-        p.paragraph_format.line_spacing = Pt(12)
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        run = p.add_run(line if line else " ")
-        set_run_font(run, "Courier New", 8)
+    for page_index, lines in enumerate(pages):
+        if page_index:
+            doc.add_page_break()
+        for line in lines:
+            p = doc.add_paragraph()
+            p.paragraph_format.line_spacing = Pt(12)
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            run = p.add_run(line)
+            set_run_font(run, "Courier New", 8)
 
-    out_path = COPYRIGHT_DIR / out_name
+    out_path = Path(out_name)
+    if not out_path.is_absolute():
+        out_path = COPYRIGHT_DIR / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(out_path)
     return out_path
 
@@ -368,6 +397,13 @@ def main():
 
     front_path = build_source_doc("源程序-前30页.txt", "源程序-前30页.docx")
     back_path = build_source_doc("源程序-后30页.txt", "源程序-后30页.docx")
+    submission_dir = COPYRIGHT_DIR / "领鹏智能软著2025.8.11"
+    submission_front_path = build_source_doc(
+        "源程序-前30页.txt", submission_dir / "源程序-前30页.docx"
+    )
+    submission_back_path = build_source_doc(
+        "源程序-后30页.txt", submission_dir / "源程序-后30页.docx"
+    )
 
     print("Generated Word documents:")
     if skip_manual:
@@ -377,6 +413,8 @@ def main():
     print(f"  {reg_path}")
     print(f"  {front_path}")
     print(f"  {back_path}")
+    print(f"  {submission_front_path}")
+    print(f"  {submission_back_path}")
 
 
 if __name__ == "__main__":

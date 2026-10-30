@@ -62,6 +62,9 @@ abstract class RobotPathsBase implements RobotPathsPlatform {
   @override
   Future<String> dllDir() => _ensureSubdir(RobotPathLayout.dllDir);
 
+  @override
+  Future<String> logsDir() => _ensureSubdir('logs');
+
   @Deprecated('Use xmlLibraryDir')
   @override
   Future<String> xmlConfigDir() => xmlLibraryDir();

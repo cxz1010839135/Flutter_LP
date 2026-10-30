@@ -2,30 +2,170 @@
 软件名称：领鹏智能机器人上位机软件
 版本号：V2.0.5
 编程语言：Dart (Flutter)
-生成日期：2026-08-10
+生成日期：2026-09-10
 
 
 --- 第 1 页 ---
+// ===== File: lib/main.dart =====
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_win_floating/webview_win_floating.dart';
+import 'app/lp_robot_colors.dart';
+import 'app/lp_robot_theme.dart';
+import 'app/lp_ui_scale.dart';
+import 'app/widgets/lp_app_navigator.dart';
+import 'app/widgets/lp_uniform_app_viewport.dart';
+import 'app/widgets/robot_connection_guard.dart';
+import 'core/app_info.dart';
+import 'core/robot_paths.dart';
+import 'features/connect/connect_page.dart';
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    // 工控平板：隐藏系统状态栏/导航栏，避免顶栏被挤出
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+      ),
+    );
+  }
+  Object? startupError;
+  StackTrace? startupStack;
+  try {
+    await AppInfo.load();
+    await RobotPaths.ensureLayout();
+  } catch (e, st) {
+    startupError = e;
+    startupStack = st;
+  }
+  if (Platform.isWindows || Platform.isLinux) {
+    try {
+      WindowsWebViewPlatform.registerWith();
+    } catch (e, st) {
+      startupError ??= e;
+      startupStack ??= st;
+    }
+  }
+  if (startupError != null) {
+    runApp(_LpStartupErrorApp(
 
+--- 第 2 页 ---
+      error: startupError,
+      stackTrace: startupStack,
+    ));
+    return;
+  }
+  runApp(const LpRobotApp());
+}
+/// 启动阶段路径/配置初始化失败时展示，避免白屏。
+class _LpStartupErrorApp extends StatelessWidget {
+  const _LpStartupErrorApp({
+    required this.error,
+    this.stackTrace,
+  });
+  final Object error;
+  final StackTrace? stackTrace;
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: LpRobotColors.pageBackground,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '应用初始化失败',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text('$error'),
+                if (stackTrace != null) ...[
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        '$stackTrace',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+--- 第 3 页 ---
+}
+class LpRobotApp extends StatelessWidget {
+  const LpRobotApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: AppInfo.displayTitle,
+      debugShowCheckedModeBanner: false,
+      theme: lpRobotTheme(),
+      navigatorKey: lpRootNavigatorKey,
+      navigatorObservers: [lpBlocklyRouteObserver],
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        // Blockly 页与 v1.8.9 一致：不套设计稿 FittedBox，原生 WebView 跟真实窗口尺寸。
+        // 注意：builder 的 context 在 Navigator 之上，不能用 ModalRoute.of 判断栈顶。
+        return ValueListenableBuilder<bool>(
+          valueListenable: lpBlocklyRouteActive,
+          builder: (context, isBlockly, _) {
+            final viewport = isBlockly
+                ? (Platform.isAndroid
+                    ? SafeArea(child: child)
+                    : child)
+                : LpUniformAppViewport(
+                    designWidth: LpUiScale.designWidth,
+                    designHeight: LpUiScale.designHeight,
+                    backgroundColor: LpRobotColors.pageBackground,
+                    fit: BoxFit.fill,
+                    child: child,
+                  );
+            return RobotConnectionGuard(
+              child: LpEscapeBackShortcuts(child: viewport),
+            );
+          },
+        );
+      },
+      home: const ConnectPage(),
+    );
+  }
+}
 // ===== File: lib/app/lp_app_assets.dart =====
 /// 全局贴图（Android mipmap-xxxhdpi）。
 abstract final class LpAppAssets {
   static const _control = 'assets/control';
   static const _homeTop = 'assets/home/top';
-
   static const backPressed = '$_control/main_back_pressed.png';
   static const backUnpressed = '$_control/main_back_unpressed.png';
-
   /// 主页顶栏背景（切图1 top-bg-01）。
   static const homeTopMenuBg = '$_homeTop/top-bg-01.png';
-
   /// 内页顶栏背景（切图1 neiye-topbg：驱动器参数 / 文件配置等）。
   static const neiyeTopBg = '$_homeTop/neiye-topbg.png';
+
+--- 第 4 页 ---
   /// 顶栏 Logo（切图1 logo.png，含图标+字）。
   static const homeTopLogo = '$_homeTop/logo.png';
   static const homeTopNameBg = '$_homeTop/home_top_name_bg.png';
   static const iconWifi = '$_homeTop/icon_wifi.png';
-
   /// 文件配置页切图（切图1 wenjian-*）。
   static const _configFile = 'assets/config_file';
   static const configLeftBoxBg = '$_configFile/wenjian-leftbox-bg.png';
@@ -35,33 +175,23 @@ abstract final class LpAppAssets {
   static const configFootBg = '$_configFile/wenjian-foot-bg.png';
   static const configFootBtn1 = '$_configFile/wenjian-foot-btn1.png';
   static const configFootBtn2 = '$_configFile/wenjian-foot-btn2.png';
-
   /// 配置页主区（切图1 main-daima-*）。
   static const configDaimaBoxBg = '$_configFile/main-daima-boxbg.png';
   static const configDaimaBtnPrimary = '$_configFile/main-daima-btn1bg.png';
   static const configDaimaBtnSecondary = '$_configFile/main-daima-btn21bg.png';
-
   /// 底栏 IO 分组胶囊底（切图1 foot-infobg1）。
   static const footIoGroupBg = '$_homeTop/foot-infobg1.png';
-
   /// 底栏启动状态/报警胶囊底（切图1 foot-infobg2）。
   static const footStatusBg = '$_homeTop/foot-infobg2.png';
-
   /// 顶栏返回箭头（切图1 TOPBACK-1 / TOPBACK-2 按下）。
   static const homeTopBack = '$_homeTop/TOPBACK-1.png';
   static const homeTopBackPressed = '$_homeTop/TOPBACK-2.png';
-
   /// 顶栏坐标格底（切图1 top-X-BG，X/Y/Z/J1… 平行四边形底）。
   static const homeTopAxisBg = '$_homeTop/top-X-BG.png';
-
   /// 连接页 / 应用图标（与 Android ic_launcher 一致）
   static const brandAppIcon = 'assets/branding/ic_launcher.png';
-
---- 第 2 页 ---
-
   /// 主页 / 操控 / 连接等页面暖色底图（切图 bg.png）。
   static const pageBg = 'assets/branding/bg.png';
-
   /// 连接页切图（切图1 login1-*，对齐设计稿橙色卡片）。
   static const _login = 'assets/login';
   static const loginBg = '$_login/login1-bg.png';
@@ -71,21 +201,19 @@ abstract final class LpAppAssets {
   static const loginInput = '$_login/login1-input.png';
   static const loginLogo = '$_login/logo.png';
 }
-
 // ===== File: lib/app/lp_app_fonts.dart =====
 import 'package:flutter/material.dart';
-
 /// 全局字体：英文 Roboto，中文思源黑体（Source Han Sans SC）。
 abstract final class LpAppFonts {
   static const String roboto = 'Roboto';
   static const String sourceHanSansSc = 'Source Han Sans SC';
-
   static const List<String> cjkFallback = [sourceHanSansSc];
-
   static TextStyle style({
     double? fontSize,
     FontWeight? fontWeight,
     Color? color,
+
+--- 第 5 页 ---
     double? height,
     bool tabular = false,
     TextDecoration? decoration,
@@ -102,14 +230,11 @@ abstract final class LpAppFonts {
           tabular ? const [FontFeature.tabularFigures()] : null,
     );
   }
-
   /// 坐标、寄存器等等宽数字列。
   static TextStyle numeric({
     double? fontSize,
     FontWeight? fontWeight,
     Color? color,
-
---- 第 3 页 ---
     double? height,
   }) =>
       style(
@@ -119,7 +244,6 @@ abstract final class LpAppFonts {
         height: height,
         tabular: true,
       );
-
   static TextTheme applyTo(TextTheme base, {Color? bodyColor}) {
     TextStyle merge(TextStyle? s) {
       if (s == null) return LpAppFonts.style(color: bodyColor);
@@ -128,7 +252,6 @@ abstract final class LpAppFonts {
         fontFamilyFallback: cjkFallback,
       );
     }
-
     return TextTheme(
       displayLarge: merge(base.displayLarge),
       displayMedium: merge(base.displayMedium),
@@ -141,6 +264,8 @@ abstract final class LpAppFonts {
       titleSmall: merge(base.titleSmall),
       bodyLarge: merge(base.bodyLarge),
       bodyMedium: merge(base.bodyMedium),
+
+--- 第 6 页 ---
       bodySmall: merge(base.bodySmall),
       labelLarge: merge(base.labelLarge),
       labelMedium: merge(base.labelMedium),
@@ -148,153 +273,115 @@ abstract final class LpAppFonts {
     );
   }
 }
-
 // ===== File: lib/app/lp_robot_colors.dart =====
 import 'package:flutter/material.dart';
-
 /// 领鹏 LPRobot 色系（对齐 Android res/values/colors.xml 与主界面截图）
 abstract final class LpRobotColors {
   /// 主色 / 导航、按钮描边（操控页 X/Y/Z 选中态等同此色）。
   static const Color primary = Color(0xFFFF7E1A);
-
   /// 主页 / 操控 / 登录浅橙底（比 [primary] 更浅，对齐 Android 暖色大底）。
   static const Color shellBackground = Color(0xFFFFF0E4);
-
-
---- 第 4 页 ---
   /// 主色半透明（分隔线、进度条等）
   static const Color primarySoft = Color(0xCCFF7E1A);
-
   /// 全应用统一页面暖色底（较初版驱动/配置页 `#EBE3D6` 更淡）。
   static const Color pageBackground = Color(0xFFF8F4ED);
-
   /// 全应用统一面板暖色底（较初版 `#F7F0E8` 更淡）。
   static const Color panelBackground = Color(0xFFFCFAF6);
-
   /// 页面背景（点库、监控等，连接页用 [shellBackground]）。
   static const Color background = pageBackground;
-
   /// 主页 / 操控画布底（浅于 X 轴选中橙）。
   static const Color controlCanvas = shellBackground;
-
   /// 操控页 IO/轴区浅暖底（对齐 Android `color_axis_bg` #fff8f2）。
   static const Color controlAxisSurface = Color(0xFFFFF8F2);
-
   /// 主页 / 操控画布微渐变（底略深、顶略浅）。
   static const LinearGradient controlCanvasGradient = LinearGradient(
     begin: Alignment.bottomCenter,
     end: Alignment.topCenter,
     colors: [Color(0xFFFFEDE0), Color(0xFFFFF5ED)],
   );
-
   /// 主内容区顶缘：顶栏下方淡橙过渡。
   static const List<Color> shellEdgeFadeTop = [
     Color(0x2EFF7E1A),
     Color(0x00FF7E1A),
   ];
-
   /// 主内容区底缘：底栏上方淡橙过渡。
   static const List<Color> shellEdgeFadeBottom = [
     Color(0x00FF7E1A),
     Color(0x1AFF7E1A),
   ];
-
   /// 主页导航键、运行侧栏、状态气泡（暖白，避免纯白块突兀）。
   static const Color navCardBackground = Color(0xFFFFF6EE);
-
   /// 导航/侧栏卡片描边（浅橙，贴合 [shellBackground]）。
   static Color get navCardBorder => primary.withValues(alpha: 0.22);
-
   /// 导航/侧栏轻阴影色。
   static Color get navCardShadow => primary.withValues(alpha: 0.10);
-
   /// 底栏状态面板（折叠摘要 / 连接·消息·输出）。
+
+--- 第 7 页 ---
   static const Color statusPanelBackground = Color(0xFFFFF6EE);
-
   /// 底栏面板顶栏（略深暖橙，与主画布区分）。
-
---- 第 5 页 ---
   static const Color statusPanelHeader = Color(0xFFFFEDE0);
-
   /// 底栏面板顶部分隔线。
   static Color get statusPanelDivider => primary.withValues(alpha: 0.28);
-
   /// 面板、侧栏白底
   static const Color surface = Color(0xFFFFFFFF);
-
   /// 暖色浅底（坐标区、列表、底栏卡片，同 [panelBackground]）。
   static const Color surfaceWarm = panelBackground;
-
   /// 实时数值 / 正常状态（截图绿色读数）
   static const Color liveValue = Color(0xFF00AF29);
-
   /// IO 未选中描边
   static const Color ioUnchecked = Color(0xFFFF7E1A);
-
   /// IO 已选中
   static const Color ioChecked = Color(0xFF00AF29);
-
   /// 标签、次要文字
   static const Color label = Color(0xFF666666);
-
   /// 深色正文
   static const Color textDark = Color(0xFF3F260F);
-
   /// 顶栏渐变起点
   static const Color headerGradientStart = Color(0xFFFF7E1A);
-
   /// 顶栏渐变终点
   static const Color headerGradientEnd = panelBackground;
-
   /// 列表边框
   static const Color borderWarm = Color(0xFFFFBE7F);
-
   /// 错误 / 报警（保留 Material 红，与原版警示区分）
   static const Color alarm = Color(0xFFD32F2F);
-
   static const LinearGradient headerGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [headerGradientStart, headerGradientEnd],
   );
-
   /// 驱动器页顶栏（底橙 → 顶浅，对齐 Android wh_file_top / 图二）。
   static const LinearGradient driverTitleGradient = LinearGradient(
     begin: Alignment.bottomCenter,
     end: Alignment.topCenter,
     colors: [Color(0xFFFFC285), Color(0xFFFFF9F4)],
   );
-
---- 第 6 页 ---
 }
-
 // ===== File: lib/app/lp_robot_theme.dart =====
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'lp_app_fonts.dart';
 import 'lp_robot_colors.dart';
 import 'widgets/lp_gradient_header.dart';
-
 /// 全局 Material 主题
 ThemeData lpRobotTheme() {
   const primary = LpRobotColors.primary;
   final colorScheme = ColorScheme.fromSeed(
     seedColor: primary,
+
+--- 第 8 页 ---
     primary: primary,
     onPrimary: Colors.white,
     surface: LpRobotColors.surface,
     onSurface: LpRobotColors.textDark,
     brightness: Brightness.light,
   );
-
   final base = ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
     fontFamily: LpAppFonts.roboto,
     fontFamilyFallback: LpAppFonts.cjkFallback,
   );
-
   return base.copyWith(
     textTheme: LpAppFonts.applyTo(
       base.textTheme,
@@ -316,8 +403,6 @@ ThemeData lpRobotTheme() {
     cardTheme: CardThemeData(
       color: LpRobotColors.surface,
       elevation: 2,
-
---- 第 7 页 ---
       shadowColor: Colors.black26,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -335,6 +420,8 @@ ThemeData lpRobotTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: primary,
+
+--- 第 9 页 ---
         side: const BorderSide(color: primary, width: 1.5),
         minimumSize: const Size(0, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -365,20 +452,14 @@ ThemeData lpRobotTheme() {
     extensions: const [LpRobotThemeExtension()],
   );
 }
-
 /// 通过 `Theme.of(context).extension<LpRobotThemeExtension>()` 取品牌色
 class LpRobotThemeExtension extends ThemeExtension<LpRobotThemeExtension> {
-
---- 第 8 页 ---
   const LpRobotThemeExtension();
-
   Color get liveValue => LpRobotColors.liveValue;
   Color get primary => LpRobotColors.primary;
   LinearGradient get headerGradient => LpRobotColors.headerGradient;
-
   @override
   LpRobotThemeExtension copyWith() => this;
-
   @override
   LpRobotThemeExtension lerp(
     covariant ThemeExtension<LpRobotThemeExtension>? other,
@@ -386,23 +467,21 @@ class LpRobotThemeExtension extends ThemeExtension<LpRobotThemeExtension> {
   ) =>
       this;
 }
-
 /// 带橙白渐变的顶栏（主界面、连接页、Blockly）
 class LpRobotAppBar extends StatelessWidget implements PreferredSizeWidget {
   const LpRobotAppBar({
     super.key,
     required this.title,
+
+--- 第 10 页 ---
     this.actions,
     this.leading,
   });
-
   final Widget title;
   final List<Widget>? actions;
   final Widget? leading;
-
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -420,77 +499,58 @@ class LpRobotAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
-
---- 第 9 页 ---
-
 // ===== File: lib/app/lp_ui_scale.dart =====
 import 'package:flutter/material.dart';
-
 /// 桌面端 UI 缩放：以 1280×720 为参考，随窗口变大而放大控件。
 abstract final class LpUiScale {
   static const double designWidth = 1280;
   static const double designHeight = 720;
   static const double poseBarHeight = 82;
   static const double statusBarCollapsedHeight = 33;
-
   /// 操控页主工作区（顶栏与底栏之间）设计高度。
   static const double controlWorkspaceHeight =
       designHeight - poseBarHeight - statusBarCollapsedHeight;
-
   /// 操控页可缩放区域：顶栏 + 主工作区（不含底部状态面板）。
   static const double controlScalableHeight =
       designHeight - statusBarCollapsedHeight;
-
   static double workspaceFactorOf(Size size) {
     final w = size.width / designWidth;
     final h = size.height / controlWorkspaceHeight;
     return w < h ? w : h;
   }
-
   static double factorOf(Size size) {
     final w = size.width / designWidth;
     final h = size.height / designHeight;
     return w < h ? w : h;
   }
-
   static double factor(BuildContext context) =>
-      factorOf(MediaQuery.sizeOf(context));
 
+--- 第 11 页 ---
+      factorOf(MediaQuery.sizeOf(context));
   /// 限制极端窗口下的缩放范围。
   static double clampFactor(double raw, {double min = 0.9, double max = 2.6}) =>
       raw.clamp(min, max);
-
   static double scaled(BuildContext context, double designPx) =>
       designPx * clampFactor(factor(context));
-
   static double scaledForConstraints(BoxConstraints c, double designPx) {
     final raw = factorOf(Size(c.maxWidth, c.maxHeight));
     return designPx * clampFactor(raw);
   }
 }
-
 // ===== File: lib/app/widgets/lp_app_navigator.dart =====
 import 'dart:io';
-
-
---- 第 10 页 ---
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 /// 根 [Navigator] 键，供全局遮罩/断线弹窗导航使用。
 final GlobalKey<NavigatorState> lpRootNavigatorKey =
     GlobalKey<NavigatorState>();
-
 /// Blockly 编程页路由名（与 [MaterialPageRoute.settings] 一致）。
 const String lpBlocklyRouteName = 'blockly_demo';
-
 /// 当前栈顶是否为 Blockly 页。供 [MaterialApp.builder] 跳过设计稿缩放，
 /// 行为对齐 v1.8.9（该版本无 UniformAppViewport）。
 final ValueNotifier<bool> lpBlocklyRouteActive = ValueNotifier<bool>(false);
-
 bool _isBlocklyRoute(Route<dynamic>? route) =>
     route?.settings.name == lpBlocklyRouteName;
-
 /// 跟踪 Blockly 路由进出，避免 builder 里 [ModalRoute.of] 读不到栈顶路由。
 class LpBlocklyRouteObserver extends NavigatorObserver {
   void _syncTop(Route<dynamic>? top) {
@@ -499,50 +559,39 @@ class LpBlocklyRouteObserver extends NavigatorObserver {
       lpBlocklyRouteActive.value = active;
     }
   }
-
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _syncTop(route);
   }
-
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _syncTop(previousRoute);
   }
-
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     _syncTop(newRoute);
   }
-
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _syncTop(previousRoute);
   }
 }
 
+--- 第 12 页 ---
 final LpBlocklyRouteObserver lpBlocklyRouteObserver = LpBlocklyRouteObserver();
-
 /// 桌面端 ESC 键触发返回（等同 Navigator 返回 / 关闭顶层对话框）。
-
---- 第 11 页 ---
 /// 移动端不包裹 [Focus]，避免抢占 TextField 焦点导致软键盘无法输入。
 class LpEscapeBackShortcuts extends StatelessWidget {
   const LpEscapeBackShortcuts({super.key, required this.child});
-
   final Widget child;
-
   static void _popRoute() {
     lpRootNavigatorKey.currentState?.maybePop();
   }
-
   static bool get _desktopEscapeEnabled =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-
   @override
   Widget build(BuildContext context) {
     if (!_desktopEscapeEnabled) return child;
-
     return CallbackShortcuts(
       bindings: const {
         SingleActivator(LogicalKeyboardKey.escape): _popRoute,
@@ -551,16 +600,12 @@ class LpEscapeBackShortcuts extends StatelessWidget {
     );
   }
 }
-
 // ===== File: lib/app/widgets/lp_brand_logo.dart =====
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-
 import '../../app/lp_robot_colors.dart';
 import '../lp_app_assets.dart';
 import '../../core/robot_paths.dart';
-
 /// 从 `config/imgs` 或内置资源加载领鹏 Logo（透明底图标，对齐 Android）。
 class LpBrandLogo extends StatelessWidget {
   const LpBrandLogo({
@@ -570,30 +615,24 @@ class LpBrandLogo extends StatelessWidget {
     this.fileNames,
     this.bundledOnly = false,
   });
-
   final double height;
   final double maxWidth;
-
   /// 默认优先 `ic_launcher.png`（与打包图标一致）。
   final List<String>? fileNames;
-
---- 第 12 页 ---
-
   /// 连接页等浅底场景：始终使用内置图标，避免旧版橙底方块素材。
   final bool bundledOnly;
-
   static const _defaultCandidates = [
     'ic_launcher.png',
     'app_icon.png',
     'logo_color.png',
   ];
-
   @override
   Widget build(BuildContext context) {
+
+--- 第 13 页 ---
     if (bundledOnly) {
       return _bundledAsset();
     }
-
     return FutureBuilder<File?>(
       future: RobotPaths.findBrandLogoFile(
         candidates: fileNames ?? _defaultCandidates,
@@ -626,10 +665,7 @@ class LpBrandLogo extends StatelessWidget {
       },
     );
   }
-
   Widget _bundledAsset() {
-
---- 第 13 页 ---
     return Image.asset(
       LpAppAssets.brandAppIcon,
       height: height,
@@ -639,12 +675,13 @@ class LpBrandLogo extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) => _textFallback(),
     );
   }
-
   Widget _textFallback() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
+
+--- 第 14 页 ---
           Icons.precision_manufacturing,
           size: height * 0.6,
           color: LpRobotColors.primary,
@@ -662,32 +699,23 @@ class LpBrandLogo extends StatelessWidget {
     );
   }
 }
-
 // ===== File: lib/app/widgets/lp_gradient_header.dart =====
 import 'package:flutter/material.dart';
-
 import '../lp_robot_colors.dart';
-
 /// 顶栏橙 → 浅杏渐变背景
 class LpGradientHeader extends StatelessWidget {
   const LpGradientHeader({super.key, this.height});
-
   final double? height;
-
   @override
   Widget build(BuildContext context) {
     return Container(
       height: height,
       decoration: const BoxDecoration(gradient: LpRobotColors.headerGradient),
     );
-
---- 第 14 页 ---
   }
 }
-
 // ===== File: lib/app/widgets/lp_image_press_button.dart =====
 import 'package:flutter/material.dart';
-
 /// 贴图按钮：按下切换 pressed/unpressed 资源。
 class LpImagePressButton extends StatefulWidget {
   const LpImagePressButton({
@@ -698,20 +726,18 @@ class LpImagePressButton extends StatefulWidget {
     this.size = 28,
     this.semanticLabel,
   });
-
   final String assetOff;
   final String assetOn;
   final VoidCallback onTap;
   final double size;
   final String? semanticLabel;
-
   @override
+
+--- 第 15 页 ---
   State<LpImagePressButton> createState() => _LpImagePressButtonState();
 }
-
 class _LpImagePressButtonState extends State<LpImagePressButton> {
   bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     final image = Image.asset(
@@ -721,7 +747,6 @@ class _LpImagePressButtonState extends State<LpImagePressButton> {
       fit: BoxFit.contain,
       gaplessPlayback: true,
     );
-
     return Semantics(
       button: true,
       label: widget.semanticLabel,
@@ -732,8 +757,6 @@ class _LpImagePressButtonState extends State<LpImagePressButton> {
           setState(() => _pressed = false);
           widget.onTap();
         },
-
---- 第 15 页 ---
         onTapCancel: () => setState(() => _pressed = false),
         child: SizedBox(
           width: widget.size,
@@ -744,12 +767,9 @@ class _LpImagePressButtonState extends State<LpImagePressButton> {
     );
   }
 }
-
 // ===== File: lib/app/widgets/lp_module_button.dart =====
 import 'package:flutter/material.dart';
-
 import '../lp_robot_colors.dart';
-
 /// 主界面左侧导航式模块按钮（白底圆角 + 橙色图标文字）
 class LpModuleButton extends StatelessWidget {
   const LpModuleButton({
@@ -758,14 +778,14 @@ class LpModuleButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
   });
-
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
-
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+
+--- 第 16 页 ---
     return Material(
       color: LpRobotColors.surface,
       elevation: 2,
@@ -784,8 +804,6 @@ class LpModuleButton extends StatelessWidget {
               color: enabled
                   ? LpRobotColors.primary.withValues(alpha: 0.35)
                   : Colors.grey.shade300,
-
---- 第 16 页 ---
             ),
           ),
           child: Row(
@@ -812,22 +830,19 @@ class LpModuleButton extends StatelessWidget {
     );
   }
 }
-
 // ===== File: lib/app/widgets/lp_page_background.dart =====
 import 'package:flutter/material.dart';
-
 import '../lp_app_assets.dart';
 import '../lp_robot_colors.dart';
-
 /// 页面暖色底图（[LpAppAssets.pageBg]），铺满不重复。
 class LpPageBackground extends StatelessWidget {
+
+--- 第 17 页 ---
   const LpPageBackground({
     super.key,
     required this.child,
   });
-
   final Widget child;
-
   static const decoration = BoxDecoration(
     color: LpRobotColors.shellBackground,
     image: DecorationImage(
@@ -836,9 +851,6 @@ class LpPageBackground extends StatelessWidget {
       alignment: Alignment.center,
     ),
   );
-
---- 第 17 页 ---
-
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
@@ -847,21 +859,16 @@ class LpPageBackground extends StatelessWidget {
     );
   }
 }
-
 // ===== File: lib/app/widgets/lp_robot_alarm_status_bar.dart =====
 import 'package:flutter/material.dart';
-
 import '../../core/robot_alarm_info.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_telemetry.dart';
 import '../lp_robot_colors.dart';
-
 /// 底部状态条：启动状态 + 电机报警（对齐 Android 主界面底栏）。
 class LpRobotAlarmStatusBar extends StatelessWidget {
   const LpRobotAlarmStatusBar({super.key, this.compact = false});
-
   final bool compact;
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -881,15 +888,14 @@ class LpRobotAlarmStatusBar extends StatelessWidget {
                 motorAlarm: t.motorAlarm,
                 alarmCode: t.motorAlarmCode,
               )
-            : '—';
 
+--- 第 18 页 ---
+            : '—';
         return Container(
           margin: compact ? EdgeInsets.zero : const EdgeInsets.fromLTRB(12, 0, 12, 6),
           padding: EdgeInsets.symmetric(
             horizontal: compact ? 12 : 20,
             vertical: compact ? 8 : 12,
-
---- 第 18 页 ---
           ),
           decoration: BoxDecoration(
             color: LpRobotColors.surface,
@@ -934,19 +940,18 @@ class LpRobotAlarmStatusBar extends StatelessWidget {
                     ? LpRobotColors.liveValue
                     : online
                         ? LpRobotColors.alarm
+
+--- 第 19 页 ---
                         : LpRobotColors.label,
                 compact: compact,
               ),
             ],
           ),
         );
-
---- 第 19 页 ---
       },
     );
   }
 }
-
 class _StatusTile extends StatelessWidget {
   const _StatusTile({
     required this.label,
@@ -954,12 +959,10 @@ class _StatusTile extends StatelessWidget {
     required this.valueColor,
     this.compact = false,
   });
-
   final String label;
   final String value;
   final Color valueColor;
   final bool compact;
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -989,17 +992,14 @@ class _StatusTile extends StatelessWidget {
           ),
         ),
       ],
+
+--- 第 20 页 ---
     );
   }
 }
-
---- 第 20 页 ---
-
 // ===== File: lib/app/widgets/lp_robot_foot_bar.dart =====
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-
 import '../../core/robot_alarm_info.dart';
 import '../../core/robot_paths.dart';
 import '../../core/robot_state.dart';
@@ -1008,7 +1008,6 @@ import '../lp_app_assets.dart';
 import '../lp_robot_colors.dart';
 import '../lp_ui_scale.dart';
 import 'lp_robot_io_panel.dart';
-
 /// 底栏：IO 指示灯 + 启动状态/报警。
 ///
 /// 主页 [compactStatus]：中间列内左右拉开；机型名加大两号。
@@ -1021,22 +1020,16 @@ class LpRobotFootBar extends StatelessWidget {
     this.showStatus = true,
     this.compactStatus = false,
   });
-
   /// 与操控页画布同色时不画独立底栏卡片，避免色块拼接。
   final Color? canvasColor;
-
   /// 底栏 IO 滚轮区底色（操控页用 [LpRobotColors.controlAxisSurface]）。
   final Color? ioSurfaceColor;
-
   /// IO 排版（操控页用 [IoPanelLayout.horizontalSplit]）。
   final IoPanelLayout ioLayout;
-
   /// 是否显示启动状态 / 报警。
   final bool showStatus;
-
   /// 主页底栏：机型名 + 紧凑 IO + 短文案气泡。
   final bool compactStatus;
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -1044,8 +1037,6 @@ class LpRobotFootBar extends StatelessWidget {
         RobotState.instance,
         RobotTelemetry.instance,
       ]),
-
---- 第 21 页 ---
       builder: (context, _) {
         final online = RobotState.instance.isConnected;
         final t = RobotTelemetry.instance;
@@ -1053,6 +1044,8 @@ class LpRobotFootBar extends StatelessWidget {
         final initText = online
             ? (compactStatus
                 ? RobotAlarmInfo.formatHomeFootInitStatus(t.initStatus)
+
+--- 第 21 页 ---
                 : RobotAlarmInfo.formatInitStatus(t.initStatus))
             : '—';
         final alarmText = online
@@ -1066,7 +1059,6 @@ class LpRobotFootBar extends StatelessWidget {
                     alarmCode: t.motorAlarmCode,
                   ))
             : '—';
-
         return LayoutBuilder(
           builder: (context, constraints) {
             final narrow = constraints.maxWidth < 520;
@@ -1074,7 +1066,6 @@ class LpRobotFootBar extends StatelessWidget {
             final statusScale = LpUiScale.clampFactor(
               (constraints.maxHeight / 56).clamp(0.7, 1.15),
             );
-
             final flat = canvasColor != null;
             final useCapsuleIo = compactStatus ||
                 ioLayout == IoPanelLayout.horizontalSplit;
@@ -1084,7 +1075,6 @@ class LpRobotFootBar extends StatelessWidget {
               // 主页 / 操控底栏：IO 组用胶囊底。
               tightLedSpacing: useCapsuleIo,
             );
-
             final Widget ioArea = Padding(
               padding: EdgeInsets.fromLTRB(
                 flat ? 0 : 2,
@@ -1094,10 +1084,7 @@ class LpRobotFootBar extends StatelessWidget {
               ),
               child: ioCore,
             );
-
             final Widget child;
-
---- 第 22 页 ---
             if (!showStatus) {
               child = ioArea;
             } else if (compactStatus && !narrow) {
@@ -1109,6 +1096,8 @@ class LpRobotFootBar extends StatelessWidget {
                 initText: initText,
                 initOk: initOk,
                 alarmText: alarmText,
+
+--- 第 22 页 ---
                 motorAlarm: t.motorAlarm,
               );
             } else if (ioLayout == IoPanelLayout.horizontalSplit && !narrow) {
@@ -1148,8 +1137,6 @@ class LpRobotFootBar extends StatelessWidget {
                   ),
                 ],
               );
-
---- 第 23 页 ---
             } else {
               child = Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1161,6 +1148,8 @@ class LpRobotFootBar extends StatelessWidget {
                         return Align(
                           alignment: Alignment.centerLeft,
                           child: SizedBox(
+
+--- 第 23 页 ---
                             width: ioBox.maxWidth * 0.94,
                             height: ioBox.maxHeight,
                             child: ioArea,
@@ -1200,9 +1189,6 @@ class LpRobotFootBar extends StatelessWidget {
                 ],
               );
             }
-
---- 第 24 页 ---
-
             return SizedBox(
               height: constraints.maxHeight,
               child: FittedBox(
@@ -1214,6 +1200,8 @@ class LpRobotFootBar extends StatelessWidget {
                   child: flat
                       ? ColoredBox(color: canvasColor!, child: child)
                       : DecoratedBox(
+
+--- 第 24 页 ---
                           decoration: BoxDecoration(
                             color: LpRobotColors.surfaceWarm,
                             borderRadius: BorderRadius.circular(8),
@@ -1232,7 +1220,6 @@ class LpRobotFootBar extends StatelessWidget {
       },
     );
   }
-
   /// 操控页底栏：横向 INPUT/OUTPUT 胶囊格 + 主页同款报警胶囊（高度适配）。
   Widget _buildControlFootRow({
     required BoxConstraints constraints,
@@ -1252,9 +1239,6 @@ class LpRobotFootBar extends StatelessWidget {
     final statusW =
         ((statusH * statusBgAspect).clamp(160.0, w * 0.36)) * 0.70;
     final adaptedScale = (statusScale * 0.78).clamp(0.55, 0.88);
-
---- 第 25 页 ---
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
       child: Row(
@@ -1268,6 +1252,8 @@ class LpRobotFootBar extends StatelessWidget {
           ),
           SizedBox(width: (w * 0.012).clamp(6.0, 12.0)),
           SizedBox(
+
+--- 第 25 页 ---
             width: statusW,
             height: statusH,
             child: _StatusBubble(
@@ -1286,7 +1272,6 @@ class LpRobotFootBar extends StatelessWidget {
       ),
     );
   }
-
   /// 主页中间列底栏：左右拉开贴边；机型名加大两号。
   Widget _buildAnnotatedHomeRow({
     required BoxConstraints constraints,
@@ -1304,14 +1289,11 @@ class LpRobotFootBar extends StatelessWidget {
     final sideInset = w * 0.012;
     final nameW = (w * 0.10).clamp(56.0, 100.0);
     // 报警栏加长，便于长告警文案；高度仍按 foot-infobg2 比例。
-
---- 第 26 页 ---
     const statusBgAspect = 438 / 56;
     final statusW = (w * 0.38).clamp(240.0, 460.0);
     final statusH = (statusW / statusBgAspect).clamp(32.0, h * 0.55);
     // 原约 13–18，放大两号（+4）。
     final nameFont = (h * 0.48).clamp(13.0, 18.0) + 4.0;
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: sideInset),
       child: SizedBox(
@@ -1322,6 +1304,8 @@ class LpRobotFootBar extends StatelessWidget {
           children: [
             // 左侧：机型名 + IO；模块号在 IO 面板内相对 XYZ/INPUT 居中。
             Expanded(
+
+--- 第 26 页 ---
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1356,8 +1340,6 @@ class LpRobotFootBar extends StatelessWidget {
                   ),
                 ],
               ),
-
---- 第 27 页 ---
             ),
             // 中间留空，把状态推到右侧。
             SizedBox(width: (w * 0.04).clamp(16.0, 48.0)),
@@ -1374,6 +1356,8 @@ class LpRobotFootBar extends StatelessWidget {
                     child: _StatusBubble(
                       compact: true,
                       scale: statusScale,
+
+--- 第 27 页 ---
                       expanded: true,
                       useFootBg: true,
                       online: online,
@@ -1392,7 +1376,6 @@ class LpRobotFootBar extends StatelessWidget {
     );
   }
 }
-
 class _StatusBubble extends StatelessWidget {
   const _StatusBubble({
     required this.compact,
@@ -1405,11 +1388,8 @@ class _StatusBubble extends StatelessWidget {
     this.expanded = false,
     this.useFootBg = false,
   });
-
   final bool compact;
   final double scale;
-
---- 第 28 页 ---
   final bool online;
   final String initText;
   final bool initOk;
@@ -1418,23 +1398,22 @@ class _StatusBubble extends StatelessWidget {
   final bool expanded;
   /// 主页：使用 foot-infobg2 作底图。
   final bool useFootBg;
-
   @override
   Widget build(BuildContext context) {
     final bubbleMaxW = 520 * scale;
     final radius = expanded ? 12.0 * scale : 999.0;
-
     final content = _StatusRow(
       compact: compact,
       scale: scale,
       online: online,
       initText: initText,
       initOk: initOk,
+
+--- 第 28 页 ---
       alarmText: alarmText,
       motorAlarm: motorAlarm,
       marqueeAlarm: useFootBg,
     );
-
     final padded = Padding(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 14 * scale : 18 * scale,
@@ -1448,7 +1427,6 @@ class _StatusBubble extends StatelessWidget {
               child: content,
             ),
     );
-
     if (useFootBg) {
       return SizedBox.expand(
         child: Stack(
@@ -1460,9 +1438,6 @@ class _StatusBubble extends StatelessWidget {
         ),
       );
     }
-
---- 第 29 页 ---
-
     return Container(
       width: expanded ? double.infinity : null,
       height: expanded ? double.infinity : null,
@@ -1485,6 +1460,8 @@ class _StatusBubble extends StatelessWidget {
           ),
         ],
       ),
+
+--- 第 29 页 ---
       child: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.center,
@@ -1493,27 +1470,21 @@ class _StatusBubble extends StatelessWidget {
     );
   }
 }
-
 /// 启动状态/报警底图：优先切图1 `foot-infobg2.png`，再 assets。
 class _FootStatusBg extends StatefulWidget {
   const _FootStatusBg();
-
   @override
   State<_FootStatusBg> createState() => _FootStatusBgState();
 }
-
 class _FootStatusBgState extends State<_FootStatusBg> {
   late final Future<File?> _fileFuture =
       RobotPaths.findMainNavImageFile('foot-infobg2.png');
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<File?>(
       future: _fileFuture,
       builder: (context, snapshot) {
         final file = snapshot.data;
-
---- 第 30 页 ---
         if (file != null) {
           return Image.file(
             file,
@@ -1527,7 +1498,6 @@ class _FootStatusBgState extends State<_FootStatusBg> {
       },
     );
   }
-
   Widget _assetImage() {
     return Image.asset(
       LpAppAssets.footStatusBg,
@@ -1542,9 +1512,10 @@ class _FootStatusBgState extends State<_FootStatusBg> {
         ),
       ),
     );
+
+--- 第 30 页 ---
   }
 }
-
 class _StatusRow extends StatelessWidget {
   const _StatusRow({
     required this.compact,
@@ -1556,7 +1527,6 @@ class _StatusRow extends StatelessWidget {
     required this.motorAlarm,
     this.marqueeAlarm = false,
   });
-
   final bool compact;
   final double scale;
   final bool online;
@@ -1564,3 +1534,33 @@ class _StatusRow extends StatelessWidget {
   final bool initOk;
   final String alarmText;
   final bool motorAlarm;
+  final bool marqueeAlarm;
+  @override
+  Widget build(BuildContext context) {
+    final initColor = online && initOk
+        ? LpRobotColors.liveValue
+        : online
+            ? LpRobotColors.alarm
+            : LpRobotColors.label;
+    final alarmColor = online && !motorAlarm
+        ? LpRobotColors.liveValue
+        : online
+            ? LpRobotColors.alarm
+            : LpRobotColors.label;
+    if (marqueeAlarm) {
+      return Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.center,
+              child: _FootStatus(
+                label: '启动状态：',
+                value: initText,
+                compact: compact,
+                scale: scale,
+                valueColor: initColor,
+              ),
+            ),
+          ),
+          Expanded(
+            child: _HoverMarqueeAlarm(

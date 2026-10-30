@@ -12,9 +12,9 @@ import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_robot_run_sidebar.dart';
 import '../../app/widgets/lp_status_panel.dart';
 import '../../blockly/blockly_demo_page.dart';
+import '../../core/app_logger.dart';
 import '../../core/lp_status_log.dart';
-import '../../core/robot_clr_zero_state.dart';
-import '../../core/robot_point_library.dart';
+import '../../core/robot_connection_monitor.dart';
 import '../../core/robot_state.dart';
 import '../../core/robot_state_poller.dart';
 import '../../core/robot_telemetry.dart';
@@ -56,21 +56,24 @@ class _MainHomePageState extends State<MainHomePage> {
   }
 
   void _openControl() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const ControlPage()),
-    );
+    AppLogger.instance.logOperation('主页：打开操控页');
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => const ControlPage()));
   }
 
   void _openMonitor() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const MonitorPage()),
-    );
+    AppLogger.instance.logOperation('主页：打开监控页');
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => const MonitorPage()));
   }
 
   void _openTool() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const ConfigFilePage()),
-    );
+    AppLogger.instance.logOperation('主页：打开维护页');
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => const ConfigFilePage()));
   }
 
   Future<void> _openBlockly() async {
@@ -81,9 +84,7 @@ class _MainHomePageState extends State<MainHomePage> {
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           title: const Text('提示信息'),
-          content: const Text(
-            '请在离线模式编程保存好后再在线进入更换函数，谨慎在线直接修改可能会闪退，是否进入',
-          ),
+          content: const Text('请在离线模式编程保存好后再在线进入更换函数，谨慎在线直接修改可能会闪退，是否进入'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -102,6 +103,7 @@ class _MainHomePageState extends State<MainHomePage> {
       if (go != true || !mounted) return;
     }
 
+    AppLogger.instance.logOperation('主页：打开编程页');
     final message = await Navigator.of(context).push<String>(
       MaterialPageRoute<String>(
         // 与 v1.8.9 一致的编程页；route name 供跳过 UniformAppViewport。
@@ -111,15 +113,13 @@ class _MainHomePageState extends State<MainHomePage> {
     );
     if (message != null && message.isNotEmpty && mounted) {
       LpStatusLog.instance.success(message);
+      AppLogger.instance.logOperation('编程页返回: $message');
     }
   }
 
   void _disconnect() {
-    RobotStatePoller.instance.stop();
-    RobotTelemetry.instance.reset();
-    RobotClrZeroState.instance.reset();
-    RobotPointLibrary.instance.reset();
-    RobotState.instance.disconnect();
+    AppLogger.instance.logOperation('主页：断开连接并返回登录页');
+    RobotConnectionMonitor.instance.resetAllRuntimeState();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const ConnectPage()),
       (_) => false,
@@ -127,6 +127,8 @@ class _MainHomePageState extends State<MainHomePage> {
   }
 
   void _backToConnect() {
+    AppLogger.instance.logOperation('主页：返回登录页');
+    RobotConnectionMonitor.instance.resetAllRuntimeState();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const ConnectPage()),
       (_) => false,
@@ -158,10 +160,11 @@ class _MainHomePageState extends State<MainHomePage> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       // 标注左边距约 0.78%。
-                      final edgePad =
-                          math.max(2.0, constraints.maxWidth * 0.0078);
-                      final padY =
-                          math.max(2.0, constraints.maxHeight * 0.008);
+                      final edgePad = math.max(
+                        2.0,
+                        constraints.maxWidth * 0.0078,
+                      );
+                      final padY = math.max(2.0, constraints.maxHeight * 0.008);
                       return LpShellContentFrame(
                         padding: EdgeInsets.fromLTRB(
                           edgePad,
@@ -177,8 +180,9 @@ class _MainHomePageState extends State<MainHomePage> {
                               child: _MainNavRail(
                                 onControl: moving ? null : _openControl,
                                 onProgram: _openBlockly,
-                                onMonitor: online ? _openMonitor : null,
-                                onTool: online ? _openTool : null,
+                                // 离线预览：监控/维护页离线也可进入浏览（页面自身有空态兜底）。
+                                onMonitor: _openMonitor,
+                                onTool: _openTool,
                               ),
                             ),
                             Expanded(

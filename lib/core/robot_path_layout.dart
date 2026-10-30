@@ -105,6 +105,25 @@ class RobotPathLayout {
   static const String defaultProjectName = 'main';
   static const String gcodeExtension = '.rp4';
 
+  // --- 驱控侧（远程）点位库路径 ---
+  /// 驱控当前点位库文件（文件管理/说明书中的机械手点位文件）。
+  static const String robotPointLibFile = '/home/llmachine/Axis4/para/rbt_Point.rpt4';
+
+  /// 驱控当前点位库所在目录（上传 tagPath 形式，尾 `/`）。
+  static const String robotPointLibTagPath = '/home/llmachine/Axis4/para/';
+
+  /// 点位库 `.rpt4` 文件保存目录（listPath 形式，无尾 `/`）。
+  ///
+  /// 原方案为 `/home/llmachine/pointHome/`，但固件不会随上传自动创建目录
+  /// （2026-10-26 用户实测 pointHome 未被创建），改为直接存入 `/home/llmachine/`。
+  static const String robotPointFileDir = '/home/llmachine';
+
+  /// 上传 tagPath 形式（尾 `/`）。
+  static const String robotPointFileTagPath = '$robotPointFileDir/';
+
+  /// 点位库文件默认后缀。
+  static const String pointLibExtension = '.rpt4';
+
   /// Windows 发布可执行文件名（与 [windows/CMakeLists.txt] BINARY_NAME 一致）
   static const String windowsReleaseExeName = '领鹏智能.exe';
 
@@ -124,9 +143,6 @@ class RobotPathLayout {
 
   /// 安装包内 Blockly 加密包：`dll/visualprogram.lpk`（不含明文 JS 目录）
   static const String blocklyPackRelative = 'dll/visualprogram.lpk';
-
-  /// 运行时解压目录（相对可写数据根）
-  static const String blocklyCacheDir = 'cache/visualprogram';
 
   /// WebView2 用户数据目录（相对可写数据根，避免 Program Files 只读）
   static const String webView2UserDataDir = 'WebView2';

@@ -37,9 +37,9 @@ class LocalBackupEntry {
 /// 备份/恢复内容选项（对齐 Android FilesActivity 7 项多选）。
 class BackupContentOptions {
   BackupContentOptions({List<bool>? selected})
-      : selected = List<bool>.from(
-          selected ?? List<bool>.filled(labels.length, true),
-        );
+    : selected = List<bool>.from(
+        selected ?? List<bool>.filled(labels.length, true),
+      );
 
   static const labels = <String>[
     '固件和应用',
@@ -191,8 +191,7 @@ class RobotFileBackup {
 
     for (final dir in dirs) {
       if (!await dir.exists()) continue;
-      final inSession =
-          p.normalize(dir.path).toLowerCase() == sessionKey;
+      final inSession = p.normalize(dir.path).toLowerCase() == sessionKey;
       try {
         await for (final entity in dir.list(followLinks: false)) {
           final pathKey = p.normalize(entity.path).toLowerCase();
@@ -302,11 +301,9 @@ class RobotFileBackup {
     }
     final model = robotModel.trim().isEmpty ? 'XYZ01' : robotModel.trim();
 
-    onProgress?.call(const FileBackupProgress(
-      message: '正在收集备份列表…',
-      done: 0,
-      total: 0,
-    ));
+    onProgress?.call(
+      const FileBackupProgress(message: '正在收集备份列表…', done: 0, total: 0),
+    );
 
     final files = await _collectBackupFiles(options, model);
     if (files.isEmpty) {
@@ -319,11 +316,13 @@ class RobotFileBackup {
 
     var done = 0;
     for (final entry in files) {
-      onProgress?.call(FileBackupProgress(
-        message: '备份 ${entry.fullPath}',
-        done: done,
-        total: files.length,
-      ));
+      onProgress?.call(
+        FileBackupProgress(
+          message: '备份 ${entry.fullPath}',
+          done: done,
+          total: files.length,
+        ),
+      );
       try {
         await _saveBackupFile(root, entry);
       } catch (_) {
@@ -332,11 +331,9 @@ class RobotFileBackup {
       done += 1;
     }
 
-    onProgress?.call(FileBackupProgress(
-      message: '正在压缩备份…',
-      done: done,
-      total: files.length,
-    ));
+    onProgress?.call(
+      FileBackupProgress(message: '正在压缩备份…', done: done, total: files.length),
+    );
 
     final session = await downloadSessionRoot();
     final zipFile = File(p.join(session.path, '$name$zipSuffix'));
@@ -348,11 +345,9 @@ class RobotFileBackup {
       }
     } catch (_) {}
 
-    onProgress?.call(FileBackupProgress(
-      message: '备份完成',
-      done: done,
-      total: files.length,
-    ));
+    onProgress?.call(
+      FileBackupProgress(message: '备份完成', done: done, total: files.length),
+    );
 
     return BackupResult(
       fileCount: done,
@@ -374,70 +369,171 @@ class RobotFileBackup {
     }
 
     if (o.firmwareOn) {
-      add(const RemoteFileEntry(
-        name: 'liblibRobot.so.1.0.0',
-        parentPath: '/usr/lib/',
-        isDir: false,
-      ));
-      add(const RemoteFileEntry(
-        name: 'libecat.so.1.0.0',
-        parentPath: '/usr/lib/',
-        isDir: false,
-      ));
-      add(const RemoteFileEntry(
-        name: 'libPLC.so.1.0.0',
-        parentPath: '/usr/lib/',
-        isDir: false,
-      ));
-      add(const RemoteFileEntry(name: 'BOOT.BIN', parentPath: '/sd/', isDir: false));
-      add(const RemoteFileEntry(name: 'll_libot', parentPath: '/home/', isDir: false));
-      add(const RemoteFileEntry(name: 'image.ub', parentPath: '/sd/', isDir: false));
-      add(const RemoteFileEntry(
-        name: 'SystemRel.tar.gz',
-        parentPath: '/sd/',
-        isDir: false,
-      ));
+      add(
+        const RemoteFileEntry(
+          name: 'liblibRobot.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libecat.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libPLC.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libllDriver.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libllMotion.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libllmotionECat.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libethercat.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libwifi.so.1.0.0',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'BOOT.BIN',
+          parentPath: '/sd/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'll_libot',
+          parentPath: '/home/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'robotKit',
+          parentPath: '/home/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'EcatMaster',
+          parentPath: '/home/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'startli.sh',
+          parentPath: '/home/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'image.ub',
+          parentPath: '/sd/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'SystemRel.tar.gz',
+          parentPath: '/sd/',
+          isDir: false,
+        ),
+      );
     }
 
     if (o.idOn) {
-      add(const RemoteFileEntry(
-        name: 'licence.txt',
-        parentPath: '/home/llmachine/Axis4/para/',
-        isDir: false,
-      ));
+      add(
+        const RemoteFileEntry(
+          name: 'licence.txt',
+          parentPath: '/home/llmachine/Axis4/para/',
+          isDir: false,
+        ),
+      );
     }
     if (o.ipOn) {
-      add(const RemoteFileEntry(
-        name: 'eth0',
-        parentPath: '/home/llmachine/ipaddress/',
-        isDir: false,
-      ));
+      add(
+        const RemoteFileEntry(
+          name: 'eth0',
+          parentPath: '/home/llmachine/ipaddress/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'eth1',
+          parentPath: '/home/llmachine/ipaddress/',
+          isDir: false,
+        ),
+      );
     }
     if (o.wifiOn) {
-      add(const RemoteFileEntry(
-        name: 'wifiswitch.tar.gz',
-        parentPath: '/sd/',
-        isDir: false,
-      ));
+      add(
+        const RemoteFileEntry(
+          name: 'wifiswitch.tar.gz',
+          parentPath: '/sd/',
+          isDir: false,
+        ),
+      );
     }
     if (o.gcodeOn) {
-      add(const RemoteFileEntry(
-        name: 'Grobot.rp4',
-        parentPath: '/home/llmachine/Axis4/',
-        isDir: false,
-      ));
-      add(const RemoteFileEntry(
-        name: 'Grobot.xml',
-        parentPath: '/home/llmachine/Axis4/',
-        isDir: false,
-      ));
+      add(
+        const RemoteFileEntry(
+          name: 'Grobot.rp4',
+          parentPath: '/home/llmachine/Axis4/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'Grobot.xml',
+          parentPath: '/home/llmachine/Axis4/',
+          isDir: false,
+        ),
+      );
     }
     if (o.motorOn) {
-      add(RemoteFileEntry(
-        name: 'driverparams.dps',
-        parentPath: '/home/llmachine/Axis4/para/RobotType/$robotModel/',
-        isDir: false,
-      ));
+      add(
+        RemoteFileEntry(
+          name: 'driverparams.dps',
+          parentPath: '/home/llmachine/Axis4/para/RobotType/$robotModel/',
+          isDir: false,
+        ),
+      );
     }
     if (o.otherOn) {
       // 其他配置：RobotType/XYZ01/ 下除 driverparams.dps 外的全部文件
@@ -451,12 +547,17 @@ class RobotFileBackup {
     List<RemoteFileEntry> out,
     Set<String> seen,
   ) async {
+    // para/ 下除 driverparams.dps（电机参数项已覆盖）外的全部配置文件
     await _collectDirFilesRecursive(
-      '/home/llmachine/Axis4/para/RobotType/XYZ01/',
+      '/home/llmachine/Axis4/para/',
       out,
       seen,
       excludeNames: const {'driverparams.dps'},
     );
+    // 驱动配置 / EtherCAT 配置 / 电机 PID 参数
+    await _collectDirFilesRecursive('/home/llmachine/cfg_ini_file/', out, seen);
+    await _collectDirFilesRecursive('/home/llmachine/EtherCAT/', out, seen);
+    await _collectDirFilesRecursive('/home/llmachine/pid_ini_file/', out, seen);
   }
 
   static Future<void> _collectDirFilesRecursive(
@@ -489,7 +590,9 @@ class RobotFileBackup {
     Directory backupRoot,
     RemoteFileEntry entry,
   ) async {
-    final bytes = await HttpManager.instance.downloadRobotFileBytes(entry.fullPath);
+    final bytes = await HttpManager.instance.downloadRobotFileBytes(
+      entry.fullPath,
+    );
     if (bytes.isEmpty) return;
 
     // 对齐新版 Android：保持原始相对路径，不再统一进 usr/appupdate
@@ -514,9 +617,14 @@ class RobotFileBackup {
 
   static Future<void> _zipDirectory(Directory sourceDir, File zipFile) async {
     final archive = Archive();
-    await for (final entity in sourceDir.list(recursive: true, followLinks: false)) {
+    await for (final entity in sourceDir.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       if (entity is! File) continue;
-      final rel = p.relative(entity.path, from: sourceDir.path).replaceAll('\\', '/');
+      final rel = p
+          .relative(entity.path, from: sourceDir.path)
+          .replaceAll('\\', '/');
       final data = await entity.readAsBytes();
       archive.addFile(ArchiveFile(rel, data.length, data));
     }
@@ -629,8 +737,16 @@ class RobotFileBackup {
       await addRelative('usr/lib/liblibRobot.so.1.0.0');
       await addRelative('usr/lib/libecat.so.1.0.0');
       await addRelative('usr/lib/libPLC.so.1.0.0');
+      await addRelative('usr/lib/libllDriver.so.1.0.0');
+      await addRelative('usr/lib/libllMotion.so.1.0.0');
+      await addRelative('usr/lib/libllmotionECat.so.1.0.0');
+      await addRelative('usr/lib/libethercat.so.1.0.0');
+      await addRelative('usr/lib/libwifi.so.1.0.0');
       await addRelative('sd/BOOT.BIN');
       await addRelative('home/ll_libot');
+      await addRelative('home/robotKit');
+      await addRelative('home/EcatMaster');
+      await addRelative('home/startli.sh');
       await addRelative('sd/image.ub');
       await addRelative('sd/SystemRel.tar.gz');
       // 兼容旧备份：usr/appupdate/*
@@ -641,6 +757,7 @@ class RobotFileBackup {
     }
     if (options.ipOn) {
       await addRelative('home/llmachine/ipaddress/eth0');
+      await addRelative('home/llmachine/ipaddress/eth1');
     }
     if (options.wifiOn) {
       await addRelative('sd/wifiswitch.tar.gz');
@@ -655,20 +772,22 @@ class RobotFileBackup {
       );
     }
     if (options.otherOn) {
-      final otherDir = Directory(
-        p.join(
-          backupRoot.path,
-          'home',
-          'llmachine',
-          'Axis4',
-          'para',
-          'RobotType',
-          'XYZ01',
-        ),
-      );
-      if (await otherDir.exists()) {
-        await for (final entity
-            in otherDir.list(recursive: true, followLinks: false)) {
+      // 与备份侧对称：para/（除 driverparams.dps）+ cfg_ini_file + EtherCAT + pid_ini_file
+      const otherDirs = [
+        'home/llmachine/Axis4/para',
+        'home/llmachine/cfg_ini_file',
+        'home/llmachine/EtherCAT',
+        'home/llmachine/pid_ini_file',
+      ];
+      for (final relDir in otherDirs) {
+        final dir = Directory(
+          p.joinAll([backupRoot.path, ...relDir.split('/')]),
+        );
+        if (!await dir.exists()) continue;
+        await for (final entity in dir.list(
+          recursive: true,
+          followLinks: false,
+        )) {
           if (entity is! File) continue;
           if (p.basename(entity.path) == 'driverparams.dps') continue;
           final rel = p
@@ -734,11 +853,9 @@ class RobotFileBackup {
     try {
       late Directory root;
       if (isZip) {
-        onProgress?.call(const FileBackupProgress(
-          message: '正在解压备份…',
-          done: 0,
-          total: 0,
-        ));
+        onProgress?.call(
+          const FileBackupProgress(message: '正在解压备份…', done: 0, total: 0),
+        );
         tempExtract = await _unzipToTemp(File(backupPath));
         root = await _resolveRestoreRoot(tempExtract);
       } else {
@@ -747,9 +864,7 @@ class RobotFileBackup {
 
       final files = await _collectRestoreFiles(root, options, robotModel);
       if (files.isEmpty) {
-        throw Exception(
-          '没有找到需要恢复的文件，请确认备份内包含 home/usr/sd 目录结构',
-        );
+        throw Exception('没有找到需要恢复的文件，请确认备份内包含 home/usr/sd 目录结构');
       }
 
       var done = 0;
@@ -758,11 +873,13 @@ class RobotFileBackup {
 
       for (final item in files) {
         final remotePath = item.remoteFullPath;
-        onProgress?.call(FileBackupProgress(
-          message: '恢复 $remotePath',
-          done: done,
-          total: files.length,
-        ));
+        onProgress?.call(
+          FileBackupProgress(
+            message: '恢复 $remotePath',
+            done: done,
+            total: files.length,
+          ),
+        );
         try {
           final size = await item.localFile.length();
           // 小文件直接覆盖；大固件才短超时预删，避免每条卡 45s 删除。
@@ -784,21 +901,21 @@ class RobotFileBackup {
 
       for (var i = 0; i < chmodPaths.length; i++) {
         final path = chmodPaths[i];
-        onProgress?.call(FileBackupProgress(
-          message: '修复权限 $path',
-          done: i,
-          total: chmodPaths.length,
-        ));
+        onProgress?.call(
+          FileBackupProgress(
+            message: '修复权限 $path',
+            done: i,
+            total: chmodPaths.length,
+          ),
+        );
         try {
           await http.robotChmodFile(path, ioTimeout: _chmodExecTimeout);
         } catch (_) {}
       }
 
-      onProgress?.call(FileBackupProgress(
-        message: '恢复完成',
-        done: done,
-        total: files.length,
-      ));
+      onProgress?.call(
+        FileBackupProgress(message: '恢复完成', done: done, total: files.length),
+      );
       return done;
     } finally {
       if (tempExtract != null) {

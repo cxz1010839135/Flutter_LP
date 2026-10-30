@@ -206,14 +206,14 @@ Blockly.defineBlocksWithJsonArray([  // BEGIN JSON EXTRACT
                   ["%{BKY_MOTION_ELEMENT_TYPE_T}", "T"],
                   ["%{BKY_MOTION_ELEMENT_TYPE_C}", "C"],
 
-                  ["%{BKY_MOTION_GET_AXISPOS_X}", "Px"],
-                  ["%{BKY_MOTION_GET_AXISPOS_Y}", "Py"],
-                  ["%{BKY_MOTION_GET_AXISPOS_Z}", "Pz"],
-                  ["%{BKY_MOTION_GET_AXISPOS_W}", "Pw"],
-                  ["%{BKY_MOTION_GET_AXISPOS_U1}", "U1"],
-                  ["%{BKY_MOTION_GET_AXISPOS_U2}", "U2"],
-                  ["%{BKY_MOTION_GET_AXISPOS_U3}", "U3"],
-                  ["%{BKY_MOTION_GET_AXISPOS_U4}", "U4"]
+                  // ["%{BKY_MOTION_GET_AXISPOS_X}", "Px"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_Y}", "Py"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_Z}", "Pz"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_W}", "Pw"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_U1}", "U1"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_U2}", "U2"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_U3}", "U3"],
+                  // ["%{BKY_MOTION_GET_AXISPOS_U4}", "U4"]
 
               ]
           },

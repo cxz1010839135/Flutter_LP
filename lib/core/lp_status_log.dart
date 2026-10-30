@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'app_logger.dart';
+
 /// 底部状态面板分类（对齐 Cursor 底部 Panel 标签）。
 enum LpStatusPanelTab {
   connection('连接'),
@@ -83,6 +85,7 @@ class LpStatusLog extends ChangeNotifier {
     if (_entries.length > maxEntries) {
       _entries.removeRange(maxEntries, _entries.length);
     }
+    _syncToFileLog(level, tab, message);
     if (openPanel) {
       panelExpanded = true;
       selectedTab = tab;
@@ -91,35 +94,63 @@ class LpStatusLog extends ChangeNotifier {
   }
 
   void info(String message, {bool openPanel = false}) => log(
-        message,
-        level: LpLogLevel.info,
-        tab: LpStatusPanelTab.messages,
-        openPanel: openPanel,
-      );
+    message,
+    level: LpLogLevel.info,
+    tab: LpStatusPanelTab.messages,
+    openPanel: openPanel,
+  );
 
   void success(String message, {bool openPanel = false}) => log(
-        message,
-        level: LpLogLevel.success,
-        tab: LpStatusPanelTab.messages,
-        openPanel: openPanel,
-      );
+    message,
+    level: LpLogLevel.success,
+    tab: LpStatusPanelTab.messages,
+    openPanel: openPanel,
+  );
 
   void warning(String message, {bool openPanel = false}) => log(
-        message,
-        level: LpLogLevel.warning,
-        tab: LpStatusPanelTab.messages,
-        openPanel: openPanel,
-      );
+    message,
+    level: LpLogLevel.warning,
+    tab: LpStatusPanelTab.messages,
+    openPanel: openPanel,
+  );
 
   void error(String message, {bool openPanel = false}) => log(
-        message,
-        level: LpLogLevel.error,
-        tab: LpStatusPanelTab.messages,
-        openPanel: openPanel,
-      );
+    message,
+    level: LpLogLevel.error,
+    tab: LpStatusPanelTab.messages,
+    openPanel: openPanel,
+  );
 
   void clearTab(LpStatusPanelTab tab) {
     _entries.removeWhere((e) => e.tab == tab);
     notifyListeners();
+  }
+
+  void _syncToFileLog(LpLogLevel level, LpStatusPanelTab tab, String message) {
+    final prefix = '[${tab.label}] ';
+    switch (level) {
+      case LpLogLevel.error:
+        AppLogger.instance.logOperation('${prefix}ERROR: $message');
+      case LpLogLevel.warning:
+        AppLogger.instance.logOperation('${prefix}WARN: $message');
+      case LpLogLevel.info:
+      case LpLogLevel.success:
+        // 成功/普通消息默认不落盘，避免 operation 日志过噪；
+        // 需要持久化的成功操作已在业务侧显式调用 logOperation。
+        break;
+    }
+  }
+
+  /// 清空全部日志并复位面板状态（返回登录页时重置运行态）。
+  void clear() {
+    final wasEmpty = _entries.isEmpty;
+    final wasExpanded = panelExpanded;
+    final wasTab = selectedTab;
+    _entries.clear();
+    panelExpanded = false;
+    selectedTab = LpStatusPanelTab.connection;
+    if (!wasEmpty || wasExpanded || wasTab != LpStatusPanelTab.connection) {
+      notifyListeners();
+    }
   }
 }

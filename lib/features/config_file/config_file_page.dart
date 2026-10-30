@@ -7,6 +7,7 @@ import '../../app/lp_app_fonts.dart';
 import '../../app/lp_robot_colors.dart';
 import '../../app/widgets/lp_robot_pose_bar.dart';
 import '../../app/widgets/lp_status_panel.dart';
+import '../../core/app_logger.dart';
 import '../../core/lp_status_log.dart';
 import '../../core/maintenance_edit_gate.dart';
 import '../../core/robot_state.dart';
@@ -42,7 +43,6 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   List<DriverParamsRow> _driverRows = [];
   DriverParamsFileLayout? _driverLayout;
   int _driverAxisCount = 6;
-  int? _selectedDriverRow;
 
   /// 全选时会连点多行，短时内只弹一次提示。
   DateTime? _lastBlockedTipAt;
@@ -101,7 +101,6 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
         _driverRows = result.rows;
         _driverLayout = result.layout;
         _driverAxisCount = result.layout?.axisCount ?? result.axisCount;
-        _selectedDriverRow = null;
         _loading = false;
       });
     } catch (e) {
@@ -206,7 +205,8 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   Future<void> _showBlockedTip() async {
     final now = DateTime.now();
     if (_lastBlockedTipAt != null &&
-        now.difference(_lastBlockedTipAt!) < const Duration(milliseconds: 600)) {
+        now.difference(_lastBlockedTipAt!) <
+            const Duration(milliseconds: 600)) {
       return;
     }
     _lastBlockedTipAt = now;
@@ -362,20 +362,44 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
 
   Future<void> _openDebugMode() async {
     final gate = DriverTechModeGate.instance;
+    // 离线预览：未连接时直接浏览驱动器参数页，不进入调试会话。
+    if (!RobotState.instance.isConnected) {
+      AppLogger.instance.logOperation('文件配置页：离线预览打开驱动器参数页');
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const DriverPage()),
+      );
+      return;
+    }
     if (!gate.canEnterDriverPage) {
-      if (gate.transitionBusy || DriverTechModeGate.isControllerInitializing) {
-        LpStatusLog.instance.warning('调试模式切换中，请等待控制器就绪');
-      } else {
-        LpStatusLog.instance.warning('请先连接控制器');
-      }
+      // 诊断：逐项打印失败原因，方便定位断开重连后进不去的问题。
+      final connected = RobotState.instance.isConnected;
+      final busy = gate.transitionBusy;
+      final active = gate.sessionActive;
+      final initing = DriverTechModeGate.isControllerInitializing;
+      final canEdit = MaintenanceEditGate.canEdit();
+      final reason = !connected
+          ? '未连接'
+          : busy
+          ? '切换中'
+          : active
+          ? '会话未关闭(sessionActive=true)'
+          : initing
+          ? '控制器初始化中(alarmCode=-1000)'
+          : canEdit
+          ? '未知'
+          : '机器人运动中(isRobotMoving=true)';
+      LpStatusLog.instance.warning(
+        '无法进入调试模式：$reason（connected=$connected busy=$busy active=$active initing=$initing canEdit=$canEdit）',
+      );
       return;
     }
     try {
       await gate.enter();
       if (!mounted) return;
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const DriverPage()),
-      );
+      await Navigator.of(
+        context,
+      ).push<void>(MaterialPageRoute(builder: (_) => const DriverPage()));
     } catch (e) {
       LpStatusLog.instance.warning('进入调试模式失败：$e');
       if (!mounted) return;
@@ -517,10 +541,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
-            child: Text(
-              lines.join('\n'),
-              style: DriverUiStyle.configBodyStyle,
-            ),
+            child: Text(lines.join('\n'), style: DriverUiStyle.configBodyStyle),
           ),
         ),
         actions: [
@@ -537,6 +558,7 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
+        RobotState.instance,
         RobotTelemetry.instance,
         DriverTechModeGate.instance,
       ]),
@@ -623,30 +645,30 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
                         : !_fileExists
-                            ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Image.asset(
-                                      LpAppAssets.configMainBoxIcon,
-                                      width: 88,
-                                      height: 72,
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.medium,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      '文件不存在',
-                                      style: LpAppFonts.style(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: const Color(0xCC3F260F),
-                                      ),
-                                    ),
-                                  ],
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  LpAppAssets.configMainBoxIcon,
+                                  width: 88,
+                                  height: 72,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.medium,
                                 ),
-                              )
-                            : _buildTable(),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '文件不存在',
+                                  style: LpAppFonts.style(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xCC3F260F),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _buildTable(),
                   ),
                   if (_fileExists &&
                       _step.allowAdd &&
@@ -679,9 +701,17 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
   }
 
   Widget _buildTable() {
-    final headers = <String>['名称', ..._step.columnHeaders.where((h) => h.isNotEmpty)];
-    if (headers.length == 1 && _step.editableColumnCount == 1) {
-      headers.add('值');
+    // 列数必须恒等于 1 + editableColumnCount（与行单元格数一致），
+    // 否则 DataTable 断言崩溃。空表头保留为空列，不能过滤掉。
+    final headers = <String>[
+      '名称',
+      for (var i = 0; i < _step.editableColumnCount; i++)
+        i < _step.columnHeaders.length && _step.columnHeaders[i].isNotEmpty
+            ? _step.columnHeaders[i]
+            : '',
+    ];
+    if (_step.editableColumnCount == 1 && headers[1].isEmpty) {
+      headers[1] = '值';
     }
 
     return SingleChildScrollView(
@@ -758,30 +788,30 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : !_driverExists
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                LpAppAssets.configMainBoxIcon,
-                                width: 88,
-                                height: 72,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.medium,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                '该文件不存在',
-                                style: LpAppFonts.style(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xCC3F260F),
-                                ),
-                              ),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            LpAppAssets.configMainBoxIcon,
+                            width: 88,
+                            height: 72,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
                           ),
-                        )
-                      : _buildDriverTable(),
+                          const SizedBox(height: 12),
+                          Text(
+                            '该文件不存在',
+                            style: LpAppFonts.style(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xCC3F260F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildDriverTable(),
             ),
             if (_driverExists && MaintenanceEditGate.canEdit())
               Padding(
@@ -823,13 +853,9 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                   DataRow(
                     cells: [
                       DataCell(
-                        SizedBox(
-                          width: 140,
-                          child: Text(_driverRows[i].name),
-                        ),
+                        SizedBox(width: 140, child: Text(_driverRows[i].name)),
                         onTap: () {
                           if (!_guardSelectForEdit()) return;
-                          setState(() => _selectedDriverRow = i);
                           unawaited(_editDriverRow(i));
                         },
                       ),
@@ -843,7 +869,6 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                           ),
                           onTap: () {
                             if (!_guardSelectForEdit()) return;
-                            setState(() => _selectedDriverRow = i);
                             unawaited(_editDriverRow(i));
                           },
                         ),
@@ -897,9 +922,8 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
               else
                 _navLink(
                   '调试模式',
-                  canEdit && DriverTechModeGate.instance.canEnterDriverPage
-                      ? _openDebugMode
-                      : null,
+                  // 始终可点，由 _openDebugMode 内部判断并提示具体原因（便于诊断断开重连后进不去的问题）。
+                  _openDebugMode,
                 ),
               const Spacer(),
               if (!_showDriverPanel && !_fileExists && canEdit) ...[
@@ -935,7 +959,8 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                 ),
                 const SizedBox(width: 10),
               ],
-              if (_showDriverPanel || prevConfigNavIndex(_stepIndex) != null) ...[
+              if (_showDriverPanel ||
+                  prevConfigNavIndex(_stepIndex) != null) ...[
                 _WenjianFootButton(
                   label: _showDriverPanel ? '上一页' : '上一步',
                   primary: false,
@@ -972,7 +997,11 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     );
   }
 
-  Widget _navLink(String label, VoidCallback? onPressed, {bool selected = false}) {
+  Widget _navLink(
+    String label,
+    VoidCallback? onPressed, {
+    bool selected = false,
+  }) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
@@ -1061,10 +1090,12 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
       if (t.isEmpty) continue;
       final m = numbered.firstMatch(t);
       if (m != null) {
-        items.add(_TipItem(
-          number: int.tryParse(m.group(1)!) ?? (items.length + 1),
-          text: m.group(2) ?? '',
-        ));
+        items.add(
+          _TipItem(
+            number: int.tryParse(m.group(1)!) ?? (items.length + 1),
+            text: m.group(2) ?? '',
+          ),
+        );
       } else if (items.isNotEmpty) {
         final last = items.removeLast();
         items.add(_TipItem(number: last.number, text: '${last.text}\n$t'));
@@ -1111,11 +1142,14 @@ class _WenjianFootButtonState extends State<_WenjianFootButton> {
   Widget build(BuildContext context) {
     final hot = widget.highlightOnHover && (_hovered || _focused);
     final usePrimary = widget.enabled && (widget.primary || hot);
-    final asset =
-        usePrimary ? LpAppAssets.configFootBtn1 : LpAppAssets.configFootBtn2;
+    final asset = usePrimary
+        ? LpAppAssets.configFootBtn1
+        : LpAppAssets.configFootBtn2;
     final textColor = usePrimary
         ? Colors.white
-        : LpRobotColors.textDark.withValues(alpha: widget.enabled ? 0.85 : 0.45);
+        : LpRobotColors.textDark.withValues(
+            alpha: widget.enabled ? 0.85 : 0.45,
+          );
 
     return Opacity(
       opacity: widget.enabled ? 1 : 0.85,

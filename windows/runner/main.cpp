@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
+#include <tlhelp32.h>
 
 #include "flutter_window.h"
 #include "utils.h"
@@ -22,6 +23,39 @@ std::wstring BuildWindowTitle() {
 #else
   return L"\u9886\u9e4f\u667a\u80fd";
 #endif
+}
+
+/// Count other running processes whose exe file name matches ours.
+/// Used to suffix the window title with an ordinal (2), (3)... when
+/// multiple instances of the app run at the same time.
+int CountOtherSameExeInstances() {
+  wchar_t self_path[MAX_PATH]{};
+  if (!::GetModuleFileNameW(nullptr, self_path, MAX_PATH)) {
+    return 0;
+  }
+  const std::wstring self_name =
+      std::filesystem::path(self_path).filename().wstring();
+
+  HANDLE snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snapshot == INVALID_HANDLE_VALUE) {
+    return 0;
+  }
+
+  int count = 0;
+  PROCESSENTRY32W entry{};
+  entry.dwSize = sizeof(entry);
+  if (::Process32FirstW(snapshot, &entry)) {
+    do {
+      if (entry.th32ProcessID == ::GetCurrentProcessId()) {
+        continue;
+      }
+      if (_wcsicmp(entry.szExeFile, self_name.c_str()) == 0) {
+        ++count;
+      }
+    } while (::Process32NextW(snapshot, &entry));
+  }
+  ::CloseHandle(snapshot);
+  return count;
 }
 
 double MonitorScaleFactor(HMONITOR monitor) {
@@ -120,7 +154,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       MonitorFromPoint(center_point, MONITOR_DEFAULTTONEAREST);
   size = FitWindowSize(work_area, monitor, size.width, size.height);
   Win32Window::Point origin = CenterWindowOrigin(work_area, monitor, size);
-  if (!window.Create(BuildWindowTitle().c_str(), origin, size)) {
+
+  // Multi-instance: append an ordinal to the title when other instances
+  // of the same exe are already running (first instance stays unchanged).
+  std::wstring window_title = BuildWindowTitle();
+  const int other_instances = CountOtherSameExeInstances();
+  if (other_instances > 0) {
+    window_title +=
+        L" (" + std::to_wstring(other_instances + 1) + L")";
+  }
+
+  if (!window.Create(window_title.c_str(), origin, size)) {
     ShowStartupFailure(
         L"\u7a97\u53e3\u6216\u56fe\u5f62\u5f15\u64ce\u521d\u59cb\u5316\u5931\u8d25\u3002\n"
         L"\u8bf7\u66f4\u65b0\u663e\u5361\u9a71\u52a8\uff0c\u6216\u5b89\u88c5 Microsoft WebView2 "
