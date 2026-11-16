@@ -4,7 +4,50 @@
 基于版本：`2.2.2+7`（v2.2.1 / v2.2.2 无 history 条目）
 最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.6**（2026-10-30）。
 
-## 本轮结论（2026-10-30）
+## 本轮结论（2026-11-04）
+
+### 视觉调参交互验证 demo（独立工程，不动主工程）
+
+用户需求收敛为：图像获取与图像处理都在另一台机器（下位机）进行，本机只负责 ① 接收图像 ② 在图像上画框（ROI）③ 把修改后的参数发给下位机 ④ 接收处理完的图像回传。通信方式用户选择「先走 HTTP/MJPEG，协议层留抽象，后续可换 TCP」；交付形式「先独立 demo」。
+
+新增独立工程 `demo/vision_roi_demo/`（flutter create 仅 Windows，零第三方依赖）：
+
+- `lib/mock_vision_server.dart`：模拟下位机（进程内嵌，127.0.0.1:8600）——`GET /stream` 原始图像 MJPEG 流、`GET /processed/stream` 处理结果流（叠加 ROI 描绘+模拟检测结果+回显收到的参数）、`POST /params` 接收 `{rois:[...], params:{threshold,polarity}}`。dart:ui PictureRecorder 生成 800×600 模拟帧（移动工件），10fps PNG 编码。
+- `lib/mjpeg_client.dart`：MJPEG（multipart/x-mixed-replace）客户端，只用 dart:io HttpClient；字节级找 boundary + Content-Length 提帧；解码跳帧（最多保留 2 帧）防延迟堆积；断流 1.5s 自动重连。对帧格式（PNG/JPEG）无假设，真实下位机 JPEG 原样可用。
+- `lib/roi_model.dart`：RoiShape（矩形/卡尺线/圆），坐标一律为图像像素坐标系，显示变换由画布层负责；toJson/fromJson。
+- `lib/roi_canvas.dart`：画布——显示 MJPEG 当前帧 + ROI 覆盖层；工具模式（选择/矩形/卡尺线/圆）拖拽新建、选中拖动/端点调整；滚轮以光标为中心缩放（0.5×–8×）、空手平移；卡尺线画刻度+方向箭头；右下角缩放条。
+- `lib/main.dart`：应用壳——顶栏（原始图像/处理结果切换 + 下发参数按钮）、右侧面板（工具按钮、ROI 列表带删除、阈值 Slider、极性 Switch）；`POST /params` 下发全部 ROI+参数。
+
+**迭代 2（同日）：ROI 编辑 + 错位修复 + 参数框架（参考 LLVisionBridge）**
+
+- ROI 画完自动切回「选择」工具并选中；右侧新增「选中 ROI 属性」编辑区（矩形/圆 X/Y/宽/高，卡尺线 X1/Y1/X2/Y2，双向同步）+「取数步骤 target_step_name」输入。
+- 修复 ROI 与图像错位：`_RoiPainter` 原把图像像素坐标直接当显示坐标画，漏乘帧显示的 fit 缩放（下位机回显的绿框跟着图像缩放、本机黄框不缩放）；painter 加 `canvas.scale(fit)` 与帧同缩放后黄绿重合。
+- **参数框架对齐参考项目 `D:\有加视觉\LLVisionBridge_固定Z偏移\LLVisionBridge`**（Explore 调研结论：该项目不实现检测算法，参数体系=每料号一份 params.json 扁平可扩展键值表，Z/角度三态槽 + fail-loud 校验）：新增 `lib/vision_params.dart`，键名与 `PartParameters.cs` 一致（z_mode/z_reference_v/z_mm_per_pixel/z_fixed_offset_mm/z_random_range_mm/z_value_index/z_direction、roll_* 对称一组、note、未知键进 extra 原样保留）；`validate()` fail-loud（measured 须参考v≥0 且像素比>0 否则 `z_calib_invalid`，方向只收 ±1，random 须范围>0，|增益|<门 ⇒ `roll_uncontrollable`）。右侧面板改分组：检测（阈值/极性）+「Z 偏移槽」/「角度槽」ExpansionTile（关/随机/实测三态 SegmentedButton，按模式显示字段）+ 备注；下发前先校验，失败显示错误码不下发。mock server `POST /params` 独立复用 `VisionParams.fromJson().validate()`（非法返回 422+code），处理结果流回显 z_mode/实时模拟 dz（measured 用工件位置当检测 v）、roll 参数。
+- 验证：analyze 干净、test 3/3、build+启动成功；**待用户实测**：分组面板手感、measured 模式 dz 随工件移动变化、校验拦截（如实测模式不填参考像素点下发）。
+
+**迭代 3（同日）：修复「只能编辑第一个 ROI」**
+
+- 根因：画布新建 ROI 的草稿 id 固定为 `'draft'`，`_onCreate` 未换 id 直接入库 → 所有 ROI 同 id，画布 `_find` 与属性区 `firstWhere` 永远命中列表第一个（拖第二个框动的是第一个框、属性编辑永远改第一个）。
+- 修复：`_onCreate` 为每个新 ROI 生成唯一自增 id（`roi_1`/`roi_2`…）；选中逻辑收敛到 `_selectRoi`（画布点击与列表点击共用），切换选中时让属性输入框失焦，显示值才同步到新选中的 ROI。
+- 验证：analyze 无问题、test 3/3、build+启动成功；**待用户实测**：画多个 ROI，点击/拖拽/拉端点/属性编辑均作用于各自 ROI。
+
+**迭代 4（同日）：底部「编程流程」节点栏（对齐用户提供的参考软件截图）**
+
+- 用户给出参考软件（微视 V2026.07.30）截图：底部节点链「图像采集 → 查找定位 → 计算1 → 计算2 …」，指明编程流程就按这种做。
+- demo 底部新增 `_buildFlowBar`：固定「图像采集」「查找定位」占位节点 + 每个 ROI 一个检测节点（图标按矩形/卡尺线/圆，节点名取 `target_step_name`，缺省「计算N」），箭头串联、可横向滚动；点节点 = 选中对应 ROI（与画布/列表联动高亮）。步骤名输入实时刷新节点名。
+- 验证：analyze 无问题、test 3/3、build+启动成功；**待用户实测**：流程节点栏布局与点选联动手感、节点命名是否符合预期。
+
+验证：`flutter analyze` 无问题；`flutter test` 3/3 通过（RoiShape 序列化/命中）；`flutter build windows --debug` 成功并启动。**待用户实测**：图像流显示、ROI 绘制/编辑手感、下发参数后处理结果流的模拟检测回显是否符合预期。
+
+demo 验证通过后可整体删除，方案再合入主工程视觉首页（对应遗留项「视觉首页主体内容与视觉专属编程界面」）。
+
+## 本轮结论（2026-11-03）
+
+### 新增《项目速览.md》—— 交接文档
+
+应用户要求在工程根新增 `项目速览.md`：接手必读顺序、环境与常用命令、完整项目结构目录树（含 lib/ 各模块关键文件职责）、核心红线约定、打包与发布流程（含 v2.2.6 提交筛选实操经验）、每轮收尾闭环、当前状态速记。纯文档，无代码改动。
+
+## 上一轮结论（2026-10-30）
 
 ### 离线预览：未连接可浏览所有界面 —— 已实现，待用户实测
 

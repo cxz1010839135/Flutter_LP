@@ -16,6 +16,15 @@ import '../../network/http_manager.dart';
 import '../../platform/android_wifi_network_binder.dart';
 import '../../platform/local_network_info.dart';
 import '../home/main_home_page.dart';
+import '../home/vision_home_page.dart';
+
+/// 按机型选择连接后的首页：SJ 开头（视觉机型，暂定规则）进视觉首页，
+/// 其余型号与离线预览进原主页。见 [RobotState.isVisionModel]。
+Widget buildHomePageByModel() {
+  return RobotState.instance.isVisionModel
+      ? const VisionHomePage()
+      : const MainHomePage();
+}
 
 /// 连接页（切图1 login1，对齐设计稿橙色卡片）
 class ConnectPage extends StatefulWidget {
@@ -275,9 +284,7 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
         openPanel: false,
       );
       AppLogger.instance.logOperation('连接控制器成功: $syncMessage');
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const MainHomePage()),
-      );
+      _openHomeByModel();
       if (syncWarning != null) {
         LpStatusLog.instance.warning('程序同步失败：$syncWarning');
         AppLogger.instance.logOperation('程序同步警告: $syncWarning');
@@ -337,6 +344,20 @@ class _ConnectPageState extends State<ConnectPage> with WidgetsBindingObserver {
         content: Text(message),
         backgroundColor: LpRobotColors.alarm,
       ),
+    );
+  }
+
+  /// 按型号分流首页：SJ 开头（视觉机型）进视觉首页，其余仍进原主页。
+  /// 离线预览无型号，保持原主页不变。
+  void _openHomeByModel() {
+    final vision = RobotState.instance.isVisionModel;
+    AppLogger.instance.logOperation(
+      vision
+          ? '连接成功：机型 ${RobotState.instance.robotModel} 为视觉机型，进入视觉首页'
+          : '连接成功：进入主页',
+    );
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => buildHomePageByModel()),
     );
   }
 

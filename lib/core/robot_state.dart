@@ -103,6 +103,13 @@ class RobotState extends ChangeNotifier {
     return _robotTypeFallbackName(robotType);
   }
 
+  /// 视觉机型：控制器上报型号以 SJ 开头（暂定规则，不区分大小写）。
+  /// 命中时连接后进入视觉首页，其余型号仍走原主页，行为不变。
+  bool get isVisionModel {
+    final model = robotModel.trim().toUpperCase();
+    return model.startsWith('SJ');
+  }
+
   static String _robotTypeFallbackName(int type) {
     const names = [
       '连杆机器人',
