@@ -6,10 +6,11 @@ setlocal EnableExtensions EnableDelayedExpansion
 REM =====================================================================
 REM  LPRobot 源码/安装包下载脚本（双击运行，中文 Windows 直接可用）
 REM
-REM  - 源码 ZIP 从 GitHub 下载（Gitee 对大仓库不提供源码包）
-REM  - 直连 GitHub 失败时自动切换国内加速镜像
+REM  - 源码 ZIP 优先从 Gitee Release 附件下载（国内直连，无需翻墙）
+REM  - Gitee 无该版本附件时自动回退 GitHub（直连 + 国内加速镜像）
 REM  - git 克隆优先走 Gitee（国内快，且不受大仓库限制）
-REM  - 发新版本时只需改下面的 DEFAULT_VER
+REM  - 发新版本时只需改下面的 DEFAULT_VER，并把源码 zip 传到
+REM    Gitee 对应 release 附件（命名 LPRobot-src-v版本号.zip）
 REM =====================================================================
 
 set "REPO=cxz1010839135/Flutter_LP"
@@ -41,7 +42,7 @@ exit /b 0
 :resolve_ver
 set "VER=%DEFAULT_VER%"
 set "TAG="
-for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "try{ (Invoke-RestMethod -Uri 'https://api.github.com/repos/%REPO%/releases/latest' -TimeoutSec 15).tag_name }catch{ '' }"`) do set "TAG=%%V"
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "try{ (Invoke-RestMethod -Uri 'https://api.github.com/repos/%REPO%/releases/latest' -TimeoutSec 5).tag_name }catch{ '' }"`) do set "TAG=%%V"
 if defined TAG set "VER=!TAG:~1!"
 echo 版本: v%VER%
 exit /b 0
@@ -52,12 +53,14 @@ echo 正在查询最新版本（约几秒，查不到会用默认 v%DEFAULT_VER%）...
 call :resolve_ver
 set "NAME=LPRobot-src-v%VER%"
 set "URLPATH=%REPO%/archive/refs/tags/v%VER%.zip"
+set "GITEEFILE=https://gitee.com/%GITEE%/releases/download/v%VER%/LPRobot-src-v%VER%.zip"
 set "MINSIZE=1000000"
 goto do_download
 
 :src_main
 set "NAME=LPRobot-src-main"
 set "URLPATH=%REPO%/archive/refs/heads/main.zip"
+set "GITEEFILE="
 set "MINSIZE=1000000"
 goto do_download
 
@@ -69,6 +72,7 @@ if not defined INP goto menu
 set "VER=%INP:v=%"
 set "NAME=LPRobot-src-v%VER%"
 set "URLPATH=%REPO%/archive/refs/tags/v%VER%.zip"
+set "GITEEFILE=https://gitee.com/%GITEE%/releases/download/v%VER%/LPRobot-src-v%VER%.zip"
 set "MINSIZE=1000000"
 goto do_download
 
@@ -120,6 +124,7 @@ if "%KIND%"=="msi"   set "ASSET=LPRobot-%VER%-x64.msi"
 if "%KIND%"=="apk"   set "ASSET=LPRobot-%VER%.apk"
 set "NAME=%ASSET%"
 set "URLPATH=%REPO%/releases/download/v%VER%/%ASSET%"
+set "GITEEFILE="
 set "MINSIZE=50000000"
 goto do_download
 
@@ -129,8 +134,15 @@ if "%URLPATH:~-4%"==".zip" set "OUT=%OUT%.zip"
 echo.
 echo 开始下载: %NAME%
 echo 保存位置: %OUT%
-echo （直连失败会自动换镜像，请耐心等待）
-call :download ""           || call :download "https://ghproxy.cn/" || call :download "https://gh-proxy.com/" || call :download "https://ghfast.top/" || goto fail
+echo （Gitee 优先，失败自动换 GitHub 镜像，请耐心等待）
+set "DLFAIL="
+if defined GITEEFILE (
+    call :download_gitee
+    if errorlevel 1 set "DLFAIL=1"
+)
+if defined DLFAIL (
+    call :download ""           || call :download "https://ghproxy.cn/" || call :download "https://gh-proxy.com/" || call :download "https://ghfast.top/" || goto fail
+)
 
 for %%F in ("%OUT%") do set /a "FMB=%%~zF / 1048576"
 echo.
@@ -170,13 +182,31 @@ goto done
 echo.
 echo [失败] 所有下载源均失败，请检查网络后重试。
 echo 也可用浏览器手动下载:
-echo   https://github.com/%REPO%/releases
-echo   https://github.com/%REPO%/archive/refs/heads/main.zip
+echo   Gitee 源码: https://gitee.com/%GITEE%/releases
+echo   GitHub 源码: https://github.com/%REPO%/archive/refs/heads/main.zip
 echo.
 
 :done
 echo.
 pause
+exit /b 0
+
+:download_gitee
+echo 尝试 Gitee 源（国内直连，最快）: %GITEEFILE%
+if exist "%OUT%" del /f /q "%OUT%"
+where curl >nul 2>&1
+if not errorlevel 1 (
+    curl.exe -fL --retry 2 --connect-timeout 20 --progress-bar -o "%OUT%" "%GITEEFILE%"
+) else (
+    powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%GITEEFILE%' -OutFile '%OUT%' -UseBasicParsing"
+)
+if errorlevel 1 goto download_no
+for %%F in ("%OUT%") do set "FSIZE=%%~zF"
+if !FSIZE! LSS %MINSIZE% (
+    echo   该源返回内容不完整，换下一个源...
+    del /f /q "%OUT%"
+    exit /b 1
+)
 exit /b 0
 
 :download
