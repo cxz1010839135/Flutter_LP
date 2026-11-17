@@ -2,9 +2,17 @@
 
 当前版本：`2.2.7+8`（`pubspec.yaml`）
 基于版本：`2.2.6+8`
-最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.6**（2026-10-30）。
+最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.7**（2026-11-17，提交 d800b91，含 Setup.exe + msi + apk）。
 
 ## 本轮结论（2026-11-17）
+
+### v2.2.7 发布 —— 已发布 GitHub Release
+
+- 提交 `d800b91` 已推送 origin/main；release tag `v2.2.7` 指向该提交。
+- 产物（dist/ 与 release 资产一致）：`LPRobot-2.2.7-x64-Setup.exe`（296.65MB，WebView2 离线 bundle）、`LPRobot-2.2.7-x64.msi`（101.97MB）、`LPRobot-2.2.7.apk`（121.52MB，`flutter build apk --release`）。
+- Release：https://github.com/cxz1010839135/Flutter_LP/releases/tag/v2.2.7（name「领鹏智能 v2.2.7」）。
+- 注意：远端曾存在 11-16 提前建的旧 release（tag 指向 4fe0d05、只有旧 Windows 资产、缺 APK），已删除后在新提交上重建。后续发版前先 `gh release view vX.Y.Z` 确认是否已存在。
+- Android 打包经验：TRAE 沙箱内跑 `flutter build apk` 会因 Kotlin daemon / pub 缓存 ACL 拒绝访问失败（沙箱内创建的文件带受限 ACL，删除可以、读写被拒 errno 5）；须前台 + 沙箱外执行，失败后需清理 `~\AppData\Local\Pub\Cache\hosted\pub.flutter-io.cn\jni-*` 与 `hosted-hashes` 对应 .sha256 再 `flutter pub get`。
 
 ### 一键备份适配新版程序/库名 + 排除 EtherCAT —— 已改，待用户实测
 
