@@ -11,7 +11,7 @@
 - 提交 `d800b91` 已推送 origin/main；release tag `v2.2.7` 指向该提交。
 - 产物（dist/ 与 release 资产一致）：`LPRobot-2.2.7-x64-Setup.exe`（296.65MB，WebView2 离线 bundle）、`LPRobot-2.2.7-x64.msi`（101.97MB）、`LPRobot-2.2.7.apk`（121.52MB，`flutter build apk --release`）。
 - Release：https://github.com/cxz1010839135/Flutter_LP/releases/tag/v2.2.7（name「领鹏智能 v2.2.7」）。
-- 已添加 Gitee 镜像远端 `gitee`（https://gitee.com/liomr-chen1/flutter_-lp.git，仓库为 GitHub 导入）；main + tag v2.2.7 已推送。Gitee Release/安装包资产未发（需网页手动或私人令牌 API）。
+- 已添加 Gitee 镜像远端 `gitee`（https://gitee.com/liomr-chen1/flutter_-lp.git，仓库为 GitHub 导入）；main + tag v2.2.7 已推送。Gitee Release「领鹏智能 v2.2.7」已建（API），正文指向 GitHub Release 下载——**Gitee 免费账户附件上限 100MB**，三个安装包均超限无法上传。Gitee API 用私人令牌（`POST/PATCH /api/v5/repos/{owner}/{repo}/releases`，上传附件 attach_files）；PS5.1 构造 JSON 用 `[IO.File]::ReadAllText`，勿用 `Get-Content -Raw`（会被 ConvertTo-Json 序列化成 `{value:...}`）。
 - 注意：远端曾存在 11-16 提前建的旧 release（tag 指向 4fe0d05、只有旧 Windows 资产、缺 APK），已删除后在新提交上重建。后续发版前先 `gh release view vX.Y.Z` 确认是否已存在。
 - Android 打包经验：TRAE 沙箱内跑 `flutter build apk` 会因 Kotlin daemon / pub 缓存 ACL 拒绝访问失败（沙箱内创建的文件带受限 ACL，删除可以、读写被拒 errno 5）；须前台 + 沙箱外执行，失败后需清理 `~\AppData\Local\Pub\Cache\hosted\pub.flutter-io.cn\jni-*` 与 `hosted-hashes` 对应 .sha256 再 `flutter pub get`。
 
