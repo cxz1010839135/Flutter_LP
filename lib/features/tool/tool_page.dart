@@ -111,6 +111,18 @@ class _ToolPageState extends State<ToolPage> {
     ).push<void>(MaterialPageRoute(builder: (_) => const FilesPage()));
   }
 
+  /// 退出下位机视觉程序（下位机只识别指令头 robotExitProgram）。
+  Future<void> _exitVisionProgram() {
+    return _runAction(
+      successLog: '视觉程序退出成功！',
+      failLog: '视觉程序退出失败！',
+      action: () async {
+        final res = await HttpManager.instance.robotExitProgram();
+        res?.ensureOk();
+      },
+    );
+  }
+
   bool get _inDebugMode =>
       RobotTelemetry.instance.motorAlarmCode == RobotAlarmInfo.codeDebugMode;
 
@@ -268,6 +280,15 @@ class _ToolPageState extends State<ToolPage> {
                                       // 始终可点，由 _openDriverDebug 内部判断并提示具体原因。
                                       enabled: !_busy,
                                       onPressed: _openDriverDebug,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Expanded(
+                                    child: _DaimaActionButton(
+                                      label: '视觉程序退出',
+                                      primary: true,
+                                      enabled: !_busy,
+                                      onPressed: _exitVisionProgram,
                                     ),
                                   ),
                                 ],

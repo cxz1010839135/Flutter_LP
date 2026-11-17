@@ -1,10 +1,76 @@
 # STATUS.md
 
-当前版本：`2.2.6+8`（`pubspec.yaml`）
-基于版本：`2.2.2+7`（v2.2.1 / v2.2.2 无 history 条目）
+当前版本：`2.2.7+8`（`pubspec.yaml`）
+基于版本：`2.2.6+8`
 最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.6**（2026-10-30）。
 
-## 本轮结论（2026-11-04）
+## 本轮结论（2026-11-17）
+
+### 一键备份适配新版程序/库名 + 排除 EtherCAT —— 已改，待用户实测
+
+用户需求（图）：程序和库名称修改，一键备份增加导入导出（文件存在才导出导入，兼容原来版本）：`/usr/lib/librobot.so`、`/usr/lib/libplc.so`、`/usr/lib/libecat_rk.so`、`/home/ll_main`；一键备份不备份 `/home/llmachine/EtherCAT`（太大）。另：网络部分 eth1 备份——**代码里备份/恢复两侧的「IP」分类本来就有 eth1**（`ipOn` 分支），无需改；用户测不到大概率是旧 exe。
+
+修改（仅 [robot_file_backup.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/files/robot_file_backup.dart)）：
+- 备份 `_collectBackupFiles` 固件分支追加 4 个新名字（缺文件下载抛错/空字节 → 既有单文件 try/catch 与 `bytes.isEmpty` 跳过 = 没有就不备份）；
+- 备份 `_collectOtherConfigFiles` 移除 `/home/llmachine/EtherCAT/`（恢复侧**保留** EtherCAT 分支：旧备份包里有的仍会恢复，新包不再包含）；
+- 恢复 `_collectRestoreFiles` 固件分支追加 4 个 `addRelative`（本地无该文件自动跳过 = 兼容旧备份包）；
+- `_needsExecuteBit` 加 `ll_main`（主程序需 +x，同 `ll_libot`）。
+
+验证：`flutter analyze` 无问题；`flutter test` 40/40 通过。
+**待用户实测**：新版控制器一键备份压缩包含 4 个新文件且明显变小（无 EtherCAT）；旧控制器备份不受影响；恢复新备份包后新程序/库文件到位且可执行。
+
+### 文件管理左侧本地目录加「返回上一级」按钮 —— 已改，待用户实测
+
+用户反馈（截图）：文件管理页右侧驱控目录有「← 根目录」返回，左侧本地目录进入子目录后没有返回按钮。
+
+修改（仅 [files_page.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/files/files_page.dart)）：
+- `_buildLocalPanel` 路径行前加 `IconButton(arrow_back)`（与右侧头部同款样式），调用既有 `_localBack()`；
+- 新增 `_canLocalBack`：加载中/磁盘列表视图不可退；Windows 盘符根可退（→ 磁盘列表）；已到最顶层目录置灰。
+
+验证：`flutter analyze` 无问题；`flutter test` 40/40 通过。
+**待用户实测**：进入下载目录子文件夹后点左上角 ← 可逐级返回；到最顶层按钮置灰。
+
+## 本轮结论（2026-11-16）
+
+### 配置页新增「视觉程序退出」按钮 —— 已改，待用户实测
+
+用户需求（两图）：下位机视觉软件已实现指令头 `robotExitProgram`（`HttpServer::robotExitProgram`），配置页新增按键发送该指令、「只要这个指令头就可以识别」，按键名「视觉程序退出」。
+
+修改：
+- `lib/core/robot_api_constants.dart`：`RobotCommands` 新增 `robotExitProgram`；
+- `lib/network/api/robot_http_state.dart`：新增 `robotExitProgram()` —— `robotCmdRaw` + `tryParse`（下位机响应体格式未知，空/非 JSON 视为已应答，同 robotChmod 惯例；标准 JSON 才校验 result==1）；
+- `lib/features/tool/tool_page.dart`：配置页右列第 7 键「视觉程序退出」，`enabled: !_busy`（与文件管理同门控，非运动指令不要求机器人静止），点击走 `_runAction` 统一提示。
+
+验证：`flutter analyze` 3 文件无问题；`flutter test` 40/40 通过。
+**待用户实测**：连接下位机后点「视觉程序退出」→ 视觉软件退出、应用提示成功。
+
+### 文件配置向导新增 eth1 步骤 —— 已改，待用户实测
+
+用户需求：文件配置向导（eth0 步骤之后）新增 eth1 配置；下位机没有该文件时可以创建。
+
+修改：
+- `lib/features/config_file/config_file_defs.dart`：新增步骤 index 18 `eth1-本机IP(保存后请重启驱控)`，路径 `/home/llmachine/ipaddress/eth1`，singleValue；导航顺序 `…16 → 18 → 17`；
+- `lib/features/config_file/config_file_codec.dart`：`createDefaultRows` 新增 case 18，默认 IP `192.168.88.10`（用户指定，创建后可在页面改）。
+
+说明：文件不存在时页面走既有「创建该文件」按钮（底部栏），用默认 IP 建文件，再点 IP 单元格修改、保存文件。默认留空会卡死（空文件 reload 后无行且无添加按钮），所以默认值必须非空。
+
+验证：`flutter analyze` 无问题；`flutter test` 40/40 通过。
+**待用户实测**：eth0 下一步出现「eth1-本机IP」；无文件时点「创建该文件」→ 出现 192.168.88.10 → 可改可存。
+
+### 文件配置向导新增「机械手类型」下拉步骤（首位）—— 已改，待用户实测
+
+用户需求：向导增加配置机械手类型（下拉选择）；型号清单来自 `/home/llmachine/Axis4/para/RobotType/RobotTypeList.rtl`（每行一个型号，用户截图确认）；选中后写 `/home/llmachine/Axis4/para/RobotType/DefaultRobotType.drt`（修改生效处）。
+
+修改：
+- `lib/features/config_file/config_file_defs.dart`：新增 `ConfigFileFormat.robotTypeSelect`、路径常量 `configRobotTypeListPath`/`configDefaultRobotTypePath`、步骤 index 19「DefaultRobotType-机械手类型(修改后请重启驱控)」置于导航首位（初始 `_stepIndex=configFileNavOrder.first`）；
+- `lib/features/config_file/config_file_codec.dart`：parse/serialize 中 robotTypeSelect 与 singleValue 同语义（drt 一行 = 当前型号）；
+- `lib/features/config_file/config_file_service.dart`：新增 `loadRobotTypeOptions()` 读 rtl 清单；
+- `lib/features/config_file/config_file_page.dart`：机械手类型步骤渲染下拉（当前型号不在清单也保留显示）；drt 缺失/为空保底一行空值、保存时即创建文件；清单拉取失败仅警告不阻塞；选择受 `MaintenanceEditGate` 门控；保存走既有 `_saveFile`（serialize singleValue → 上传 drt）。Flutter 3.44 用 `initialValue`（`value` 已弃用），字段离开步骤即销毁重建、行为一致。
+
+验证：`flutter analyze` 无问题；`flutter test` 40/40 通过。
+**待用户实测**：打开文件配置第一页为「机械手类型」，下拉列出 rtl 全部型号；选中→保存文件→重启驱控后机器人型号切换。
+
+## 上一轮结论（2026-11-04）
 
 ### 视觉调参交互验证 demo（独立工程，不动主工程）
 

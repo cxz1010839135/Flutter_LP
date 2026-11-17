@@ -217,6 +217,19 @@ class _FilesPageState extends State<FilesPage> {
     return RegExp(r'^[A-Za-z]:\\?$', caseSensitive: false).hasMatch(norm);
   }
 
+  /// 左侧本地目录头部返回按钮是否可用。
+  ///
+  /// Windows 盘符根再后退 → 显示磁盘列表（与 `_localBack` 一致）；
+  /// Android 已在 `/` 时无可退，置灰。
+  bool get _canLocalBack {
+    if (_localLoading || _localBrowsingDrives) return false;
+    final dir = _localDir;
+    if (dir == null) return false;
+    final dirNorm = p.normalize(dir.path);
+    if (Platform.isWindows && _isWindowsDriveRoot(dirNorm)) return true;
+    return p.normalize(dir.parent.path) != dirNorm;
+  }
+
   Future<void> _showLocalDriveRoots() async {
     setState(() => _localLoading = true);
     try {
@@ -1076,16 +1089,33 @@ class _FilesPageState extends State<FilesPage> {
       children: [
         const _PanelTitle(label: '本地目录', accent: false),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
-            _localBrowsingDrives ? '此电脑' : (dir?.path ?? ''),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: LpAppFonts.style(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: LpRobotColors.textDark,
-            ),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+          child: Row(
+            children: [
+              // 返回上一级目录（与右侧驱控目录头部返回按钮同款）。
+              IconButton(
+                iconSize: 20,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: '返回上一级',
+                onPressed: _canLocalBack ? _localBack : null,
+                icon: const Icon(Icons.arrow_back),
+                color: LpRobotColors.primary,
+              ),
+              Expanded(
+                child: Text(
+                  _localBrowsingDrives ? '此电脑' : (dir?.path ?? ''),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: LpAppFonts.style(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: LpRobotColors.textDark,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(child: _buildLocalList()),

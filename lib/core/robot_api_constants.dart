@@ -151,6 +151,7 @@ abstract final class RobotCommands {
   static const robotGetPrintInfo = 'robotGetPrintInfo';
   static const robotSetAutoRun = 'robotSetAutoRun';
   static const robotSetDebugMode = 'robotSetDebugMode';
+  static const robotExitProgram = 'robotExitProgram';
   static const robotSetPLCPort = 'robotSetPLCPort';
   static const robotSetPLCRegIdx = 'robotSetPLCRegIdx';
   static const robotSetPLCAlarmIdx = 'robotSetPLCAlarmIdx';

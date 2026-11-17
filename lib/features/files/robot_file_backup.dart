@@ -425,6 +425,36 @@ class RobotFileBackup {
           isDir: false,
         ),
       );
+      // 新版程序/库名称：文件存在才导出（下载失败/为空自动跳过），
+      // 旧版控制器没有这些文件，不影响原备份列表。
+      add(
+        const RemoteFileEntry(
+          name: 'librobot.so',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libplc.so',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'libecat_rk.so',
+          parentPath: '/usr/lib/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'll_main',
+          parentPath: '/home/',
+          isDir: false,
+        ),
+      );
       add(
         const RemoteFileEntry(
           name: 'BOOT.BIN',
@@ -554,9 +584,10 @@ class RobotFileBackup {
       seen,
       excludeNames: const {'driverparams.dps'},
     );
-    // 驱动配置 / EtherCAT 配置 / 电机 PID 参数
+    // 驱动配置 / 电机 PID 参数
+    // EtherCAT 文件夹不备份（文件太大，用户 2026-11-17 要求）；
+    // 恢复侧仍兼容旧备份包中已有的 EtherCAT 文件。
     await _collectDirFilesRecursive('/home/llmachine/cfg_ini_file/', out, seen);
-    await _collectDirFilesRecursive('/home/llmachine/EtherCAT/', out, seen);
     await _collectDirFilesRecursive('/home/llmachine/pid_ini_file/', out, seen);
   }
 
@@ -742,6 +773,11 @@ class RobotFileBackup {
       await addRelative('usr/lib/libllmotionECat.so.1.0.0');
       await addRelative('usr/lib/libethercat.so.1.0.0');
       await addRelative('usr/lib/libwifi.so.1.0.0');
+      // 新版程序/库名称：旧备份包没有这些文件时 addRelative 自动跳过。
+      await addRelative('usr/lib/librobot.so');
+      await addRelative('usr/lib/libplc.so');
+      await addRelative('usr/lib/libecat_rk.so');
+      await addRelative('home/ll_main');
       await addRelative('sd/BOOT.BIN');
       await addRelative('home/ll_libot');
       await addRelative('home/robotKit');
@@ -931,7 +967,7 @@ class RobotFileBackup {
   /// 仅动态库 / 主程序需要 +x；xml/txt/dps 等小文件不必 chmod。
   static bool _needsExecuteBit(String remotePath) {
     final name = p.basename(remotePath).toLowerCase();
-    return name.contains('.so') || name == 'll_libot';
+    return name.contains('.so') || name == 'll_libot' || name == 'll_main';
   }
 }
 

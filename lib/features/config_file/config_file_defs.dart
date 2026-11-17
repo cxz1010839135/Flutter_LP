@@ -15,6 +15,10 @@ enum ConfigFileFormat {
   csv5,
   csv2,
   csv8,
+
+  /// 机械手类型下拉选择：内容解析/保存同 singleValue，
+  /// 下拉选项来自 [configRobotTypeListPath]，页面单独渲染。
+  robotTypeSelect,
 }
 
 class ConfigFileRow {
@@ -68,11 +72,29 @@ String configRobotTypePath(String model, String fileName) {
   return '/home/llmachine/Axis4/para/RobotType/$m/$fileName';
 }
 
+/// 机械手类型清单（每行一个型号），机械手类型下拉选项来源。
+const configRobotTypeListPath =
+    '/home/llmachine/Axis4/para/RobotType/RobotTypeList.rtl';
+
+/// 当前选中的机械手类型；下拉选择保存的目标文件（重启驱控生效）。
+const configDefaultRobotTypePath =
+    '/home/llmachine/Axis4/para/RobotType/DefaultRobotType.drt';
+
 /// 向导步骤定义（index 15 存在但导航时跳过）。
 List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
   String axisLabel(int i, String suffix) => '$i$suffix';
 
   return [
+    ConfigFileStepDef(
+      index: 19,
+      title: 'DefaultRobotType-机械手类型(修改后请重启驱控)',
+      tips: _tipsRobotType,
+      remotePath: configDefaultRobotTypePath,
+      format: ConfigFileFormat.robotTypeSelect,
+      columnHeaders: const ['机械手类型'],
+      buildRowLabels: () => ['机械手类型'],
+      editableColumnCount: 1,
+    ),
     ConfigFileStepDef(
       index: 0,
       title: 'com_setting.pa-通讯配置参数(保存后请重启驱控)',
@@ -315,6 +337,16 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
       editableColumnCount: 1,
     ),
     ConfigFileStepDef(
+      index: 18,
+      title: 'eth1-本机IP(保存后请重启驱控)',
+      tips: '',
+      remotePath: '/home/llmachine/ipaddress/eth1',
+      format: ConfigFileFormat.singleValue,
+      columnHeaders: const ['IP'],
+      buildRowLabels: () => ['IP'],
+      editableColumnCount: 1,
+    ),
+    ConfigFileStepDef(
       index: 17,
       title: 'wifi_io.txt-WIFI的IO参数(保存后请重启驱控)',
       tips: '',
@@ -327,8 +359,10 @@ List<ConfigFileStepDef> buildConfigFileSteps(String robotModel) {
   ];
 }
 
-/// 导航顺序（跳过 index 15）。
+/// 导航顺序（index 19 机械手类型在最前；跳过 index 15；eth1 为 index 18，
+/// 排在 eth0 之后、wifi_io 之前）。
 const configFileNavOrder = <int>[
+  19,
   0,
   1,
   2,
@@ -345,6 +379,7 @@ const configFileNavOrder = <int>[
   13,
   14,
   16,
+  18,
   17,
 ];
 
@@ -465,3 +500,8 @@ const _tipsDesheng = '''
 
 const _tipsEthernetSelect = '''
 1、打开ecat开关写1，关闭ecat开关写0''';
+
+const _tipsRobotType = '''
+1、下拉选择机械手型号（型号清单来自 RobotTypeList.rtl）
+2、选中后点「保存文件」，写入 DefaultRobotType.drt
+3、重启驱控后生效，各型号参数目录随之切换''';

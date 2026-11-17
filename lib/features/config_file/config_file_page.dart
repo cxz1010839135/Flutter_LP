@@ -33,12 +33,15 @@ class ConfigFilePage extends StatefulWidget {
 class _ConfigFilePageState extends State<ConfigFilePage> {
   final _service = ConfigFileService.instance;
 
-  int _stepIndex = 0;
+  int _stepIndex = configFileNavOrder.first;
   bool _showDriverPanel = false;
   bool _loading = false;
   bool _fileExists = true;
   List<ConfigFileRow> _rows = [];
   int? _selectedRow;
+
+  /// 机械手类型下拉选项（RobotTypeList.rtl，每行一个型号）。
+  List<String> _robotTypeOptions = const [];
   bool _driverExists = true;
   List<DriverParamsRow> _driverRows = [];
   DriverParamsFileLayout? _driverLayout;
@@ -70,6 +73,10 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
 
   Future<void> _loadStep() async {
     if (!RobotState.instance.isConnected) return;
+    // 机械手类型步骤：除 drt 外还要拉取型号清单，单独加载。
+    if (_step.format == ConfigFileFormat.robotTypeSelect) {
+      return _loadRobotTypeStep();
+    }
     setState(() {
       _loading = true;
       _selectedRow = null;
@@ -80,6 +87,38 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
       setState(() {
         _fileExists = result.exists;
         _rows = result.rows;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      LpStatusLog.instance.warning('获取文件失败：$e');
+    }
+  }
+
+  /// 机械手类型步骤加载：drt 为当前选中型号；清单拉取失败不阻塞页面，
+  /// 只提示警告（下拉为空，可重进步骤重试）。
+  Future<void> _loadRobotTypeStep() async {
+    setState(() {
+      _loading = true;
+      _selectedRow = null;
+    });
+    try {
+      final result = await _service.load(_step);
+      List<String> options = const [];
+      try {
+        options = await _service.loadRobotTypeOptions();
+      } catch (e) {
+        LpStatusLog.instance.warning('获取机械手型号清单失败：$e');
+      }
+      if (!mounted) return;
+      setState(() {
+        _robotTypeOptions = options;
+        // drt 缺失/为空也保底一行空值：显示下拉、保存时创建文件。
+        _fileExists = true;
+        _rows = result.exists && result.rows.isNotEmpty
+            ? result.rows
+            : [const ConfigFileRow(name: '机械手类型', values: [''])];
         _loading = false;
       });
     } catch (e) {
@@ -644,6 +683,8 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
+                        : _step.format == ConfigFileFormat.robotTypeSelect
+                        ? _buildRobotTypeSelect()
                         : !_fileExists
                         ? Center(
                             child: Column(
@@ -754,6 +795,70 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 机械手类型步骤：下拉选择型号，保存写入 DefaultRobotType.drt。
+  Widget _buildRobotTypeSelect() {
+    final current =
+        _rows.isNotEmpty && _rows.first.values.isNotEmpty
+        ? _rows.first.values.first
+        : '';
+    // 当前型号不在清单里也保留显示（如清单刚变更），避免静默丢失。
+    final options = _robotTypeOptions.contains(current)
+        ? _robotTypeOptions
+        : (current.isEmpty ? _robotTypeOptions : [current, ..._robotTypeOptions]);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '机械手类型',
+            style: LpAppFonts.style(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: LpRobotColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: 300,
+            child: DropdownButtonFormField<String>(
+              // initialValue 只在字段首次创建时生效；本步骤离开即销毁重建，
+              // 选中状态由 onChanged 同步进 _rows，行为与受控一致。
+              initialValue: current.isEmpty ? null : current,
+              hint: const Text('请选择机械手类型'),
+              isExpanded: true,
+              items: [
+                for (final option in options)
+                  DropdownMenuItem(value: option, child: Text(option)),
+              ],
+              onChanged: (value) {
+                if (value == null || value == current) return;
+                if (!_guardSelectForEdit()) return;
+                setState(() {
+                  _rows = [ConfigFileRow(name: '机械手类型', values: [value])];
+                });
+              },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '选中后点「保存文件」写入 DefaultRobotType.drt，重启驱控生效',
+            style: LpAppFonts.style(
+              fontSize: 13,
+              color: LpRobotColors.textDark.withValues(alpha: 0.65),
+            ),
+          ),
+        ],
       ),
     );
   }

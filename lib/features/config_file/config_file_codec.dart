@@ -36,6 +36,7 @@ class ConfigFileCodec {
         }
         break;
       case ConfigFileFormat.singleValue:
+      case ConfigFileFormat.robotTypeSelect:
         for (final line in lines) {
           if (line.trim().isEmpty) continue;
           out.add(
@@ -191,6 +192,7 @@ class ConfigFileCodec {
         }
         break;
       case ConfigFileFormat.singleValue:
+      case ConfigFileFormat.robotTypeSelect:
         return finalizeUploadContent(rows.first.values.first);
       case ConfigFileFormat.manuVmax:
         if (rows.length >= 2) {
@@ -342,6 +344,9 @@ class ConfigFileCodec {
         });
       case 16:
         return [ConfigFileRow(name: labels[0], values: ['192.168.1.14'])];
+      case 18:
+        // eth1 默认 IP（用户指定）；创建后仍可在页面里改。
+        return [ConfigFileRow(name: labels[0], values: ['192.168.88.10'])];
       case 17:
         return [ConfigFileRow(name: labels[0], values: ['0'])];
       default:

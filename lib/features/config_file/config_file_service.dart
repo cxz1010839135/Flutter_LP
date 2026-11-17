@@ -69,6 +69,15 @@ class ConfigFileService {
     );
   }
 
+  /// 机械手类型下拉选项：RobotTypeList.rtl 每行一个型号。
+  Future<List<String>> loadRobotTypeOptions() async {
+    final raw = await HttpManager.instance.getFile(configRobotTypeListPath);
+    return [
+      for (final line in raw.replaceAll('\r\n', '\n').split('\n'))
+        if (line.trim().isNotEmpty) line.trim(),
+    ];
+  }
+
   Future<void> applyEtherCat(List<ConfigFileRow> rows) async {
     final buf = StringBuffer();
     for (final row in rows) {

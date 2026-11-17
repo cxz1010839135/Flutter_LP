@@ -68,6 +68,15 @@ mixin RobotHttpStateMixin on RobotHttpApiMixin {
     );
   }
 
+  /// 退出下位机视觉程序。
+  ///
+  /// 下位机视觉软件只识别指令头 `robotExitProgram`，响应体可能为空或非 JSON
+  /// （同 robotChmod 惯例）；能拿到标准 JSON 时才校验 result。
+  Future<RobotApiResponse?> robotExitProgram() async {
+    final body = await robotCmdRaw(RobotCommands.robotExitProgram);
+    return RobotApiResponse.tryParse(body);
+  }
+
   Future<RobotApiResponse> setPLCPort({
     required bool enable,
     required String ip,
