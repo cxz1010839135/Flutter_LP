@@ -170,7 +170,71 @@ class _ConfigFilePageState extends State<ConfigFilePage> {
     return ok == true;
   }
 
+  /// 机械手类型修改密码确认（默认 0000）：该参数影响较大，防止误改；
+  /// 取消或密码错误均中止保存。
+  Future<bool> _confirmRobotTypePassword() async {
+    const password = '0000';
+    final controller = TextEditingController();
+    var error = '';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('机械手类型修改确认'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('该参数影响较大，请输入维护密码确认：'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                onSubmitted: (_) {
+                  if (controller.text == password) {
+                    Navigator.pop(ctx, true);
+                  } else {
+                    setDialogState(() => error = '密码错误，请重新输入');
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: '请输入密码',
+                  errorText: error.isEmpty ? null : error,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controller.text == password) {
+                  Navigator.pop(ctx, true);
+                } else {
+                  setDialogState(() => error = '密码错误，请重新输入');
+                }
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return ok == true;
+  }
+
   Future<void> _saveFile() async {
+    // 机械手类型影响较大：保存前需密码确认（默认 0000）。
+    if (_step.format == ConfigFileFormat.robotTypeSelect &&
+        !await _confirmRobotTypePassword()) {
+      return;
+    }
     if (!await _confirm('是否保存该文件')) return;
     setState(() => _loading = true);
     try {

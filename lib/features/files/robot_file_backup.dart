@@ -504,6 +504,22 @@ class RobotFileBackup {
           isDir: false,
         ),
       );
+      // FPGA/SDK 固件：文件存在才导出（下载失败/为空自动跳过），
+      // 旧版控制器没有这些文件，不影响原备份列表。
+      add(
+        const RemoteFileEntry(
+          name: 'fpga_servo.bin',
+          parentPath: '/opt/firmware/',
+          isDir: false,
+        ),
+      );
+      add(
+        const RemoteFileEntry(
+          name: 'sdk_servo.img',
+          parentPath: '/opt/firmware/',
+          isDir: false,
+        ),
+      );
     }
 
     if (o.idOn) {
@@ -787,6 +803,9 @@ class RobotFileBackup {
       await addRelative('sd/SystemRel.tar.gz');
       // 兼容旧备份：usr/appupdate/*
       await _addLegacyAppUpdate(backupRoot, out, seen);
+      // FPGA/SDK 固件：备份包在 opt/firmware/，统一下发到 /usr/appupdate/
+      // （升级目录）；旧备份包没有这些文件时自动跳过。
+      await _addFirmwareUpdateFiles(backupRoot, out, seen);
     }
     if (options.idOn) {
       await addRelative('home/llmachine/Axis4/para/licence.txt');
@@ -873,6 +892,28 @@ class RobotFileBackup {
           localFile: entity,
           serverTagPath: server.substring(0, slash + 1),
           fileName: server.substring(slash + 1),
+        ),
+      );
+    }
+  }
+
+  /// FPGA/SDK 固件：备份包里位于 opt/firmware/，恢复时统一下发到
+  /// /usr/appupdate/（升级目录，由控制器更新流程取用）。
+  static Future<void> _addFirmwareUpdateFiles(
+    Directory backupRoot,
+    List<LocalBackupEntry> out,
+    Set<String> seen,
+  ) async {
+    const names = ['fpga_servo.bin', 'sdk_servo.img'];
+    for (final name in names) {
+      final local = File(p.joinAll([backupRoot.path, 'opt', 'firmware', name]));
+      if (!await local.exists()) continue;
+      if (!seen.add('usr/appupdate/$name')) continue;
+      out.add(
+        LocalBackupEntry(
+          localFile: local,
+          serverTagPath: '/usr/appupdate/',
+          fileName: name,
         ),
       );
     }

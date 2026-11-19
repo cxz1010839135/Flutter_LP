@@ -4,6 +4,25 @@
 基于版本：`2.2.6+8`
 最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.7**（2026-11-17，提交 d800b91，含 Setup.exe + msi + apk）。
 
+## 本轮结论（2026-11-19）
+
+### Gitee 附件 = 国内下载唯一可靠通道 —— 已落地
+
+用户实测：GitHub 直连 DNS 失败、ghproxy.cn 下载不完整、gh-proxy.com 404、ghfast.top 403——ghproxy 系镜像全挂，国内无翻墙唯一可靠下载就是 Gitee。**Gitee 网页「源码包」对本仓库 reject（pack 约 490MB），但 Release 附件不受限（上限 100MB）**：已生成并上传 `LPRobot-src-v2.2.7.zip`（90.11MB，`git archive --format=zip --prefix="Flutter_LP-v2.2.7/" -o dist\LPRobot-src-v2.2.7.zip v2.2.7`，attach_files multipart 上传），附件直链 `https://gitee.com/liomr-chen1/flutter_-lp/releases/download/v2.2.7/LPRobot-src-v2.2.7.zip`（实测 ~2MB/s）。下载脚本已改为：源码 ZIP **Gitee 附件优先 → GitHub 直连 → 镜像**；版本解析 GitHub API 超时 15s→5s；已端到端实测通过。Gitee PATCH release 中文 body 400 报错：PS5.1 `[Text.Encoding]::UTF8` 写文件带 BOM，须用 `New-Object System.Text.UTF8Encoding($false)` + curl `--data-binary @file`。发新版本必须把源码 zip 传到 Gitee 对应 release 附件（命名 `LPRobot-src-v版本号.zip`）。注意：Gitee 私人令牌已在聊天中出现，建议用户删除重建。
+
+### 一键备份/恢复 FPGA/SDK 固件 + 机械手类型密码确认 —— 已改，待用户实测
+
+用户需求（2026-11-19）：① 一键备份增加 `/opt/firmware/` 的 `fpga_servo.bin`、`sdk_servo.img`，一键恢复把这两个文件下发到 `/usr/appupdate/`；② 机械手类型修改页加密码确认防误改，默认密码 0000。
+
+修改：
+- [robot_file_backup.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/files/robot_file_backup.dart)：
+  - 备份 `_collectBackupFiles` 固件分支追加 2 个 `/opt/firmware/` 文件（文件存在才导出，旧控制器无此文件自动跳过）；
+  - 恢复 `_collectRestoreFiles` 固件分支新增 `_addFirmwareUpdateFiles`：从备份包 `opt/firmware/` 取两个文件，`LocalBackupEntry(serverTagPath: '/usr/appupdate/')` 下发到升级目录（备份包没有该目录自动跳过 = 兼容旧备份包）。
+- [config_file_page.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/config_file/config_file_page.dart)：`_saveFile` 开头对 `robotTypeSelect` 步骤先弹 `_confirmRobotTypePassword()`（AlertDialog + obscureText 输入，密码 '0000'，错误留在弹窗提示重输，取消/错误均中止），通过后才走原有「是否保存该文件」确认。
+
+验证：`flutter analyze` 两文件无问题；`flutter test` 40/40 通过。
+**待用户实测**：① 新控制器一键备份压缩包含 `opt/firmware/fpga_servo.bin`、`sdk_servo.img`；恢复后两文件出现在驱控 `/usr/appupdate/`；② 机械手类型页点保存先弹密码框，输错 0000 提示「密码错误」，输对或取消后行为正确。
+
 ## 本轮结论（2026-11-17）
 
 ### v2.2.7 发布 —— 已发布 GitHub Release
