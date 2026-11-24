@@ -47,6 +47,12 @@ class _FilesPageState extends State<FilesPage> {
 
   /// 当前驱控目录（用于上传 tagPath），以 `/` 结尾；根目录为空。
   String _remoteTagPath = '';
+
+  /// 本地/驱控两栏宽度占比（左栏），拖动中间分隔条可调。
+  double _panelSplit = 0.5;
+  bool _splitDragging = false;
+  double _splitDragOriginX = 0;
+  double _splitDragOriginFrac = 0.5;
   bool get _canUpload =>
       _remoteTagPath.isNotEmpty &&
       _selectedLocal != null &&
@@ -262,6 +268,32 @@ class _FilesPageState extends State<FilesPage> {
   Future<void> _goProgramConfigDir() async {
     final dir = await RobotFileTransfer.programConfigDir();
     await _loadLocal(dir);
+  }
+
+  /// Windows：用资源管理器打开安装根目录（exe 所在目录）。
+  Future<void> _openInstallRootInExplorer() async {
+    if (!Platform.isWindows) return;
+    final root = await RobotPaths.installRoot();
+    final dir = Directory(root);
+    if (!await dir.exists()) return;
+    await Process.start(
+      'explorer.exe',
+      [root],
+      mode: ProcessStartMode.detached,
+    );
+  }
+
+  /// 打开运行日志目录（Program Files 只读安装时在 %LOCALAPPDATA% 下）。
+  Future<void> _openLogsDirInExplorer() async {
+    if (!Platform.isWindows) return;
+    final logsDir = await RobotPaths.logsDir();
+    final dir = Directory(logsDir);
+    if (!await dir.exists()) return;
+    await Process.start(
+      'explorer.exe',
+      [logsDir],
+      mode: ProcessStartMode.detached,
+    );
   }
 
   Future<void> _goFunLibDir() async {
@@ -874,14 +906,7 @@ class _FilesPageState extends State<FilesPage> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: _buildLocalPanel()),
-                  const VerticalDivider(width: 1, thickness: 1),
-                  Expanded(child: _buildRemotePanel(canEdit: canEdit)),
-                ],
-              ),
+              child: _buildSplitBody(canEdit),
             ),
           ),
           _buildActionBar(),
@@ -905,7 +930,7 @@ class _FilesPageState extends State<FilesPage> {
     final primaryStyle = FilledButton.styleFrom(
       backgroundColor: LpRobotColors.primary,
       foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       minimumSize: const Size(0, 48),
       textStyle: LpAppFonts.style(
         fontSize: 16,
@@ -921,6 +946,29 @@ class _FilesPageState extends State<FilesPage> {
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
+    );
+
+    final backupButton = FilledButton(
+      onPressed: !_transferring ? _onBackupPressed : null,
+      style: primaryStyle,
+      child: const Text('一键备份'),
+    );
+    final restoreButton = FilledButton(
+      onPressed: !_transferring ? _onRestorePressed : null,
+      style: primaryStyle,
+      child: const Text('一键恢复'),
+    );
+    final uploadButton = FilledButton.icon(
+      onPressed: !_transferring ? _onUploadPressed : null,
+      style: transferStyle,
+      icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+      label: const Text('上传到驱控'),
+    );
+    final downloadButton = FilledButton.icon(
+      onPressed: !_transferring ? _onDownloadPressed : null,
+      style: transferStyle,
+      icon: const Icon(Icons.cloud_download_outlined, size: 18),
+      label: const Text('下载到本地'),
     );
 
     return Material(
@@ -967,60 +1015,98 @@ class _FilesPageState extends State<FilesPage> {
               ),
             ),
             const SizedBox(height: 8),
-            // 图1：一键备份 | 一键恢复 | 上传 | 下载（同一行）；
-            // 三个小按钮仅落在「一键备份」正下方且等分其宽度。
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      FilledButton(
-                        onPressed:
-                            !_transferring ? _onBackupPressed : null,
-                        style: primaryStyle,
-                        child: const Text('一键备份'),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _localLoading || _transferring
-                                  ? null
-                                  : _localBack,
-                              icon: const Icon(Icons.arrow_back, size: 16),
-                              label: const Text('本地后退'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _localLoading || _transferring
-                                  ? null
-                                  : (Platform.isAndroid
-                                      ? _goFunLibDir
-                                      : _goProgramConfigDir),
-                              child: Text(
-                                Platform.isAndroid ? '函数库' : '程序配置',
+            // 图1：一键备份 | 一键恢复 | 上传 | 下载（同一行）。
+            // Windows：备份/恢复与右侧两键同尺寸靠左，右侧两键保持最右；
+            //          第二排目录小按钮自然宽靠左。
+            // Android：沿用原布局——备份/恢复等分撑满，小按钮等分其宽度。
+            if (Platform.isWindows) ...[
+              Row(
+                children: [
+                  backupButton,
+                  const SizedBox(width: 12),
+                  restoreButton,
+                  const Spacer(),
+                  uploadButton,
+                  const SizedBox(width: 8),
+                  downloadButton,
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed:
+                        _localLoading || _transferring ? null : _localBack,
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: const Text('本地后退'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _localLoading || _transferring
+                        ? null
+                        : _goProgramConfigDir,
+                    child: const Text('程序配置'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _localLoading || _transferring
+                        ? null
+                        : _goDownloadRoot,
+                    child: const Text('下载目录'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _localLoading || _transferring
+                        ? null
+                        : _openInstallRootInExplorer,
+                    child: const Text('安装目录'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _localLoading || _transferring
+                        ? null
+                        : _openLogsDirInExplorer,
+                    child: const Text('日志目录'),
+                  ),
+                ],
+              ),
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        backupButton,
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _localLoading || _transferring
+                                    ? null
+                                    : _localBack,
+                                icon: const Icon(Icons.arrow_back, size: 16),
+                                label: const Text('本地后退'),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _localLoading || _transferring
-                                  ? null
-                                  : (Platform.isAndroid
-                                      ? _goProgramConfigDir
-                                      : _goDownloadRoot),
-                              child: Text(
-                                Platform.isAndroid ? '程序配置' : '下载目录',
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _localLoading || _transferring
+                                    ? null
+                                    : _goFunLibDir,
+                                child: const Text('函数库'),
                               ),
                             ),
-                          ),
-                          if (Platform.isAndroid) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _localLoading || _transferring
+                                    ? null
+                                    : _goProgramConfigDir,
+                                child: const Text('程序配置'),
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton(
@@ -1031,36 +1117,18 @@ class _FilesPageState extends State<FilesPage> {
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed:
-                        !_transferring ? _onRestorePressed : null,
-                    style: primaryStyle,
-                    child: const Text('一键恢复'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: !_transferring ? _onUploadPressed : null,
-                  style: transferStyle,
-                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                  label: const Text('上传到驱控'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: !_transferring ? _onDownloadPressed : null,
-                  style: transferStyle,
-                  icon: const Icon(Icons.cloud_download_outlined, size: 18),
-                  label: const Text('下载到本地'),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  Expanded(child: restoreButton),
+                  const SizedBox(width: 12),
+                  uploadButton,
+                  const SizedBox(width: 8),
+                  downloadButton,
+                ],
+              ),
             if (_batchProgressMessage != null) ...[
               const SizedBox(height: 6),
               Text(
@@ -1079,6 +1147,71 @@ class _FilesPageState extends State<FilesPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 本地/驱控两栏 + 可左右拖动的分隔条（交互同驱动器参数页上下分割）。
+  Widget _buildSplitBody(bool canEdit) {
+    const handleW = 14.0;
+    const minFrac = 0.1;
+    const maxFrac = 0.9;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final usable =
+            (constraints.maxWidth - handleW).clamp(1.0, double.infinity);
+        final frac = _panelSplit.clamp(minFrac, maxFrac);
+        final leftFlex = (frac * 1000).round();
+        final rightFlex = 1000 - leftFlex;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: leftFlex, child: _buildLocalPanel()),
+            MouseRegion(
+              cursor: SystemMouseCursors.resizeLeftRight,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragStart: (d) {
+                  _splitDragging = true;
+                  _splitDragOriginX = d.globalPosition.dx;
+                  _splitDragOriginFrac = frac;
+                },
+                onHorizontalDragUpdate: (d) {
+                  if (!_splitDragging) return;
+                  final next =
+                      (_splitDragOriginFrac +
+                              (d.globalPosition.dx - _splitDragOriginX) /
+                                  usable)
+                          .clamp(minFrac, maxFrac);
+                  if ((next - _panelSplit).abs() < 0.0001) return;
+                  setState(() => _panelSplit = next);
+                },
+                onHorizontalDragEnd: (_) => _splitDragging = false,
+                onHorizontalDragCancel: () => _splitDragging = false,
+                child: SizedBox(
+                  width: handleW,
+                  child: Center(
+                    child: Container(
+                      width: 4,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color:
+                            LpRobotColors.borderWarm.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: rightFlex,
+              child: _buildRemotePanel(canEdit: canEdit),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1104,22 +1237,58 @@ class _FilesPageState extends State<FilesPage> {
                 color: LpRobotColors.primary,
               ),
               Expanded(
-                child: Text(
-                  _localBrowsingDrives ? '此电脑' : (dir?.path ?? ''),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: LpAppFonts.style(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: LpRobotColors.textDark,
-                  ),
-                ),
+                child: _localBrowsingDrives
+                    ? Text(
+                        '此电脑',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: LpAppFonts.style(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: LpRobotColors.textDark,
+                        ),
+                      )
+                    : _buildLocalCrumbs(dir),
               ),
             ],
           ),
         ),
         Expanded(child: _buildLocalList()),
       ],
+    );
+  }
+
+  /// 左侧本地目录面包屑（与右侧驱控目录同款，点段名直接进入该目录）。
+  Widget _buildLocalCrumbs(Directory? dir) {
+    final path = dir?.path ?? '';
+    if (path.isEmpty) return const SizedBox.shrink();
+    final parts = p.split(path);
+    final widgets = <Widget>[];
+    var acc = parts.first;
+    for (var i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        acc = p.join(acc, parts[i]);
+        widgets.add(const Icon(Icons.chevron_right, size: 16));
+      }
+      final crumbPath = acc;
+      final isLast = i == parts.length - 1;
+      widgets.add(
+        InkWell(
+          onTap: () => _enterLocalDir(Directory(crumbPath)),
+          child: Text(
+            parts[i],
+            style: LpAppFonts.style(
+              fontSize: 14,
+              fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
+              color: isLast ? LpRobotColors.primary : LpRobotColors.textDark,
+            ),
+          ),
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: widgets),
     );
   }
 

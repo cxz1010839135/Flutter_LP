@@ -95,18 +95,24 @@ class MonitorPlcWatchConfig {
   MonitorPlcWatchConfig({
     this.entries = const [],
     this.autoRefresh = true,
+    this.useTcp = true,
     this.intervalMs = 400,
     this.maxEntries = MonitorPlcWatchStorage.defaultMaxEntries,
   });
 
   final List<MonitorPlcWatchEntry> entries;
   final bool autoRefresh;
+
+  /// 通讯方式兼容开关：true = 新版 TCP(8088) 协议（D/M/S），
+  /// false = 旧 HTTP 字符串指令；X/Y 不在新版协议中，始终走旧 HTTP。
+  final bool useTcp;
   final int intervalMs;
   final int maxEntries;
 
   Map<String, dynamic> toJson() => {
         'entries': entries.map((e) => e.toJson()).toList(),
         'autoRefresh': autoRefresh,
+        'useTcp': useTcp,
         'intervalMs': intervalMs,
         'maxEntries': maxEntries,
       };
@@ -126,6 +132,7 @@ class MonitorPlcWatchConfig {
     return MonitorPlcWatchConfig(
       entries: list,
       autoRefresh: json['autoRefresh'] != false,
+      useTcp: json['useTcp'] != false,
       intervalMs: json['intervalMs'] is int
           ? (json['intervalMs'] as int).clamp(200, 2000)
           : 400,
@@ -138,12 +145,14 @@ class MonitorPlcWatchConfig {
   MonitorPlcWatchConfig copyWith({
     List<MonitorPlcWatchEntry>? entries,
     bool? autoRefresh,
+    bool? useTcp,
     int? intervalMs,
     int? maxEntries,
   }) {
     return MonitorPlcWatchConfig(
       entries: entries ?? this.entries,
       autoRefresh: autoRefresh ?? this.autoRefresh,
+      useTcp: useTcp ?? this.useTcp,
       intervalMs: intervalMs ?? this.intervalMs,
       maxEntries: maxEntries ?? this.maxEntries,
     );
@@ -210,6 +219,7 @@ class MonitorPlcWatchStorage {
         MonitorPlcWatchConfig(
           entries: entries,
           autoRefresh: config.autoRefresh,
+          useTcp: config.useTcp,
           intervalMs: config.intervalMs,
           maxEntries: limit,
         ).toJson(),

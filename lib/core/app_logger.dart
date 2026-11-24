@@ -84,6 +84,10 @@ class AppLogger {
       final now = DateTime.now();
       final path = _filePath(type, now);
       final file = File(path);
+      if (!await file.exists()) {
+        // 新文件写入 UTF-8 BOM，保证 Windows 记事本按 UTF-8 打开不乱码。
+        await file.writeAsString('\uFEFF', flush: true);
+      }
       final timestamp = _formatTimestamp(now);
       final line = '[$timestamp] [$level] ${message.trim()}\n';
       await file.writeAsString(line, mode: FileMode.append, flush: true);

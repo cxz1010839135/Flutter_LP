@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../../app/lp_app_fonts.dart';
 import '../../../app/lp_robot_colors.dart';
 import '../../../core/robot_state.dart';
+import '../../../network/ds_tcp_client.dart';
 import '../../../network/http_manager.dart';
 import '../monitor_special_register_dialog.dart';
 import '../monitor_plc_watch_storage.dart';
@@ -33,6 +34,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
 
   List<MonitorPlcWatchEntry> _entries = [];
   bool _autoRefresh = true;
+  bool _useTcp = true;
   int _intervalMs = 500;
   int _maxEntries = MonitorPlcWatchStorage.defaultMaxEntries;
   bool _polling = false;
@@ -46,7 +48,18 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
       length: PlcRegisterKind.values.length,
       vsync: this,
     );
+    _tabController.addListener(_onTabChanged);
     _loadConfig();
+  }
+
+  int _lastTabIndex = 0;
+
+  /// 页签切换时刷新工具栏（通道小字跟随当前页签显示 TCP/HTTP）。
+  void _onTabChanged() {
+    if (_tabController.index != _lastTabIndex) {
+      _lastTabIndex = _tabController.index;
+      if (mounted) setState(() {});
+    }
   }
 
   @override
@@ -66,6 +79,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
     setState(() {
       _entries = List.from(config.entries);
       _autoRefresh = config.autoRefresh;
+      _useTcp = config.useTcp;
       _intervalMs = config.intervalMs;
       _maxEntries = config.maxEntries;
     });
@@ -82,6 +96,7 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
       MonitorPlcWatchConfig(
         entries: _entries,
         autoRefresh: _autoRefresh,
+        useTcp: _useTcp,
         intervalMs: _intervalMs,
         maxEntries: _maxEntries,
       ),
@@ -123,20 +138,42 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
     }
   }
 
+  /// 新版 TCP 协议指令码（DScom.cs：get_D=3、get_M=1、get_S=130）。
+  /// X/Y 在新版协议中不存在，返回 null → 走旧 HTTP。
+  static int? _tcpCommandOf(PlcRegisterKind kind) => switch (kind) {
+        PlcRegisterKind.d => DsTcpClient.cmdGetD,
+        PlcRegisterKind.m => DsTcpClient.cmdGetM,
+        PlcRegisterKind.s => DsTcpClient.cmdGetS,
+        PlcRegisterKind.x || PlcRegisterKind.y => null,
+      };
+
   Future<MonitorPlcWatchEntry> _readEntry(MonitorPlcWatchEntry entry) async {
     try {
-      final res = await switch (entry.kind) {
-        PlcRegisterKind.d => HttpManager.instance.getRegD(entry.address),
-        PlcRegisterKind.m => HttpManager.instance.getCoilM(entry.address),
-        PlcRegisterKind.s => HttpManager.instance.getRegS(entry.address),
-        PlcRegisterKind.x => HttpManager.instance.getRegX(entry.address),
-        PlcRegisterKind.y => HttpManager.instance.getRegY(entry.address),
-      };
-      res.ensureOk();
-      final raw = res.data;
-      final value = raw is num
-          ? raw.toInt()
-          : int.tryParse(raw?.toString() ?? '') ?? 0;
+      int value;
+      final tcpCommand = _useTcp ? _tcpCommandOf(entry.kind) : null;
+      if (tcpCommand != null) {
+        final read = await DsTcpClient.instance.readRegister(
+          command: tcpCommand,
+          index: entry.address,
+        );
+        if (read == null) {
+          return entry.copyWith(error: true);
+        }
+        value = read;
+      } else {
+        final res = await switch (entry.kind) {
+          PlcRegisterKind.d => HttpManager.instance.getRegD(entry.address),
+          PlcRegisterKind.m => HttpManager.instance.getCoilM(entry.address),
+          PlcRegisterKind.s => HttpManager.instance.getRegS(entry.address),
+          PlcRegisterKind.x => HttpManager.instance.getRegX(entry.address),
+          PlcRegisterKind.y => HttpManager.instance.getRegY(entry.address),
+        };
+        res.ensureOk();
+        final raw = res.data;
+        value = raw is num
+            ? raw.toInt()
+            : int.tryParse(raw?.toString() ?? '') ?? 0;
+      }
       return entry.copyWith(
         previousValue: entry.currentValue ?? value,
         currentValue: value,
@@ -425,6 +462,8 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
             maxEntries: _maxEntries,
             polling: _polling,
             autoRefresh: _autoRefresh,
+            useTcp: _useTcp,
+            currentKind: PlcRegisterKind.values[_tabController.index],
             intervalMs: _intervalMs,
             intervalOptions: _intervalOptions,
             onEditMaxEntries: _editMaxEntries,
@@ -433,6 +472,10 @@ class _MonitorPlcWatchPanelState extends State<MonitorPlcWatchPanel>
               setState(() => _autoRefresh = v);
               unawaited(_persist());
               _syncPolling();
+            },
+            onUseTcpChanged: (v) {
+              setState(() => _useTcp = v);
+              unawaited(_persist());
             },
             onIntervalChanged: (ms) {
               setState(() => _intervalMs = ms);
@@ -499,11 +542,14 @@ class _Toolbar extends StatelessWidget {
     required this.maxEntries,
     required this.polling,
     required this.autoRefresh,
+    required this.useTcp,
+    required this.currentKind,
     required this.intervalMs,
     required this.intervalOptions,
     required this.onEditMaxEntries,
     required this.onRefresh,
     required this.onAutoRefreshChanged,
+    required this.onUseTcpChanged,
     required this.onIntervalChanged,
   });
 
@@ -511,12 +557,21 @@ class _Toolbar extends StatelessWidget {
   final int maxEntries;
   final bool polling;
   final bool autoRefresh;
+  final bool useTcp;
+  final PlcRegisterKind currentKind;
   final int intervalMs;
   final List<int> intervalOptions;
   final VoidCallback onEditMaxEntries;
   final VoidCallback? onRefresh;
   final ValueChanged<bool> onAutoRefreshChanged;
+  final ValueChanged<bool> onUseTcpChanged;
   final ValueChanged<int> onIntervalChanged;
+
+  /// 当前页签是否真的走新版 TCP：开关开 且 非 X/Y（新协议无 X/Y 指令）。
+  bool get _tcpActive =>
+      useTcp &&
+      currentKind != PlcRegisterKind.x &&
+      currentKind != PlcRegisterKind.y;
 
   @override
   Widget build(BuildContext context) {
@@ -539,6 +594,8 @@ class _Toolbar extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text(
                       '寄存器监视 $total/$maxEntries',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: LpAppFonts.style(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -612,6 +669,37 @@ class _Toolbar extends StatelessWidget {
                 onChanged: (ms) {
                   if (ms != null) onIntervalChanged(ms);
                 },
+              ),
+              Tooltip(
+                message: '通讯方式：开=新版TCP(8088)，关=旧HTTP；X/Y 始终走旧HTTP',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '新通讯',
+                      style: LpAppFonts.style(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: LpRobotColors.textDark,
+                      ),
+                    ),
+                    Switch(
+                      value: useTcp,
+                      onChanged: onUseTcpChanged,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    Text(
+                      _tcpActive ? 'TCP·8088' : 'HTTP',
+                      style: LpAppFonts.style(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: _tcpActive
+                            ? LpRobotColors.primary
+                            : LpRobotColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

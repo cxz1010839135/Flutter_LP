@@ -2,6 +2,20 @@
 
 简洁版本索引。移植期详细条目仍在 [docs/migration/changelog/CHANGELOG.md](../docs/migration/changelog/CHANGELOG.md)，此处不整份复制。
 
+## v2.3.0
+
+- 日期：2026-11-24
+- 修改：寄存器监视面板新增「新通讯」兼容开关——新 TCP 8088 数字指令协议客户端（照搬 DScom.cs：get_M=1/get_D=3/get_S=130，扁平 JSON 无换行，按 result/data 解析，请求串行+失败断线重连+超时防卡轮询）；开关开且 D/M/S 走新协议，X/Y 恒走旧 HTTP；开关与通道指示（TCP·8088/HTTP）随页签实时显示并持久化。文件管理页：本地目录路径改可点击面包屑（点任意层直接跳转）；左右分栏中间分界线可拖拽（10%~90%，同驱动器参数页分割交互）；一键备份/恢复按钮与右侧按钮同尺寸；第二排新增「安装目录」「日志目录」按钮（explorer 直达，日志目录自动定位 LOCALAPPDATA 回退位置）。运行日志写入 UTF-8 BOM（记事本不乱码，仅新建文件生效）。安装器：LpWebView2Repair.exe 改静态链接 C/C++ 运行库，裸机无 VC++ 运行库不再报 VCRUNTIME140_1.dll 缺失（根因=CMakeLists 中 CMAKE_MSVC_RUNTIME_LIBRARY 设在 add_executable 之后未生效）
+- 状态：已发布 GitHub Release v2.3.0（2026-11-24，apk + msi + Setup.exe）；用户已实测新 TCP 协议跑通（netstat 见 8088 ESTABLISHED）
+- 详情：history/v2.3.0.md
+
+## v2.2.8
+
+- 日期：2026-11-19
+- 修改：一键备份/恢复新增 FPGA/SDK 固件（`/opt/firmware/fpga_servo.bin`、`sdk_servo.img`，恢复下发到 `/usr/appupdate/`）；机械手类型修改页保存加密码确认（默认 0000）；下载脚本源码 ZIP 改为 Gitee Release 附件优先（国内直连），GitHub API 版本解析超时 15s→5s
+- 状态：已发布 GitHub Release v2.2.8（2026-11-19）
+- 详情：STATUS.md 2026-11-19 节
+
 ## v2.2.7
 
 - 日期：2026-11-04（2026-11-16 / 2026-11-17 补充）

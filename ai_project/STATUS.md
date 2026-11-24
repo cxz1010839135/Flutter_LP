@@ -1,8 +1,33 @@
 # STATUS.md
 
-当前版本：`2.2.7+8`（`pubspec.yaml`）
-基于版本：`2.2.6+8`
-最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.2.7**（2026-11-17，提交 d800b91，含 Setup.exe + msi + apk）。
+当前版本：`2.3.0+8`（`pubspec.yaml`）
+基于版本：`2.2.8`
+最近用户实际确认的稳定版本：未知。README 发布 **v2.1.3**；GitHub Release 最新 **v2.3.0**（2026-11-24，含 Setup.exe + msi + apk，Gitee 同步 tag + 源码 zip 附件）。
+
+## 本轮结论（2026-11-24）
+
+### 寄存器监视面板新增「新通讯方式」兼容开关 —— 已改，待用户实测
+
+用户需求（图 + 参考 C# 源码 DScom.cs）：编程页右侧寄存器监视面板加兼容开关（面板标题前，默认开=新方式），对照 `DScom.cs` 新版协议；只影响监视面板的读取，其它功能不动。
+
+DScom.cs 新版协议（已逐行核对）：TCP 8088 长连接；发送扁平 JSON（无换行）：`{"command":<数字码>,"data":{...}}`；响应取 `result`（==1 成功）与 `data`；指令码 get_M=1、get_D=3、set_M=5、set_D=16、get_Marr=21、get_Darr=22、get_S=130；请求串行（C# lock）；失败断线重连（Re_connect）；**新版协议无 robot_get_X / robot_get_Y 指令**（C# 直接 return false）。Flutter 现状=旧版 HTTP 字符串指令（`robot_get_D` 等）。
+
+修改：
+- 新增 [ds_tcp_client.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/network/ds_tcp_client.dart)：`DsTcpClient` 单例，dart:io Socket 连 8088（IP 取 `RobotState.connectionHost`），请求串行链、发送 JSON（无换行，同 C#）、收包按分片累积到可 jsonDecode 为止（防半包）、1.5s 响应超时、2s 连接超时、失败断开下次请求自动重连、连接失败 2s 内快速跳过（防死轮询卡整轮）；`readRegister(command, index)` 供面板单读。
+- [monitor_plc_watch_storage.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/monitor/monitor_plc_watch_storage.dart)：`MonitorPlcWatchConfig` 新增 `useTcp`（默认 true，旧配置文件缺字段视为 true），随 JSON 持久化。
+- [monitor_plc_watch_panel.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/monitor/widgets/monitor_plc_watch_panel.dart)：第二行工具栏加「新通讯」标签+Switch（第一行标题前放开关会遮挡标题，已按用户反馈改到第二行，与「自动刷新」同行；第二行是 Wrap，窄面板自动换行）+ 通道小字：当前页签实际走 TCP·8088（主色）/ HTTP（灰），随开关和页签切换实时变（TabController 加了 listener）；`_readEntry` 分流——D/M/S 且开关开走 `DsTcpClient`（指令码 3/1/130），X/Y 或开关关走原 HTTP；开关状态持久化。用户问过「切换后为什么监视依然正常」：预期行为，开关只改下一轮轮询通道、不清数据，且 X/Y 恒走 HTTP。
+
+验证：`flutter analyze` 3 文件无问题；`flutter test` 40/40 通过。
+追加：文件管理页底部按钮排（本地后退/程序配置/下载目录）右侧新增「安装目录」按钮（仅 Windows，样式同款 OutlinedButton），点击用 explorer.exe 打开 `RobotPaths.installRoot()`（exe 所在根目录）；用户已实测确认新 TCP·8088 协议跑通（netstat 见 flutter_application_1.exe 与机器人 192.168.1.14:8088 ESTABLISHED，日志零条 robot_get_*）。控制台 accessibility_bridge.cc AXTree 报错为 Flutter 引擎已知无障碍噪音，与本工程代码无关、无影响。
+**待用户实测**：连真机后开关开=新 TCP 方式读 D/M/S 数值正常；开关关=恢复旧 HTTP；X/Y tab 两种方式下都正常；断网/机器人未开 8088 时显示「!」不卡 UI，恢复后自动续读。
+
+### 同轮追加：文件管理页交互改进 + 日志 BOM + 安装器修复 —— 已改，部分实测通过
+
+- 文件管理页（[files_page.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/files/files_page.dart)）：① 本地目录路径改可点击面包屑（每段可点跳层，同右侧驱控样式）；② 左右分栏中间分界线可拖拽 10%~90%（初版卡顿根因=拖动状态变量写在 LayoutBuilder 闭包内每帧重置，改实例字段解决）；③ 一键备份/恢复按钮与右侧按钮同尺寸（OutlinedButton 主样式补水平内边距）；④ 第二排新增「安装目录」「日志目录」按钮（explorer 直达；日志目录自动定位 LOCALAPPDATA 回退位置）。
+- 运行日志 UTF-8 BOM（[app_logger.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/core/app_logger.dart)）：新日志文件写入 BOM，记事本不乱码；仅新建文件生效。
+- 安装器修复（[installer/webview2_repair/CMakeLists.txt](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/installer/webview2_repair/CMakeLists.txt)）：客户裸机报「找不到 VCRUNTIME140_1.dll」装不了——根因 `set(CMAKE_MSVC_RUNTIME_LIBRARY)` 在 `add_executable` 之后未生效（target 已按默认 /MD 初始化）；移到前面后重新编译验证 PE 无 VC 运行库依赖，裸机可跑。
+- **v2.3.0 已发布**：commit + tag v2.3.0 推送 origin（GitHub）与 gitee；GitHub Release v2.3.0（Setup.exe 311MB + msi 107MB + apk 128MB）；Gitee release 同步，源码 zip `LPRobot-src-v2.3.0.zip` 作附件（国内直连通道，发版必传）。CHANGELOG 补 v2.3.0/v2.2.8 条目，新增 history/v2.3.0.md。
+- **待用户实测**：文件管理页面包屑跳层/拖拽分栏/按钮布局/两个目录按钮；裸机安装新 Setup.exe 不再报 VCRUNTIME140_1.dll。
 
 ## 本轮结论（2026-11-19）
 
