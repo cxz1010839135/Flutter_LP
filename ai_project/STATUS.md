@@ -26,7 +26,7 @@ DScom.cs 新版协议（已逐行核对）：TCP 8088 长连接；发送扁平 J
 - 文件管理页（[files_page.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/features/files/files_page.dart)）：① 本地目录路径改可点击面包屑（每段可点跳层，同右侧驱控样式）；② 左右分栏中间分界线可拖拽 10%~90%（初版卡顿根因=拖动状态变量写在 LayoutBuilder 闭包内每帧重置，改实例字段解决）；③ 一键备份/恢复按钮与右侧按钮同尺寸（OutlinedButton 主样式补水平内边距）；④ 第二排新增「安装目录」「日志目录」按钮（explorer 直达；日志目录自动定位 LOCALAPPDATA 回退位置）。
 - 运行日志 UTF-8 BOM（[app_logger.dart](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/lib/core/app_logger.dart)）：新日志文件写入 BOM，记事本不乱码；仅新建文件生效。
 - 安装器修复（[installer/webview2_repair/CMakeLists.txt](file:///d:/Adroid_ws/LpRobt_Flutter/Lpzn_windows/installer/webview2_repair/CMakeLists.txt)）：客户裸机报「找不到 VCRUNTIME140_1.dll」装不了——根因 `set(CMAKE_MSVC_RUNTIME_LIBRARY)` 在 `add_executable` 之后未生效（target 已按默认 /MD 初始化）；移到前面后重新编译验证 PE 无 VC 运行库依赖，裸机可跑。
-- **v2.3.0 已发布**：commit + tag v2.3.0 推送 origin（GitHub）与 gitee；GitHub Release v2.3.0（Setup.exe 311MB + msi 107MB + apk 128MB）；Gitee release 同步，源码 zip `LPRobot-src-v2.3.0.zip` 作附件（国内直连通道，发版必传）。CHANGELOG 补 v2.3.0/v2.2.8 条目，新增 history/v2.3.0.md。
+- **v2.3.0 已发布**：commit + tag v2.3.0 推送 origin（GitHub）与 gitee；GitHub Release v2.3.0（Setup.exe 311MB + msi 107MB + apk 128MB）已创建；Gitee release 本机无私人令牌（push 密码不能调 API，401）→ 正文已复制剪贴板并打开发版页，待用户手动创建并上传 `LPRobot-src-v2.3.0.zip`（90MB，源码 zip 国内直连通道，发版必传）。CHANGELOG 补 v2.3.0/v2.2.8 条目，新增 history/v2.3.0.md。
 - **待用户实测**：文件管理页面包屑跳层/拖拽分栏/按钮布局/两个目录按钮；裸机安装新 Setup.exe 不再报 VCRUNTIME140_1.dll。
 
 ## 本轮结论（2026-11-19）
