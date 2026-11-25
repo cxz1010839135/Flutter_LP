@@ -48,13 +48,15 @@
 
 	this.confirm = function(title, message, selected) {
 		this._close = function(flag) {
-			selected(flag);
+			// 先关弹窗再执行回调：回调同步执行（编译/保存）若抛异常，
+			// 弹窗也能正常关闭，避免"卡在确定界面"。
 			if (flag) {
 				$('.win').last().find('iframe').remove();
 				$('.win').last().remove();
 			} else {
 				UILLRobot.close();
 			}
+			selected(flag);
 		};
 
 		var html = '<div class="win"><div class="mask-layer"></div><div class="window-panel"><iframe class="title-panel" frameborder="0" marginheight="0" marginwidth="0" scrolling="no"></iframe><div class="title"><h3></h3></div><div class="body-panel"><p class="alertcontent"></p><p class="btns"><button class="w-btn" tabindex="1" onclick="UILLRobot._close(true);">确定</button><button class="w-btn" onclick="UILLRobot._close(false);">取消</button></p></div></div></div>';

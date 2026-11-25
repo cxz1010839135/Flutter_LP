@@ -96,6 +96,27 @@
     return false;
   }
 
+  /** 把 JS 侧错误上报给宿主（写运行日志），供诊断保存卡死等问题 */
+  function reportJsError(message, stack, source, line) {
+    postToFlutter({
+      type: 'jsError',
+      message: String(message || ''),
+      stack: String(stack || ''),
+      source: String(source || ''),
+      line: line || 0
+    });
+  }
+  window.__lpPostError = function (message, stack) {
+    reportJsError(message, stack, '', 0);
+  };
+  window.addEventListener('error', function (e) {
+    reportJsError(e && e.message, e && e.error && e.error.stack, e && (e.filename || e.source), e && e.lineno);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    reportJsError(r && r.message || r, r && r.stack, '', 0);
+  });
+
   function generateGCodeText() {
     try {
       if (window.Code && Code.generateGCode) {

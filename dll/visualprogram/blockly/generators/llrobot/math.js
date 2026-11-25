@@ -44,6 +44,11 @@ Blockly.LLRobot['math_number'] = function(block) {
     return [code, order];
 };
 
+// 备注块：纯注释用途，不生成任何代码
+Blockly.LLRobot['math_variableNotes'] = function(block) {
+    return '';
+};
+
 Blockly.LLRobot['math_arithmetic'] = function(block){
   // Basic arithmetic operators, and power.
     var OPERATORS = {

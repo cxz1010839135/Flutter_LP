@@ -2,6 +2,13 @@
 
 简洁版本索引。移植期详细条目仍在 [docs/migration/changelog/CHANGELOG.md](../docs/migration/changelog/CHANGELOG.md)，此处不整份复制。
 
+## v2.3.1
+
+- 日期：2026-11-25
+- 修改：Blockly 编程页保存卡死根治——① confirm 弹窗先关窗再执行回调（回调抛异常不再卡确认框）；② 保存链 try/catch 全覆盖，JS 全局错误（onerror/unhandledrejection）上报宿主写运行日志；③ 失败分支残留坏代码 `node.getRowElement()`（未定义变量）修复；④ 备注块 `math_variableNotes` 补 LLRobot 生成规则（纯注释不生成代码，不再被标红为错误块）；⑤ 编译失败新增**错误列表**面板（复用搜索结果面板，红字序号/类型/原因，点击展开折叠祖先并复用搜索跳转链定位到错误块居中，首个错误块闪烁 3 次；实时采集坐标+照抄搜索 head_xy 参照系，自研坐标换算已废弃）；保存成功自动清除列表
+- 状态：已发布 GitHub Release v2.3.1（2026-11-25，apk + msi + Setup.exe）；保存卡死场景（含错误块工程 ytg11）已实测可保存并正确定位
+- 详情：history/v2.3.1.md
+
 ## v2.3.0
 
 - 日期：2026-11-24

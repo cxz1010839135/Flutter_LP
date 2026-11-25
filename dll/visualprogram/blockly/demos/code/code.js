@@ -1426,6 +1426,21 @@ Code.SaveDoc = function () {
 };
 
 /**
+ * 保存/编译链路异常上报：写宿主日志 + 弹出原因（修复"点确定卡死无提示"）
+ */
+Code.reportSaveError = function (e) {
+  var msg = (e && e.message) ? e.message : String(e);
+  var stack = (e && e.stack) ? e.stack : '';
+  try {
+    if (window.__lpPostError) window.__lpPostError(msg, stack);
+  } catch (_) { }
+  // 不再弹窗打断用户，仅控制台 + 上报日志（错误块已由列表/标红提示）
+  if (window.console && console.error) {
+    console.error('[save error] ' + msg + '\n' + stack);
+  }
+};
+
+/**
  * 返回事件
  */
 Code.NewDoc = function () {
@@ -1435,42 +1450,66 @@ Code.NewDoc = function () {
     "\r\n 取消:不保存修改并退出!\r\n", function (bflag) {
       if (!bflag) {
         // node.getRowElement().style.cursor = 'default';
-        Code.saveXMLFileToCSharp("main");
-        Code.saveGCodeFileToGCode("main");
+        try {
+          Code.saveXMLFileToCSharp("main");
+          Code.saveGCodeFileToGCode("main");
 
-        // Code.saveCompileResult("main","config",false);
-        bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
-        UILLRobot.toast('正在退出,请等待!', 2000);
+          // Code.saveCompileResult("main","config",false);
+          bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
+          UILLRobot.toast('正在退出,请等待!', 2000);
+        } catch (e) {
+          Code.reportSaveError(e);
+        }
         return;
       }
       else {
-        var CheckCode = Code.checkWorkspaceGCode();
+        var CheckCode;
+        try {
+          CheckCode = Code.checkWorkspaceGCode();
+        } catch (e) {
+          Code.reportSaveError(e);
+          return;
+        }
         if (CheckCode) {
-          //Code.saveCSharpFileToCSharp("main");
-          //保存在本地---G代码和XMl
-          Code.saveGCodeFileToGCode("main")
-          Code.saveXMLFileToCSharp("main");
+          try {
+            //编译通过：清理错误列表
+            if (Code.errorBlocks_ && Code.errorBlocks_.length) {
+              Code.errorBlocks_ = [];
+              Code.hideSearchResultsPanel();
+            }
+            //Code.saveCSharpFileToCSharp("main");
+            //保存在本地---G代码和XMl
+            Code.saveGCodeFileToGCode("main")
+            Code.saveXMLFileToCSharp("main");
 
-          Code.saveCompileResult("main", "config", true);
-          bound.updateCompileResult();
-          bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
-          UILLRobot.toast('保存成功,正在退出,请等待!', 2000);
+            Code.saveCompileResult("main", "config", true);
+            bound.updateCompileResult();
+            bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
+            UILLRobot.toast('保存成功,正在退出,请等待!', 2000);
+          } catch (e) {
+            Code.reportSaveError(e);
+          }
         }
         else {
-          UILLRobot.confirm("提示信息", "当前程序编译失败,请注意红色带感叹号的模块,单击可以显示出错问题!\r\n " + //compileMessage + "\r\n" +
+          var errorCount = Code.locateErrorBlocks();
+          UILLRobot.confirm("提示信息", "当前程序编译失败,发现 " + errorCount + " 个错误模块(已定位到第一个并闪烁提示,单击模块可查看原因)!\r\n " + //compileMessage + "\r\n" +
             "确定:继续保存当前程序,无法运行自动程序!\r\n " +
             "\r\n 取消:修改报错模块,重新编译!\r\n", function (flag) {
-              if (flag) {
-                node.getRowElement().style.cursor = 'default';
-                Code.saveXMLFileToCSharp("main");
-                Code.saveLLRobotFileToLL("main");
-                Code.saveCompileResult("main", "config", false);
-                bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
-                UILLRobot.toast('正在退出,请等待!', 2000);
-              }
-              else {
-                node.getRowElement().style.cursor = 'default';
-                Code.saveCompileResult("main", "config", false);
+              try {
+                if (flag) {
+                  // node.getRowElement().style.cursor = 'default';
+                  Code.saveXMLFileToCSharp("main");
+                  Code.saveLLRobotFileToLL("main");
+                  Code.saveCompileResult("main", "config", false);
+                  bound.exit();//调用exit退出函数 注意函数开头要小写  调用函数不分大小写
+                  UILLRobot.toast('正在退出,请等待!', 2000);
+                }
+                else {
+                  // node.getRowElement().style.cursor = 'default';
+                  Code.saveCompileResult("main", "config", false);
+                }
+              } catch (e) {
+                Code.reportSaveError(e);
               }
             });
         }
@@ -1685,19 +1724,26 @@ Code.updateSearchResultsExpandBtn_ = function () {
   if (!chip) {
     return;
   }
-  var hasResults = Code.workspace && Code.workspace.search_ &&
-      Code.workspace.search_.length > 0;
+  var errCount = (Code.errorBlocks_ || []).length;
+  var searchCount = Code.workspace && Code.workspace.search_ ?
+      Code.workspace.search_.length : 0;
+  var hasResults = searchCount > 0 || errCount > 0;
   var panel = Code.searchResultsPanel ||
       document.getElementById('searchResultsPanel');
   var hidden = Code.searchResultsHidden_ ||
       !panel || panel.style.display === 'none';
   var collapsed = Code.searchResultsCollapsed_;
   if (hasResults && (hidden || collapsed)) {
-    var count = Code.workspace.search_.length;
-    var input = document.getElementById('searchInput');
-    var keyword = input && input.value ? input.value : '';
-    chip.textContent = count + ' 处 · ' + keyword + ' ▾';
-    chip.title = '共 ' + count + ' 处「' + keyword + '」，点击展开';
+    if (errCount > 0 && searchCount === 0) {
+      chip.textContent = errCount + ' 个错误 ▾';
+      chip.title = '共 ' + errCount + ' 个错误模块，点击展开';
+    } else {
+      var count = searchCount;
+      var input = document.getElementById('searchInput');
+      var keyword = input && input.value ? input.value : '';
+      chip.textContent = count + ' 处 · ' + keyword + ' ▾';
+      chip.title = '共 ' + count + ' 处「' + keyword + '」，点击展开';
+    }
     chip.style.display = 'inline-block';
   } else {
     chip.style.display = 'none';
@@ -1949,6 +1995,170 @@ Code.saveXMLFileToCSharp = function (filename) {
 
 Code.saveCompileResult = function (projectname, filename, result) {
   bound.saveCompileResult(projectname, filename, result);
+};
+
+/**
+ * 按 Code.SearchData / search_MD_XY_matchBlock_ 的采集规则实时重填
+ * search_* 结构（内容为当前错误块）：
+ *   - head_xy 遍历全部块维护（最小 x + 首个顶层块 y），与搜索完全一致，
+ *     保证落点参照系与搜索相同（视口中心）；
+ *   - 错误块坐标实时采集（须在展开折叠块、setScale 之后调用，
+ *     布局稳定后坐标才有效）。
+ */
+Code.fillErrorSearchData_ = function () {
+  var ws = Code.workspace;
+  var errs = Code.errorBlocks_ || [];
+  ws.search_ = [];
+  ws.search_blocks_ = [];
+  ws.block_bool_xy = false;
+  ws.head_xy = [];
+  ws.search_index = 0;
+  ws.search_head_index = [];
+  ws.search_head_index_num = 0;
+  var topBlocks = ws.getTopBlocks(true);
+  // 与搜索一致：遍历顶层块及其全部后代维护 head_xy
+  for (var i = 0, block; block = topBlocks[i]; i++) {
+    ws.code_serch = '';
+    var descendants = block.getDescendants();
+    for (var j = 0; j < descendants.length; j++) {
+      var b = descendants[j];
+      var x = 0, y = 0;
+      if (!b.isShadow()) {
+        var xy = b.getRelativeToSurfaceXY();
+        x = Math.round(xy.x);
+        y = Math.round(xy.y);
+      }
+      if (!ws.block_bool_xy) {
+        ws.block_bool_xy = true;
+        ws.head_xy = [x, y];
+      }
+      if (x < ws.head_xy[0]) ws.head_xy[0] = x;
+    }
+    ws.search_head_index_num++;
+  }
+  // 错误块：实时坐标 + 所属顶层块索引（顺序与错误面板一致）
+  for (var k = 0; k < errs.length; k++) {
+    var eb = errs[k];
+    if (!eb.workspace) continue;
+    var exy = eb.getRelativeToSurfaceXY();
+    ws.search_.push([Math.round(exy.x), Math.round(exy.y)]);
+    ws.search_blocks_.push(eb);
+    var root = eb;
+    while (root.getParent && root.getParent()) {
+      root = root.getParent();
+    }
+    var ti = topBlocks.indexOf(root);
+    ws.search_head_index.push(ti < 0 ? 0 : ti);
+  }
+};
+
+/**
+ * 收集编译错误块（带警告文本），滚动到第一个并闪烁，
+ * 同时在搜索结果面板里渲染可点击的错误列表。返回错误块数量。
+ */
+Code.locateErrorBlocks = function () {
+  if (!Code.workspace) return 0;
+  var ws = Code.workspace;
+  Code.errorBlocks_ = [];
+  var all = ws.getAllBlocks(false);
+  for (var i = 0; i < all.length; i++) {
+    var b = all[i];
+    try {
+      if (b.warning && b.warning.getText && b.warning.getText()) {
+        Code.errorBlocks_.push(b);
+      }
+    } catch (_) { }
+  }
+  if (!Code.errorBlocks_.length) return 0;
+  var b0 = Code.errorBlocks_[0];
+  try {
+    Code.expandBlocksForSearch(b0);
+    ws.setScale(1);
+  } catch (_) { }
+  // 布局稳定后按搜索规则实时采集，再复用搜索跳转全链
+  Code.fillErrorSearchData_();
+  try {
+    Code.gotoSearchResult(0);
+  } catch (_) { }
+  // 闪烁高亮 3 次
+  try {
+    var n = 0;
+    var timer = setInterval(function () {
+      if (!b0.workspace) { clearInterval(timer); return; }
+      if (n >= 6) { clearInterval(timer); b0.addSelect(); return; }
+      if (n % 2) { b0.removeSelect && b0.removeSelect(); }
+      else { b0.addSelect && b0.addSelect(); }
+      n++;
+    }, 260);
+  } catch (_) { }
+  Code.renderErrorResultsPanel();
+  return Code.errorBlocks_.length;
+};
+
+/**
+ * 在搜索结果面板中渲染编译错误列表（点击定位到对应错误块）。
+ */
+Code.renderErrorResultsPanel = function () {
+  var panel = Code.searchResultsPanel ||
+      document.getElementById('searchResultsPanel');
+  var title = document.getElementById('searchResultsTitle');
+  var list = document.getElementById('searchResultsList');
+  if (!panel || !title || !list) {
+    return;
+  }
+  var errs = Code.errorBlocks_ || [];
+  list.innerHTML = '';
+  title.textContent = '共 ' + errs.length + ' 个错误模块，点击定位';
+  for (var i = 0; i < errs.length; i++) {
+    (function (idx) {
+      var block = errs[idx];
+      var reason = '';
+      try {
+        reason = String(block.warning.getText() || '').split('\n')[0];
+      } catch (_) { }
+      var label = (idx + 1) + '. ' + block.type +
+          (reason ? ' — ' + reason : '');
+      var item = document.createElement('div');
+      item.className = 'SearchResultsItem';
+      item.style.color = '#d0342c';
+      item.title = reason;
+      item.textContent = label;
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        Code.gotoErrorResult(idx);
+      }, true);
+      list.appendChild(item);
+    })(i);
+  }
+  panel.style.display = 'flex';
+  Code.searchResultsHidden_ = false;
+  Code.searchResultsCollapsed_ = false;
+  panel.classList.remove('collapsed');
+  var collapseBtn = document.querySelector('.SearchResultsCollapseBtn');
+  if (collapseBtn) {
+    collapseBtn.textContent = '▲';
+    collapseBtn.title = '收起列表';
+  }
+  Code.updateSearchResultsExpandBtn_();
+};
+
+/** 跳转到第 idx 个错误块并高亮（展开折叠的祖先块）。 */
+Code.gotoErrorResult = function (idx) {
+  var errs = Code.errorBlocks_ || [];
+  if (idx < 0 || idx >= errs.length) {
+    return;
+  }
+  var block = errs[idx];
+  // 先展开折叠祖先 + 重置缩放（布局推移在此发生），
+  // 之后实时采集坐标，保证 gotoSearchResult 内的 expand 幂等、坐标不失效
+  try {
+    Code.expandBlocksForSearch(block);
+    Code.workspace.setScale(1);
+  } catch (_) { }
+  Code.fillErrorSearchData_();
+  // 完整复用搜索跳转链（expand 幂等 → 顶层块置顶 → setScale → 选中 →
+  // scrollCenter_xy(块坐标 - head_xy) → 列表高亮），落点与搜索完全一致
+  Code.gotoSearchResult(idx);
 };
 
 Code.checkWorkspaceGCode = function () {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../core/app_logger.dart';
 import '../core/robot_path_layout.dart';
 import '../core/robot_paths.dart';
 import '../core/robot_state.dart';
@@ -116,6 +117,16 @@ class LpBlocklyBridge {
     debugPrint('Blockly bridge: $data');
 
     switch (type) {
+      case 'jsError':
+        final message = (data['message'] ?? '') as String;
+        final stack = (data['stack'] ?? '') as String;
+        final source = (data['source'] ?? '') as String;
+        final line = data['line'];
+        AppLogger.instance.logOperation(
+          'Blockly JS 错误: $message (${source}:${line})${stack.isEmpty ? '' : '\n$stack'}',
+        );
+        debugPrint('Blockly jsError: $message\n$stack');
+        break;
       case 'loadComplete':
         onJsLoadComplete?.call();
         break;
